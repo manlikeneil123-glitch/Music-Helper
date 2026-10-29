@@ -16,3 +16,16 @@ node tests/analysis.test.mjs        # timing, rubato, ornaments, musicality, str
 node tests/musicxml.test.mjs        # MusicXML / .mxl import
 node tests/tuning.test.mjs          # per-user mic tuning
 ```
+
+## Test on your phone
+
+Every push to `main` or `claude/optimistic-newton-ctacsp` runs the tests and publishes `app/` to GitHub Pages:
+**https://manlikeneil123-glitch.github.io/Music-Helper/**
+
+Install it as an app:
+- **iPhone (Safari):** open the link → Share → *Add to Home Screen*.
+- **Android (Chrome):** open the link → menu → *Install app* (or *Add to Home screen*).
+
+Once it's opened once, it works offline. The microphone needs HTTPS, which Pages provides. MIDI keyboards work in Chrome on Android; Safari on iPhone has no Web MIDI, so use the microphone or the on-screen keys there.
+
+After an update, close and reopen the app twice: the first open fetches the new version in the background.

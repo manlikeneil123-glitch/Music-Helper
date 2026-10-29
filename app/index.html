@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Music Helper</title>
+  <meta name="description" content="Your piano practice companion: note flashcards, practice timer and play-along feedback.">
+  <meta name="theme-color" content="#0d1014">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="preload" as="image" href="img/piano-room-1920.webp" media="not all and (max-width: 700px) and (orientation: portrait)">
+  <link rel="preload" as="image" href="img/piano-room-900.webp" media="(max-width: 700px) and (orientation: portrait)">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="booting">
+  <header class="topbar"><span class="logo-tile" aria-hidden="true"><span class="logo">𝄞</span></span> Music Helper<span class="spacer"></span><span class="top-pill" id="top-streak" hidden></span><button class="avatar" id="top-avatar" type="button" aria-label="Your setup" hidden></button></header>
+  <main>
+    <section class="view" id="view-welcome"></section>
+    <section class="view" id="view-today"></section>
+    <section class="view" id="view-cards"></section>
+    <section class="view" id="view-practice"></section>
+    <section class="view" id="view-play"></section>
+  </main>
+  <div class="keyboard" id="keyboard" hidden></div>
+  <nav class="tabbar" aria-label="Sections">
+    <button type="button" data-tab="today"><span data-icon="home"></span><span class="label">Today</span><span class="tip" aria-hidden="true">Today</span></button>
+    <button type="button" data-tab="cards"><span data-icon="cards"></span><span class="label">Read</span><span class="tip" aria-hidden="true">Read</span></button>
+    <button type="button" data-tab="practice"><span data-icon="timer"></span><span class="label">Practise</span><span class="tip" aria-hidden="true">Practise</span></button>
+    <button type="button" data-tab="play"><span data-icon="piano"></span><span class="label">Perform</span><span class="tip" aria-hidden="true">Perform</span></button>
+  </nav>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

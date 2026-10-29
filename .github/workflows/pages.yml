@@ -28,6 +28,9 @@ jobs:
       - run: node tests/musicxml.test.mjs
       - run: node tests/tuning.test.mjs
       - run: node tests/mic-synthetic.test.mjs
+      - run: node tests/sync.test.mjs
+      # Account security rules on a throwaway Postgres (preinstalled on GitHub's Ubuntu runners).
+      - run: sh tests/db/run.sh
 
   deploy:
     needs: test

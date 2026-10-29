@@ -215,7 +215,7 @@ body.lowfx .card, body.lowfx .tile, body.lowfx .stat, body.lowfx .tabbar, body.l
   outline: 2px solid var(--accent); outline-offset: 2px;
 }
 
-select, input[type='number'] {
+select, input[type='number'], input[type='text'], input[type='password'] {
   font: inherit; color: var(--ink); background: var(--raised);
   border: 1px solid var(--edge); border-radius: var(--radius-sm); padding: 10px 14px; min-height: 48px;
 }
@@ -573,3 +573,31 @@ body.booted .tabbar { animation: slide-up 0.6s var(--ease) 0.15s both; }
 .verdict-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 10px; }
 .verdict-chip { border: 1px solid var(--edge); border-radius: 999px; padding: 8px 14px; background: var(--raised); color: var(--ink); font: inherit; font-size: 0.85rem; cursor: pointer; }
 .verdict-chip:hover { background: var(--raised-hover); }
+
+/* Account */
+input[type='text'], input[type='password'] { width: 100%; min-width: 0; }
+input::placeholder { color: var(--muted); opacity: 0.8; }
+.pw { display: flex; gap: 8px; }
+.pw input { flex: 1; }
+.error { margin: 12px 0 0; color: var(--bad); font-weight: 600; font-size: 0.9rem; }
+.sync { color: var(--muted); display: inline-flex; align-items: center; gap: 6px; }
+.sync svg { width: 16px; height: 16px; }
+.sync.good { color: var(--good); } .sync.bad { color: var(--bad); }
+.account-form .warn-note { margin-top: 4px; }
+#acct-join .row input { flex: 1; text-transform: uppercase; letter-spacing: 0.12em; }
+#acct-join .row .btn { flex: 0 0 auto; }
+.studio-code { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.studio-code b { font-size: 1.9rem; letter-spacing: 0.18em; font-variant-numeric: tabular-nums; margin-right: auto; }
+.students li.student { display: block; }
+.student summary { display: flex; justify-content: space-between; align-items: center; gap: 12px; cursor: pointer; list-style: none; }
+.student summary::-webkit-details-marker { display: none; }
+.student summary .who { display: grid; }
+.student .nums { display: flex; align-items: center; gap: 12px; font-variant-numeric: tabular-nums; color: var(--muted); }
+.student .nums > span { display: inline-flex; align-items: center; gap: 3px; }
+.student .nums svg { width: 15px; height: 15px; }
+.student-detail { padding: 10px 0 4px; }
+.student-detail h4 { margin: 14px 0 4px; font-size: 0.9rem; }
+.mini-chart { display: flex; align-items: flex-end; gap: 3px; height: 48px; margin: 8px 0; }
+.mini-chart i { flex: 1; background: var(--accent); border-radius: 3px 3px 1px 1px; opacity: 0.85; }
+.mini-chart i:last-child { opacity: 1; }
+#view-account .row.gap { flex-wrap: wrap; }

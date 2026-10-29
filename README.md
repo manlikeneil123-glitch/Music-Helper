@@ -29,3 +29,14 @@ Install it as an app:
 Once it's opened once, it works offline. The microphone needs HTTPS, which Pages provides. MIDI keyboards work in Chrome on Android; Safari on iPhone has no Web MIDI, so use the microphone or the on-screen keys there.
 
 After an update, close and reopen the app twice: the first open fetches the new version in the background.
+
+## Accounts
+
+Username + password (no email), student and teacher roles, studio join codes. Off until
+a Supabase project is connected: follow [`supabase/README.md`](supabase/README.md), then
+fill in [`app/js/config.js`](app/js/config.js).
+
+## Tests
+
+`node tests/<name>.test.mjs` for the analysis, MusicXML, mic, tuning and sync tests;
+`sh tests/db/run.sh` for the account security rules (needs Postgres binaries).

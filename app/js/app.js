@@ -7,8 +7,11 @@ import { mountWelcome, profile } from './welcome.js';
 import { ICONS } from './icons.js';
 import { PIECES } from './pieces.js';
 import { load, save, dayKey } from './store.js';
+import { mountAccount, renderAccount, resumeAccount } from './account.js';
+import { startSync, setPieceTitles } from './sync.js';
+import { cloudReady, currentUser } from './cloud.js';
 
-const TABS = ['welcome', 'today', 'cards', 'practice', 'play'];
+const TABS = ['welcome', 'today', 'cards', 'practice', 'play', 'account'];
 const WITH_KEYBOARD = new Set(['cards', 'play']);
 
 const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -29,6 +32,8 @@ function activate(tab) {
   document.querySelectorAll('.view').forEach((v) => v.classList.remove('active', 'leaving'));
   const view = document.getElementById(`view-${tab}`);
   if (tab === 'today') renderToday();
+  if (tab === 'account') renderAccount();
+  if (tab === 'welcome') offerSignIn(view);
   stagger(view);
   view.classList.add('active');
   scrollTo(0, 0);
@@ -36,7 +41,8 @@ function activate(tab) {
 
 function show(tab) {
   if (!TABS.includes(tab)) tab = 'today';
-  if (!profile()) tab = 'welcome';
+  // Signing in on a new phone brings the setup with it, so Account is open to everyone.
+  if (!profile() && tab !== 'account') tab = 'welcome';
   const prev = document.querySelector('.view.active');
   document.querySelectorAll('.tabbar button').forEach((b) => b.setAttribute('aria-current', b.dataset.tab === tab ? 'page' : 'false'));
   document.body.dataset.tab = tab;
@@ -47,7 +53,7 @@ function show(tab) {
     const c4 = keyboard.querySelector('[data-midi="60"]');
     if (c4) keyboard.scrollLeft = c4.offsetLeft - 8;
   }
-  if (tab !== 'welcome') save('tab', tab);
+  if (tab !== 'welcome' && tab !== 'account') save('tab', tab);
   updateTopbar();
   const token = ++switchToken;
   // The old page blurs out, the photo refocuses, then the new page rises in.
@@ -68,10 +74,14 @@ function updateTopbar() {
   pill.innerHTML = `${ICONS.flame} ${s} day${s === 1 ? '' : 's'}`;
   const avatar = document.getElementById('top-avatar');
   avatar.hidden = !p;
-  if (p) {
+  const user = currentUser();
+  if (user) {
+    avatar.textContent = (user.username ?? '?').slice(0, 2).toUpperCase();
+    avatar.title = `@${user.username}: your account`;
+  } else if (p) {
     const level = p.level ?? '';
     avatar.textContent = /Grade (\d)/.exec(level)?.[1] ? `G${/Grade (\d)/.exec(level)[1]}` : level === 'Just starting' ? 'New' : 'Me';
-    avatar.title = `${level}${p.board && p.board !== 'Not doing exams' ? ` · ${p.board}` : ''}. Change your setup.`;
+    avatar.title = `${level}${p.board && p.board !== 'Not doing exams' ? ` · ${p.board}` : ''}. Your account and setup.`;
   }
 }
 
@@ -257,12 +267,20 @@ function refreshToday() {
   updateTopbar();
 }
 
+// A new phone for an existing student: sign in instead of setting up again.
+function offerSignIn(view) {
+  if (!cloudReady() || profile() || view.querySelector('#w-signin')) return;
+  view.querySelector('#w-form')?.insertAdjacentHTML('afterend', '<button class="btn ghost link" id="w-signin" type="button">Already have an account? Sign in</button>');
+  view.querySelector('#w-signin')?.addEventListener('click', () => show('account'));
+}
+
 function showWelcome() {
   document.querySelectorAll('.view').forEach((v) => v.classList.remove('active', 'leaving'));
   const view = document.getElementById('view-welcome');
   document.body.dataset.tab = 'welcome';
   document.getElementById('keyboard').hidden = true;
   updateTopbar();
+  offerSignIn(view);
   stagger(view);
   view.classList.add('active');
   scrollTo(0, 0);
@@ -288,10 +306,15 @@ mountCheck(document.getElementById('view-play'));
 renderKeyboard(document.getElementById('keyboard'), { from: 36, to: 96 });
 onSessionsChange(refreshToday);
 onChecksChange(refreshToday);
-document.getElementById('top-avatar').addEventListener('click', openSetup);
+mountAccount(document.getElementById('view-account'), { openSetup });
+setPieceTitles(() => Object.fromEntries(allPieces().map((x) => [x.id, x.title])));
+startSync();
+document.getElementById('top-avatar').addEventListener('click', () => show('account'));
+addEventListener('mh:account', updateTopbar);
 
 document.querySelectorAll('.tabbar button').forEach((b) => b.addEventListener('click', () => show(b.dataset.tab)));
 show(load('tab', 'today'));
+resumeAccount().then((reloading) => reloading || updateTopbar());
 // The load sequence: photo blurred → sharp (background.js), then chrome and panels.
 const booted = new MutationObserver(() => {
   if (!document.body.classList.contains('booting')) { document.body.classList.add('booted'); stagger(document.querySelector('.view.active')); booted.disconnect(); }

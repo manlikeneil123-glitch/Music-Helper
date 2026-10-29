@@ -20,7 +20,7 @@ node tests/tuning.test.mjs          # per-user mic tuning
 ## Test on your phone
 
 Every push to `main` or `claude/optimistic-newton-ctacsp` runs the tests and publishes `app/` to GitHub Pages:
-**https://manlikeneil123-glitch.github.io/Music-Helper/** (if Pages is set to *Deploy from a branch*, that page forwards to `/Music-Helper/app/`, which is the address to install).
+**https://manlikeneil123-glitch.github.io/Music-Helper/** — open and install from this address. (If Pages is ever switched to *Deploy from a branch*, the root forwards to `/Music-Helper/app/` instead.)
 
 Install it as an app:
 - **iPhone (Safari):** open the link → Share → *Add to Home Screen*.

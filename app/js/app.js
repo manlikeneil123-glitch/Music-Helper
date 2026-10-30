@@ -1,6 +1,9 @@
 import { mountFlashcards, cardStats } from './flashcards.js';
 import { mountTimer, onSessionsChange, minutesOn, goalMinutes, lastDays } from './timer.js';
-import { mountCheck, onChecksChange, checkHistory, suggestedBpm, allPieces, troubleBars } from './check.js';
+import { mountCheck, onChecksChange, checkHistory, suggestedBpm, allPieces, troubleBars, practiseAssignment, setSendTake, setShareSection } from './check.js';
+import { openAssignments, onTeachChange, teacherName, daysToLesson, refreshTeacherWork, restoreTeacherScores, acceptAssignmentLink, sendTake } from './teach.js';
+import { openReportCard } from './reportcard.js';
+import { openAssignDialog } from './assignlink.js';
 import { buildPlan } from './plan.js';
 import { mountExam, renderExam, examWithReadiness, onExamChange } from './examview.js';
 import { daysUntil, phaseFor } from './exam.js';
@@ -97,6 +100,7 @@ function lessonPlan() {
   return buildPlan({
     profile: profile(), goal: goalMinutes(), history: checkHistory(), cards: cardStats(), pieces: allPieces(),
     bpmFor: suggestedBpm, trouble: troubleBars,
+    assignments: openAssignments(), lessonIn: daysToLesson(profile()?.lessonDay), teacher: teacherName(),
   });
 }
 
@@ -186,6 +190,7 @@ function renderToday() {
       </section>
       <section class="card">
         <div class="chart-head"><h3>Today · ${plan.reduce((a, x) => a + x.mins, 0)} min</h3></div>
+        ${plan.note ? `<p class="plan-note">${plan.note}</p>` : ''}
         <ol class="plan">${plan.map((x, i) => `
           <li><button type="button" data-i="${i}">
             <span class="mins">${x.mins}′</span>
@@ -222,6 +227,7 @@ function renderToday() {
         </section>
       </div>
     </div>
+    <button class="btn" id="today-report" type="button">${ICONS.trophy} This week's report card</button>
     <button class="btn ghost link" id="today-setup" type="button">Change your setup</button>
     <p class="credit">Background photo: <a href="https://unsplash.com/photos/a-grand-piano-in-front-of-a-large-window-Iu2pgfqkK2g" target="_blank" rel="noopener">Oswald on Unsplash</a></p>`;
 
@@ -232,6 +238,11 @@ function renderToday() {
       deck.value = item.deck;
       deck.dispatchEvent(new Event('change'));
     }
+    if (item.assignment) {
+      show('play');
+      if (!practiseAssignment(item.assignment)) alert("That piece isn't on this device yet. Ask your teacher to share the score, or import it in Perform.");
+      return;
+    }
     if (item.piece) {
       const sel = document.getElementById('check-piece');
       sel.value = item.piece;
@@ -241,6 +252,7 @@ function renderToday() {
   }));
   root.querySelector('#today-setup').addEventListener('click', openSetup);
   root.querySelector('[data-go=exam]')?.addEventListener('click', () => show('exam'));
+  root.querySelector('#today-report').addEventListener('click', openReportCard);
   root.querySelector('#today-timer').addEventListener('click', () => {
     show('practice');
     const btn = document.getElementById('timer-start');
@@ -318,14 +330,34 @@ onQualityChange(() => { refreshToday(); updateTopbar(); });
 mountAccount(document.getElementById('view-account'), { openSetup });
 mountExam(document.getElementById('view-exam'), { show });
 onExamChange(refreshToday);
+restoreTeacherScores();
+setShareSection(openAssignDialog);
+const canSend = () => setSendTake(currentUser() && teacherName() ? sendTake : null);
+canSend();
+onTeachChange(() => { refreshToday(); canSend(); });
 setPieceTitles(() => Object.fromEntries(allPieces().map((x) => [x.id, x.title])));
 startSync();
 document.getElementById('top-avatar').addEventListener('click', () => show('account'));
 addEventListener('mh:account', updateTopbar);
 
 document.querySelectorAll('.tabbar button').forEach((b) => b.addEventListener('click', () => show(b.dataset.tab)));
-show(load('tab', 'today'));
-resumeAccount().then((reloading) => reloading || updateTopbar());
+// Opened an assignment link from a teacher (no account needed). If the app is
+// already open, the browser only changes the #hash, so listen for that too.
+function takeAssignmentLink() {
+  const linked = acceptAssignmentLink(location.hash);
+  if (!linked) return null;
+  history.replaceState(null, '', location.pathname + location.search);
+  setTimeout(() => alert(`New work${linked.from ? ` from ${linked.from}` : ''}: ${linked.title}. It's at the top of Today's plan.`), 600);
+  return linked;
+}
+const linked = takeAssignmentLink();
+show(linked && profile() ? 'today' : load('tab', 'today'));
+addEventListener('hashchange', () => takeAssignmentLink() && profile() && show('today'));
+resumeAccount().then((reloading) => {
+  if (reloading) return;
+  updateTopbar();
+  refreshTeacherWork().catch(() => {});
+});
 // The load sequence: photo blurred → sharp (background.js), then chrome and panels.
 const booted = new MutationObserver(() => {
   if (!document.body.classList.contains('booting')) { document.body.classList.add('booted'); stagger(document.querySelector('.view.active')); booted.disconnect(); }

@@ -665,3 +665,31 @@ a.btn { text-decoration: none; }
 .exam-part select { width: auto; }
 .exam-head #ex-edit { justify-self: end; align-self: start; }
 .exam-head .pill { display: inline-block; }
+
+/* Teaching */
+.plan-note { margin: 4px 0 10px; padding: 10px 12px; border-radius: var(--radius-sm); background: rgba(77, 141, 255, 0.14); font-size: 0.9rem; }
+.set-work summary { list-style: none; display: inline-flex; margin: 6px 0; }
+.set-work summary::-webkit-details-marker { display: none; }
+.set-work form { padding: 4px 0 8px; }
+.set-work input[type='number'] { width: 4.5em; min-height: 40px; }
+.set-work input[type='date'] { font: inherit; color: var(--ink); background: var(--raised); border: 1px solid var(--edge); border-radius: var(--radius-sm); padding: 6px 10px; color-scheme: dark; }
+.log.work li, .log.recordings li { align-items: center; }
+.rec { display: block !important; }
+.rec form { margin-top: 6px; }
+.rec form input { flex: 1; min-height: 38px; }
+.teacher-note { margin: 6px 0 0; padding: 8px 10px; border-left: 3px solid var(--good); background: rgba(95, 214, 143, 0.1); border-radius: 6px; }
+#parent-link-out input { width: 100%; margin-bottom: 6px; font-size: 0.82rem; }
+.report-dialog { max-width: min(520px, calc(100vw - 32px)); padding: 14px; border: 1px solid var(--edge); color: var(--ink); background: var(--surface-strong); }
+.report-dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
+.report-dialog img { width: 100%; height: auto; border-radius: 14px; display: block; margin-bottom: 12px; }
+#today-report { width: 100%; margin-top: 14px; }
+
+.assign-dialog { max-width: min(480px, calc(100vw - 32px)); padding: 18px; border: 1px solid var(--edge); color: var(--ink); background: var(--surface-strong); }
+.assign-dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
+.assign-dialog input[type='number'] { width: 4.5em; min-height: 40px; }
+.assign-dialog input[type='date'], .assign-dialog input[type='text'] { color-scheme: dark; }
+.assign-dialog .qr { display: grid; place-items: center; margin: 14px 0 6px; }
+.assign-dialog .qr svg { border-radius: 12px; }
+#sec-share { margin-top: 10px; }
+
+input[type='date'] { font: inherit; color: var(--ink); background: var(--raised); border: 1px solid var(--edge); border-radius: var(--radius-sm); padding: 8px 12px; min-height: 44px; color-scheme: dark; }

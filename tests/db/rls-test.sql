@@ -87,6 +87,85 @@ do $$ begin perform public.remove_student('00000000-0000-0000-0000-00000000000b'
 select pg_temp.act('teacher');
 select pg_temp.ok((select count(*) from public.studio_students()) = 1, 'other teacher could not remove ana');
 
+-- Assignments: teacher sets them for students in the studio only; students read their own.
+select pg_temp.act('teacher');
+insert into public.assignments (studio_id, student_id, title, piece_id, from_bar, to_bar, target_bpm, due)
+  values (public.taught_studio(), '00000000-0000-0000-0000-00000000000b', 'Minuet bars 5-8', 'ode-to-joy', 5, 8, 72, current_date + 7);
+insert into public.assignments (studio_id, title, piece_id) values (public.taught_studio(), 'Everyone: C major scale', 'c-scale');
+do $$ begin insert into public.assignments (studio_id, student_id, title, piece_id) values (public.taught_studio(), '00000000-0000-0000-0000-00000000000c', 'x', 'c-scale'); raise exception 'FAIL: assigned to a non-member';
+exception when insufficient_privilege then raise notice 'ok: cannot assign to a student outside the studio'; end $$;
+select pg_temp.act('other');
+do $$ begin insert into public.assignments (studio_id, title, piece_id) values ((select studio_id from public.profiles where id = '00000000-0000-0000-0000-00000000000b'), 'x', 'c-scale'); raise exception 'FAIL: other teacher assigned';
+exception when insufficient_privilege or not_null_violation then raise notice 'ok: another teacher cannot assign into this studio'; end $$;
+select pg_temp.ok((select count(*) from public.assignments) = 0, 'another teacher sees no assignments');
+select pg_temp.act('ana');
+select pg_temp.ok((select count(*) from public.assignments) = 2, 'student sees their own and studio-wide assignments');
+update public.assignments set title = 'hacked'; -- matches no rows for a student
+delete from public.assignments;
+select pg_temp.ok((select count(*) from public.assignments where title = 'hacked') = 0 and (select count(*) from public.assignments) = 2, 'students cannot edit or delete assignments');
+select pg_temp.act('ben');
+select pg_temp.ok((select count(*) from public.assignments) = 0, 'non-member sees no assignments');
+
+-- Shared scores: studio only.
+select pg_temp.act('teacher');
+insert into public.shared_scores (studio_id, title, musicxml) values (public.taught_studio(), 'My arrangement', '<score-partwise/>');
+select pg_temp.act('ana');
+select pg_temp.ok((select count(*) from public.shared_scores) = 1, 'student sees the shared score');
+do $$ begin insert into public.shared_scores (studio_id, title, musicxml) values (public.my_studio(), 'x', 'x'); raise exception 'FAIL: student shared a score';
+exception when insufficient_privilege then raise notice 'ok: students cannot share scores'; end $$;
+select pg_temp.act('ben');
+select pg_temp.ok((select count(*) from public.shared_scores) = 0, 'non-member sees no shared scores');
+
+-- Recordings: student sends to their own studio; teacher listens and comments; 20 days max.
+select pg_temp.act('ana');
+insert into public.recordings (studio_id, title, kind, mime, data, seconds) values (public.my_studio(), 'Minuet take', 'audio', 'audio/webm', 'AAAA', 42);
+do $$ begin insert into public.recordings (studio_id, title, kind, data) values ((select id from public.studios where teacher_id = '00000000-0000-0000-0000-00000000000d'), 'x', 'notes', '[]'); raise exception 'FAIL: sent to another studio';
+exception when insufficient_privilege then raise notice 'ok: cannot send a recording to another studio'; end $$;
+reset role;
+insert into public.recordings (student_id, studio_id, title, kind, data, created_at)
+  values ('00000000-0000-0000-0000-00000000000b', (select studio_id from public.profiles where id = '00000000-0000-0000-0000-00000000000b'), 'Old take', 'notes', '[]', now() - interval '21 days');
+set role authenticated;
+select pg_temp.act('teacher');
+select pg_temp.ok((select count(*) from public.recordings) = 1, 'teacher hears the recent take, not the 21-day-old one');
+select public.comment_recording((select id from public.recordings limit 1), 'Lovely phrasing in bar 3');
+select pg_temp.act('ana');
+select pg_temp.ok((select teacher_note from public.recordings limit 1) = 'Lovely phrasing in bar 3', 'student sees the teacher''s comment');
+do $$ begin update public.recordings set teacher_note = 'forged'; raise exception 'FAIL: student edited a recording';
+exception when insufficient_privilege then raise notice 'ok: students cannot edit recordings'; end $$;
+select pg_temp.act('other');
+select pg_temp.ok((select count(*) from public.recordings) = 0, 'another teacher hears nothing');
+select pg_temp.act('ben');
+select pg_temp.ok((select count(*) from public.recordings) = 0, 'another student hears nothing');
+select pg_temp.act('ana');
+insert into public.recordings (studio_id, title, kind, data) values (public.my_studio(), 'Second take', 'notes', '[]');
+reset role;
+select pg_temp.ok((select count(*) from public.recordings where title = 'Old take') = 0, 'expired recordings are purged on the next send');
+set role authenticated;
+
+-- Parent links: secret token, read-only summary, revocable; no direct table access.
+select pg_temp.act('ana');
+create temp table ptok as select public.create_parent_link() as t;
+grant select on ptok to anon;
+select pg_temp.ok((select length(t) from ptok) = 36, 'parent link token is 36 hex chars');
+select pg_temp.ok(public.has_parent_link(), 'student can see they have a link');
+do $$ begin perform * from public.parent_links; raise exception 'FAIL: read parent_links';
+exception when insufficient_privilege then raise notice 'ok: parent_links not directly readable'; end $$;
+reset role;
+set role anon;
+select pg_temp.ok((public.parent_view((select t from ptok)) ->> 'username') = 'ana', 'parent sees the summary with the token');
+select pg_temp.ok((public.parent_view((select t from ptok)) -> 'summary' ->> 'week') = '42', 'parent sees the weekly summary');
+select pg_temp.ok(public.parent_view('0123456789abcdef0123456789abcdef0123') is null, 'a wrong token shows nothing');
+select pg_temp.ok(public.parent_view('') is null, 'an empty token shows nothing');
+reset role;
+set role authenticated;
+select pg_temp.act('ana');
+select public.revoke_parent_link();
+reset role;
+set role anon;
+select pg_temp.ok(public.parent_view((select t from ptok)) is null, 'a revoked link shows nothing');
+reset role;
+set role authenticated;
+
 -- Password resets: only the student's own teacher, only 8+ characters, signs them out.
 reset role;
 insert into auth.sessions (user_id) values ('00000000-0000-0000-0000-00000000000b');

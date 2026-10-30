@@ -77,4 +77,10 @@ ok(s.recent[0].score === 88 && s.recent[0].title === 'Minuet' && s.recent[0].wor
 ok(s.pieces[0].best === 88 && s.pieces[0].ready && s.pieces[0].runs === 2, 'per-piece best and ready');
 ok(s.board === 'Trinity', 'board passed through');
 
+const wb = summarise({
+  checks: { v: [{ pieceId: 'p', at: now.getTime() - 3600e3, score: 70, barErrors: { 4: 2, 7: 1 } }, { pieceId: 'p', at: now.getTime() - 7200e3, score: 75, barErrors: { 4: 1 } }, { pieceId: 'p', at: now.getTime() - 20 * 86400e3, score: 10, barErrors: { 9: 9 } }] },
+  assignmentDone: { v: { a1: 1, a2: 2 } },
+}, { p: 'Minuet' }, now);
+ok(wb.weekBars[0].title === 'Minuet' && wb.weekBars[0].bars[0].bar === 4 && wb.weekBars[0].bars[0].perRun === 1.5 && !wb.weekBars[0].bars.some((b) => b.bar === 9), 'teacher sees this week\'s weakest bars, not old ones');
+ok(wb.done.join() === 'a1,a2', 'teacher sees finished work');
 console.log(`sync: ${n} checks passed`);

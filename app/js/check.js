@@ -38,6 +38,8 @@ let drill = null; // { from, to, end, kind: 'loop' | 'add', streak, runs, bpm }
 let history = load('checks', []); // [{ pieceId, hands, at, score, ready, bpm, playedBpm, worstBar, input, barErrors, keptGoing, pulse }]
 let lastResult = null;
 let lastTake = null; // last mic take, for the test lab
+let lastNotes = null; // last keys/MIDI take: { events, seconds }, for sending to the teacher
+let sendHook = null; // set by app.js: (take) => Promise, when a teacher can receive takes
 let lastMic = null; // { args, evidence, record, reported } of the last mic analysis, to re-run after a correction
 let scoreView = null; // renderScore() output
 let mode = load('inputMode', 'keys'); // 'keys' | 'mic'
@@ -55,7 +57,56 @@ export function onChecksChange(fn) {
   changeListeners.add(fn);
 }
 export const checkHistory = () => history;
-export const allPieces = () => [...library, ...imported];
+let fromTeacher = []; // scores the teacher shared with their studio
+export const allPieces = () => [...library, ...fromTeacher, ...imported];
+
+/** Scores shared by the teacher: [{ id, title, musicxml }]. Bad files are skipped. */
+export function setTeacherScores(list) {
+  fromTeacher = list.flatMap((x) => {
+    try {
+      return [normalize({ ...parseMusicXML(x.musicxml, { id: `teacher:${x.id}` }), title: x.title, level: 'From your teacher' })];
+    } catch {
+      return [];
+    }
+  });
+  if (!root) return;
+  fillPieceSelect();
+  if (load('checkPiece', null)?.startsWith('teacher:') && !rec && !learn) selectPiece(load('checkPiece', null));
+  changeListeners.forEach((fn) => fn());
+}
+
+// Assignments tick themselves off from what happens here.
+const takeListeners = new Set();
+export const onTakeDone = (fn) => takeListeners.add(fn);
+/** fn(take) → Promise, or null when there's no teacher to send to. */
+export const setSendTake = (fn) => (sendHook = fn);
+let shareHook = null;
+export const setShareSection = (fn) => (shareHook = fn);
+const tellTake = (info) => takeListeners.forEach((fn) => fn(info));
+
+/** Open a teacher's assignment: the piece, its strictness, and its bars at its tempo. */
+export function practiseAssignment(a) {
+  if (rec || learn) return false;
+  if (drill) endDrill(false);
+  if (!allPieces().some((p) => p.id === a.piece_id)) return false;
+  selectPiece(a.piece_id);
+  if (a.strictness) {
+    strictness = a.strictness;
+    $('#check-strict').value = strictness;
+  }
+  practice = 'perform';
+  syncPracticeButtons();
+  if (a.from_bar) {
+    startDrill(a.from_bar, a.to_bar ?? a.from_bar, 'loop', { bpm: a.target_bpm });
+  } else if (a.target_bpm) {
+    tempoUnlocked = true;
+    updateTempoLock();
+    $('#check-bpm').value = a.target_bpm;
+    updateBpmLabel();
+    setStatus(`Your teacher set ${a.target_bpm} bpm. Press Start when you're ready.`, '');
+  }
+  return true;
+}
 
 // The exam page runs single takes here (mock exam, sight-reading) and wants the result.
 let pendingTake = null;
@@ -253,6 +304,7 @@ function stop() {
   if (r.recorder) {
     const take = r.recorder.stop();
     lastTake = { ...take, beat0Sec: r.beat0Ctx - take.startCtx, pieceId: piece.id, bpm: bpm() };
+    lastNotes = null;
     $('#lab-download').hidden = false;
     setStatus('Analysing…', '');
     // Let the status paint before the (short) analysis blocks the thread.
@@ -270,6 +322,8 @@ function stop() {
   for (const e of r.open.values()) e.off = now;
   if (r.pedalDown != null) r.pedal.push({ on: r.pedalDown, off: now });
   const played = r.events.filter((e) => e.on >= -0.75 * r.msPerBeat);
+  lastNotes = { events: played.map((e) => ({ midi: e.midi, on: Math.round(e.on), off: e.off == null ? null : Math.round(e.off), velocity: e.velocity })), seconds: now / 1000 };
+  lastTake = null;
   // Judge pedalling only when a pedal can be used: a MIDI keyboard is connected
   // (its pedal reports CC64) or Space was pressed on the computer keyboard.
   const pedalPossible = r.sawPedal || (r.source === 'midi' && midiStatus?.midi === 'connected');
@@ -306,6 +360,7 @@ function finish({ played, source, msPerBeat, unclear = [], spread = [], pedalEve
   drawScore(result);
   if (drill) return drillRunDone(result);
   showResult(result, source);
+  if (record) tellTake({ pieceId: base.id, hands, bpm: bpm(), playedBpm: result.playedBpm, score: result.score, barErrors: result.barErrors, source });
   if (pendingTake) {
     const done = pendingTake;
     pendingTake = null;
@@ -334,7 +389,24 @@ function showResult(r, source) {
     <p class="next"><b>Next step:</b> ${r.feedback.next}</p>
     ${canDrill ? `<button class="btn primary block" id="drill-start" type="button">Drill bar ${r.worstBar} until it's clean ${DRILL_STREAK}× in a row</button>` : ''}
     <div class="legend"><span class="good">● correct</span><span class="warn">● timing</span><span class="bad">● wrong</span><span class="miss">● missed</span>${source === 'mic' ? '<span class="unclear">● unclear</span>' : ''}</div>
+    ${sendHook && (lastTake?.compressed || lastNotes) ? `<button class="btn block" id="send-take" type="button">${ICONS.mic} Send this take to your teacher</button>` : ''}
     ${source === 'mic' && lastMic ? verdictPanel(r) : ''}`;
+  box.querySelector('#send-take')?.addEventListener('click', async (e) => {
+    const btn = e.currentTarget;
+    btn.disabled = true;
+    btn.textContent = 'Sending…';
+    try {
+      const title = `${base.title}${drill ? ` (${span(drill)})` : ''} · ${r.score}/100`;
+      await sendHook(lastTake?.compressed
+        ? { title, kind: 'audio', blob: await lastTake.compressed, seconds: lastTake.samples.length / lastTake.sampleRate, score: r.score }
+        : { title, kind: 'notes', notes: lastNotes.events, seconds: lastNotes.seconds, score: r.score });
+      btn.textContent = 'Sent ✓ (kept for 20 days)';
+    } catch (err) {
+      btn.disabled = false;
+      btn.textContent = 'Send this take to your teacher';
+      setStatus(`Couldn't send it: ${err.message}`, 'bad');
+    }
+  });
   box.querySelector('#drill-start')?.addEventListener('click', () => startDrill(r.worstBar, r.worstBar));
   box.querySelectorAll('[data-verdict]').forEach((b) => b.addEventListener('click', () => correctVerdict(b.dataset.verdict, b.dataset.key)));
   box.querySelector('#verdict-wrong')?.addEventListener('click', () => {
@@ -385,9 +457,9 @@ function correctVerdict(kind, key) {
 }
 
 // ---- Bar drills: loop one bar until it's clean N times in a row ---------------------
-function startDrill(from, to = from, kind = 'loop') {
+function startDrill(from, to = from, kind = 'loop', { bpm: setBpm = null } = {}) {
   if (rec || learn) return;
-  const drillBpm = Math.max(40, Math.round((suggestedBpm(base) * 0.85) / 2) * 2);
+  const drillBpm = setBpm ?? Math.max(40, Math.round((suggestedBpm(base) * 0.85) / 2) * 2);
   drill = { from, to: kind === 'add' ? from : to, end: to, kind, streak: 0, runs: 0, bpm: drillBpm };
   practice = 'perform';
   syncPracticeButtons();
@@ -434,6 +506,7 @@ function endDrill(done) {
   setStartLabel(false);
   if (done && d) {
     logWin('bars');
+    tellTake({ pieceId: base.id, section: { from: d.from, to: d.end }, bpm: d.bpm, secure: true });
     setStatus(`${span(d)[0].toUpperCase()}${span(d).slice(1)} ${d.from === d.to ? 'is' : 'are'} secure (${d.runs} runs). Now play the whole piece through.`, 'good');
   }
 }
@@ -635,7 +708,7 @@ function updateTempoLock() {
 function fillPieceSelect() {
   const sel = $('#check-piece');
   const opt = (p) => `<option value="${p.id}">${escapeHtml(p.title)}</option>`;
-  sel.innerHTML = `<optgroup label="Library">${library.map(opt).join('')}</optgroup>${imported.length ? `<optgroup label="Your scores">${imported.map(opt).join('')}</optgroup>` : ''}`;
+  sel.innerHTML = `<optgroup label="Library">${library.map(opt).join('')}</optgroup>${fromTeacher.length ? `<optgroup label="From your teacher">${fromTeacher.map(opt).join('')}</optgroup>` : ''}${imported.length ? `<optgroup label="Your scores">${imported.map(opt).join('')}</optgroup>` : ''}`;
   sel.value = base.id;
 }
 
@@ -846,6 +919,7 @@ export function mountCheck(el) {
         </select>
         <button class="btn accent" id="sec-go" type="button">Start</button>
       </div>
+      <button class="btn small-btn" id="sec-share" type="button">Teachers: send this as an assignment link</button>
       <p class="muted small">"Add a bar at a time" starts with the first bar and adds the next one each time it's clean ${ADD_STREAK}× running, so the joins between bars get practised too.</p>
     </details>
     <div id="perform-options">
@@ -917,6 +991,9 @@ export function mountCheck(el) {
     $('#section').open = false;
     startDrill(from, to, $('#sec-kind').value);
   });
+  $('#sec-share').addEventListener('click', () => shareHook?.({
+    piece: { id: base.id, title: base.title }, from: Number($('#sec-from').value) || null, to: Number($('#sec-to').value) || null, bpm: bpm(), strictness,
+  }));
   $('#tempo-unlock').addEventListener('click', () => {
     tempoUnlocked = true;
     updateTempoLock();

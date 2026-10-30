@@ -46,6 +46,20 @@ export function startRecording({ onLevel, onChunk } = {}) {
   src.connect(proc);
   proc.connect(mute);
   mute.connect(ac.destination);
+  // A compressed copy of the take (Opus or AAC, ~32 kbps), in case the student wants
+  // to send it to their teacher. The raw samples above are what gets analysed.
+  let media = null;
+  const parts = [];
+  const type = ['audio/webm;codecs=opus', 'audio/mp4', 'audio/webm'].find((t) => window.MediaRecorder?.isTypeSupported?.(t));
+  if (type) {
+    try {
+      media = new MediaRecorder(stream, { mimeType: type, audioBitsPerSecond: 32000 });
+      media.ondataavailable = (e) => e.data.size && parts.push(e.data);
+      media.start();
+    } catch {
+      media = null;
+    }
+  }
   return {
     get startCtx() { return startCtx; },
     stop() {
@@ -58,7 +72,13 @@ export function startRecording({ onLevel, onChunk } = {}) {
         samples.set(c, o);
         o += c.length;
       }
-      return { samples, sampleRate: ac.sampleRate, startCtx: startCtx ?? ac.currentTime };
+      const compressed = media
+        ? new Promise((resolve) => {
+          media.onstop = () => resolve(new Blob(parts, { type: media.mimeType }));
+          media.stop();
+        })
+        : null;
+      return { samples, sampleRate: ac.sampleRate, startCtx: startCtx ?? ac.currentTime, compressed };
     },
   };
 }

@@ -1,5 +1,5 @@
 // Offline-first app shell. Bump VERSION when shipping changes.
-const VERSION = 'mh-v10';
+const VERSION = 'mh-v11';
 const SHELL = [
   './',
   'index.html',
@@ -28,7 +28,7 @@ const SHELL = [
   'scores/octave-study.musicxml',
   'js/mic.js',
   'js/micanalysis.js',
-  'js/tuning.js', 'js/config.js', 'js/cloud.js', 'js/sync.js', 'js/account.js', 'js/quality.js', 'js/plan.js', 'js/exam.js', 'js/examview.js', 'privacy.html',
+  'js/tuning.js', 'js/config.js', 'js/cloud.js', 'js/sync.js', 'js/account.js', 'js/quality.js', 'js/plan.js', 'js/exam.js', 'js/examview.js', 'js/teach.js', 'js/studio.js', 'js/reportcard.js', 'js/assignlink.js', 'js/qr.js', 'js/work.js', 'js/parent.js', 'parent.html', 'privacy.html',
   'img/piano-room-1920.webp',
   'img/piano-room-900.webp',
 ];
@@ -47,7 +47,9 @@ self.addEventListener('activate', (e) => {
 
 // Stale-while-revalidate: instant from cache, refreshed in the background.
 self.addEventListener('fetch', (e) => {
-  if (e.request.method !== 'GET' || new URL(e.request.url).origin !== location.origin) return;
+  const url = new URL(e.request.url);
+  // Only the app itself is cached: never account data, even if the API shares the domain.
+  if (e.request.method !== 'GET' || url.origin !== location.origin || /\/(rest|auth|storage)\/v1\//.test(url.pathname)) return;
   e.respondWith(
     caches.open(VERSION).then(async (cache) => {
       const cached = await cache.match(e.request, { ignoreSearch: true });

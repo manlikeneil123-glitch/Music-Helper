@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="referrer" content="no-referrer">
+  <title>Practice summary · Music Helper</title>
+  <meta name="theme-color" content="#0d1014">
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    body { background: var(--bg); }
+    .parent { max-width: 640px; margin: 0 auto; padding: 24px 16px 64px; }
+    .parent h1 { font-size: 1.9rem; margin: 4px 0; }
+    .parent .card { margin: 14px 0; }
+    .big { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+    .big div { background: var(--raised); border-radius: 16px; padding: 12px; }
+    .big b { display: block; font-size: 1.8rem; }
+  </style>
+</head>
+<body>
+  <main class="parent" id="parent">
+    <p class="muted">Loading…</p>
+  </main>
+  <script type="module" src="js/parent.js"></script>
+</body>
+</html>

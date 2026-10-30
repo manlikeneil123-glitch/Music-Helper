@@ -42,7 +42,11 @@ function reading(tier, board, cards) {
  * pieces: [{ id, title, targetBpm }], bpmFor(piece) → suggested bpm,
  * trouble(pieceId) → { runs, perRun: { bar: errors per run } }.
  */
-export function buildPlan({ profile, goal = 20, history = [], cards = { weak: 0, mastered: 0, total: 0 }, pieces, bpmFor, trouble = () => ({ runs: 0, perRun: {} }) }) {
+/**
+ * Also: assignments (open work from the teacher, soonest due first), lessonIn (days to
+ * the next lesson, 0 = today) and teacher (their username, for the wording).
+ */
+export function buildPlan({ profile, goal = 20, history = [], cards = { weak: 0, mastered: 0, total: 0 }, pieces, bpmFor, trouble = () => ({ runs: 0, perRun: {} }), assignments = [], lessonIn = null, teacher = null }) {
   const tier = LEVEL_TIER[profile?.level] ?? 0;
   const board = profile?.board ?? 'Not doing exams';
   const split = SPLIT[tier];
@@ -60,9 +64,24 @@ export function buildPlan({ profile, goal = 20, history = [], cards = { weak: 0,
   });
   // The piece in progress comes first; untouched pieces only once nothing is in progress.
   const order = [...states.filter((s) => !s.ready && s.runs.length), ...states.filter((s) => !s.runs.length), ...states.filter((s) => s.ready)];
-  const two = goal >= 30 && tier >= 2 && order.length >= 2;
-  const pieceMins = mins(split.piece);
-  order.slice(0, two ? 2 : 1).forEach((s, i) => {
+  let pieceMins = mins(split.piece);
+  // Work the teacher set comes first and takes its time from the pieces slot.
+  const work = assignments.filter((a) => pieces.some((p) => p.id === a.piece_id)).slice(0, 2);
+  const workIds = new Set(work.map((a) => a.piece_id));
+  work.forEach((a) => {
+    const m = Math.max(3, Math.round(pieceMins * (work.length > 1 ? 0.35 : 0.5)));
+    pieceMins -= m;
+    const bars = a.from_bar ? `bar${a.to_bar && a.to_bar !== a.from_bar ? `s ${a.from_bar}–${a.to_bar}` : ` ${a.from_bar}`}` : 'the whole piece';
+    plan.unshift({
+      tab: 'play', piece: a.piece_id, assignment: a, mins: m,
+      title: `${teacher ? `From @${teacher}` : a.from ? `From ${a.from}` : 'From your teacher'}: ${a.title}`,
+      detail: `${bars[0].toUpperCase()}${bars.slice(1)}${a.target_bpm ? ` at ${a.target_bpm} bpm` : ''}${a.due ? `, due ${a.due}` : ''}. ${a.from_bar ? `Ticks off when it's clean ${3}× in a row.` : 'Ticks off with a run of 85+.'}${a.note ? ` “${a.note}”` : ''}`,
+    });
+  });
+  pieceMins = Math.max(3, pieceMins);
+  const rest = order.filter((s) => !workIds.has(s.p.id));
+  const two = goal >= 30 && tier >= 2 && rest.length >= 2;
+  rest.slice(0, two ? 2 : 1).forEach((s, i) => {
     const bpm = bpmFor(s.p);
     const { runs: weekRuns, perRun } = trouble(s.p.id);
     const worst = Object.entries(perRun).filter(([, v]) => v >= 0.5).sort((a, b) => b[1] - a[1]).slice(0, 2).map(([b]) => Number(b)).sort((a, b) => a - b);
@@ -73,5 +92,9 @@ export function buildPlan({ profile, goal = 20, history = [], cards = { weak: 0,
     else detail = `${s.last.worstBar ? `Fix bar ${s.last.worstBar} first, then ` : ''}full run at ${bpm} bpm. Best so far: ${s.best}.`;
     plan.push({ tab: 'play', piece: s.p.id, mins: two ? Math.round(pieceMins * (i ? 0.4 : 0.6)) : pieceMins, title: `Piece: ${s.p.title}`, detail, bars: worst });
   });
+  // The lesson shapes the day: show-ready the day before, light on the day.
+  if (lessonIn === 0) plan.note = 'Lesson today: warm up, then one calm run of each thing your teacher set. Bring your questions.';
+  else if (lessonIn === 1) plan.note = 'Lesson tomorrow: play everything your teacher set once through today, and note the one bar you most want help with.';
+  else if (lessonIn === 6) plan.note = 'Lesson was yesterday: start on the new work while the lesson is fresh.';
   return plan;
 }

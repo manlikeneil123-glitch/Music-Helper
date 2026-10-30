@@ -5,11 +5,15 @@ import { ICONS } from './icons.js';
 import { cloudReady, currentUser, usernameError, signUp, signIn, signOut, rpc, changePassword, CloudError } from './cloud.js';
 import { pull, pushNow, syncStatus, onSyncStatus } from './sync.js';
 import { clearSynced, dataOwner, setDataOwner } from './store.js';
+import { loadTeacherExtras, studentTeaching, studioTeaching, wireTeacher, loadStudentExtras, studentCards, wireStudent } from './studio.js';
+import { refreshTeacherWork } from './teach.js';
 
 let root;
 let mode = 'create'; // signed-out form: 'create' | 'signin'
 let me = null; // the server's view of this account: { username, role, studio }
 let students = null;
+let extras = null; // teacher: { assignments, recordings, scores }
+let sExtras = null; // student: { recordings, parentLink }
 let busy = false;
 let onOpenSetup = () => {};
 
@@ -123,6 +127,7 @@ function studentRow(st) {
           ${s.recent?.length ? `<h4>Recent checks</h4><ul class="log recent">${s.recent.slice(0, 6).map((c) => `
             <li><span class="who"><span class="mini-badge ${tone(c.score)}">${c.score}</span><span>${esc(c.title)}${c.hands !== 'both' ? ` <small class="muted">(${c.hands === 'rh' ? 'RH' : 'LH'})</small>` : ''}${c.worstBar ? ` <small class="muted">· weakest bar ${c.worstBar}</small>` : ''}</span></span><small class="muted">${ago(c.at)}</small></li>`).join('')}</ul>` : '<p class="empty">No checks yet.</p>'}
           ${s.pieces?.length ? `<h4>Pieces</h4><ul class="log">${s.pieces.map((p) => `<li><span>${esc(p.title)} <small class="muted">· ${p.runs} run${p.runs === 1 ? '' : 's'}</small></span><b>${p.ready ? '✓ ready' : `best ${p.best}`}</b></li>`).join('')}</ul>` : ''}
+          ${extras ? studentTeaching(st, extras) : ''}
           <div class="row gap wrap">
             <button class="btn small-btn" type="button" data-reset="${st.id}" data-name="${esc(st.username)}">Reset password</button>
             <button class="btn small-btn bad" type="button" data-remove="${st.id}" data-name="${esc(st.username)}">Remove from studio</button>
@@ -155,7 +160,8 @@ function studioForTeacher() {
     <section class="card">
       <div class="row between"><h3>Students</h3><button class="btn small-btn" type="button" id="acct-refresh">Refresh</button></div>
       ${students == null ? '<p class="empty">Loading…</p>' : students.length ? `<ul class="log students">${students.map(studentRow).join('')}</ul>` : '<p class="empty">No one has joined yet. Share your code with your students.</p>'}
-    </section>`;
+    </section>
+    ${extras ? studioTeaching(extras) : ''}`;
 }
 
 function signedIn() {
@@ -169,7 +175,7 @@ function signedIn() {
       <p class="small" id="acct-sync-line">${syncLine()}</p>
       <p class="error" id="acct-error" role="alert" hidden></p>
     </section>
-    ${me ? (role === 'teacher' ? studioForTeacher() : studioForStudent()) : '<section class="card"><p class="empty">Loading your account…</p></section>'}
+    ${me ? (role === 'teacher' ? studioForTeacher() : studioForStudent() + (sExtras ? studentCards(sExtras, Boolean(me.studio)) : '')) : '<section class="card"><p class="empty">Loading your account…</p></section>'}
     <section class="card">
       <button class="btn ghost" type="button" id="acct-setup">${ICONS.arrow} Change your setup (level, board, goal)</button>
       <details class="pw-change">
@@ -229,7 +235,8 @@ async function act(fn) {
 
 async function refreshMe() {
   me = await rpc('me');
-  if (me?.role === 'teacher' && me.studio) students = await rpc('studio_students');
+  if (me?.role === 'teacher' && me.studio) [students, extras] = await Promise.all([rpc('studio_students'), loadTeacherExtras()]);
+  if (me?.role === 'student') [sExtras] = await Promise.all([loadStudentExtras(), refreshTeacherWork().catch(() => {})]);
 }
 
 // Modules read storage once at start-up, so new data from the account needs a reload.
@@ -245,6 +252,9 @@ async function afterSignIn(user) {
 
 function wire() {
   root.querySelector('#acct-setup')?.addEventListener('click', () => onOpenSetup());
+  const again = async () => { await refreshMe(); render(); };
+  if (me?.role === 'teacher' && me.studio && extras) wireTeacher(root, { act, refresh: again, studioId: me.studio.id });
+  if (me?.role === 'student' && sExtras) wireStudent(root, { act, refresh: again });
   const form = root.querySelector('#acct-form');
   if (form) {
     let role = 'student';
@@ -305,19 +315,20 @@ function wire() {
     if (!code.trim()) return showError('Type the code your teacher gave you.');
     act(async () => {
       me = await rpc('join_studio', { p_code: code });
+      await refreshMe();
       await pushNow();
       render();
     });
   });
   root.querySelector('#acct-leave')?.addEventListener('click', () => {
     if (!confirm(`Leave ${me.studio.name}? @${me.studio.teacher} will stop seeing your progress.`)) return;
-    act(async () => { me = await rpc('leave_studio'); render(); });
+    act(async () => { me = await rpc('leave_studio'); await refreshMe(); render(); });
   });
   root.querySelector('#acct-studio')?.addEventListener('submit', (e) => {
     e.preventDefault();
     act(async () => {
-      me = await rpc('create_studio', { p_name: root.querySelector('#acct-studio-name').value });
-      students = [];
+      await rpc('create_studio', { p_name: root.querySelector('#acct-studio-name').value });
+      await refreshMe();
       render();
     });
   });

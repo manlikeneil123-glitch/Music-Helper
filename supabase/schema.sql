@@ -126,6 +126,7 @@ language sql stable security definer set search_path = '' as $$
   select json_build_object(
     'id', p.id, 'username', p.username, 'role', p.role,
     'studio', case when s.id is null then null else json_build_object(
+      'id', s.id,
       'name', s.name,
       'code', case when s.teacher_id = p.id then s.code end,
       'teacher', (select t.username from public.profiles t where t.id = s.teacher_id)
@@ -226,3 +227,172 @@ revoke execute on function public.reset_student_password from public, anon;
 grant execute on function public.reset_student_password to authenticated;
 revoke execute on function public.me, public.create_studio, public.new_studio_code, public.join_studio, public.leave_studio, public.remove_student, public.studio_students, public.delete_me from public, anon;
 grant execute on function public.me, public.create_studio, public.new_studio_code, public.join_studio, public.leave_studio, public.remove_student, public.studio_students, public.delete_me to authenticated;
+
+-- ============================================================================
+-- Teaching: assignments, shared scores, recordings, parent links.
+-- ============================================================================
+
+-- What the teacher sets: a piece (library id or a shared score), optionally a bar
+-- range, a target tempo and checking strictness, a due date and a note. student_id
+-- null means everyone in the studio.
+create table if not exists public.assignments (
+  id uuid primary key default gen_random_uuid(),
+  studio_id uuid not null references public.studios on delete cascade,
+  student_id uuid references auth.users on delete cascade,
+  title text not null check (char_length(title) between 1 and 120),
+  piece_id text not null check (char_length(piece_id) <= 80),
+  from_bar int check (from_bar >= 1),
+  to_bar int check (to_bar >= from_bar),
+  target_bpm int check (target_bpm between 20 and 300),
+  strictness text check (strictness in ('gentle', 'standard', 'exam')),
+  due date,
+  note text check (char_length(note) <= 500),
+  created_at timestamptz not null default now()
+);
+create index if not exists assignments_studio on public.assignments (studio_id);
+
+-- Scores the teacher shares with their own students only (their own arrangements
+-- or files they're licensed to share). Never public.
+create table if not exists public.shared_scores (
+  id uuid primary key default gen_random_uuid(),
+  studio_id uuid not null references public.studios on delete cascade,
+  title text not null check (char_length(title) between 1 and 120),
+  musicxml text not null check (char_length(musicxml) < 1500000),
+  created_at timestamptz not null default now()
+);
+create index if not exists shared_scores_studio on public.shared_scores (studio_id);
+
+-- Takes a student chose to send to their teacher. Audio (base64, compressed by
+-- the phone) or the notes played on a keyboard. Gone after 20 days: hidden by the
+-- policies at once, and deleted by the purge below.
+create table if not exists public.recordings (
+  id uuid primary key default gen_random_uuid(),
+  student_id uuid not null references auth.users on delete cascade default auth.uid(),
+  studio_id uuid not null references public.studios on delete cascade,
+  title text not null check (char_length(title) between 1 and 160),
+  kind text not null check (kind in ('audio', 'notes')),
+  mime text check (char_length(mime) <= 60),
+  data text not null check (char_length(data) < 2000000),
+  seconds int check (seconds between 0 and 900),
+  score int,
+  teacher_note text check (char_length(teacher_note) <= 1000),
+  created_at timestamptz not null default now()
+);
+create index if not exists recordings_studio on public.recordings (studio_id, created_at);
+
+-- A secret read-only link for a parent: no account, revocable by the student.
+create table if not exists public.parent_links (
+  token text primary key,
+  student_id uuid not null references auth.users on delete cascade,
+  created_at timestamptz not null default now()
+);
+
+alter table public.assignments enable row level security;
+alter table public.shared_scores enable row level security;
+alter table public.recordings enable row level security;
+alter table public.parent_links enable row level security;
+
+drop policy if exists "assignments: teacher manages" on public.assignments;
+create policy "assignments: teacher manages" on public.assignments for all to authenticated
+  using (studio_id = public.taught_studio())
+  with check (
+    studio_id = public.taught_studio()
+    and (student_id is null or student_id in (select p.id from public.profiles p where p.studio_id = public.taught_studio()))
+  );
+drop policy if exists "assignments: student reads own" on public.assignments;
+create policy "assignments: student reads own" on public.assignments for select to authenticated
+  using (studio_id = public.my_studio() and (student_id is null or student_id = auth.uid()));
+
+drop policy if exists "shared scores: teacher manages" on public.shared_scores;
+create policy "shared scores: teacher manages" on public.shared_scores for all to authenticated
+  using (studio_id = public.taught_studio()) with check (studio_id = public.taught_studio());
+drop policy if exists "shared scores: students read" on public.shared_scores;
+create policy "shared scores: students read" on public.shared_scores for select to authenticated
+  using (studio_id = public.my_studio());
+
+drop policy if exists "recordings: student sends" on public.recordings;
+create policy "recordings: student sends" on public.recordings for insert to authenticated
+  with check (student_id = auth.uid() and studio_id = public.my_studio());
+drop policy if exists "recordings: student and teacher read" on public.recordings;
+create policy "recordings: student and teacher read" on public.recordings for select to authenticated
+  using (
+    created_at > now() - interval '20 days'
+    and (student_id = auth.uid() or (studio_id = public.taught_studio() and student_id in (select p.id from public.profiles p where p.studio_id = public.taught_studio())))
+  );
+drop policy if exists "recordings: student or teacher deletes" on public.recordings;
+create policy "recordings: student or teacher deletes" on public.recordings for delete to authenticated
+  using (student_id = auth.uid() or studio_id = public.taught_studio());
+
+-- parent_links: no direct access at all; only through the functions below.
+
+grant select, insert, update, delete on public.assignments, public.shared_scores to authenticated;
+grant select, insert, delete on public.recordings to authenticated;
+revoke all on public.assignments, public.shared_scores, public.recordings, public.parent_links from anon;
+revoke all on public.parent_links from authenticated;
+
+-- Teachers can leave a comment on a recording (and nothing else about it).
+create or replace function public.comment_recording(p_id uuid, p_note text) returns void
+language sql security definer set search_path = '' as $$
+  update public.recordings set teacher_note = left(p_note, 1000)
+  where id = p_id and studio_id = public.taught_studio() and created_at > now() - interval '20 days';
+$$;
+
+-- The 20-day rule, physically: every new recording sweeps out expired ones, and on
+-- Supabase a nightly pg_cron job does too (set up below when pg_cron is available).
+create or replace function public.purge_recordings() returns trigger
+language plpgsql security definer set search_path = '' as $$
+begin
+  delete from public.recordings where created_at < now() - interval '20 days';
+  return null;
+end
+$$;
+drop trigger if exists recordings_purge on public.recordings;
+create trigger recordings_purge after insert on public.recordings
+  for each statement execute function public.purge_recordings();
+
+do $$
+begin
+  create extension if not exists pg_cron;
+  perform cron.schedule('purge-recordings', '17 3 * * *', $c$delete from public.recordings where created_at < now() - interval '20 days'$c$);
+exception when others then
+  raise notice 'pg_cron not available; expired recordings are purged on each new recording instead.';
+end
+$$;
+
+-- Parent links: the student makes (or remakes) one; anyone holding the token can
+-- read that student's weekly summary and nothing else.
+create or replace function public.create_parent_link() returns text
+language plpgsql security definer set search_path = '' as $$
+declare
+  t text := encode(extensions.gen_random_bytes(18), 'hex');
+begin
+  if auth.uid() is null then raise exception 'Sign in first.'; end if;
+  delete from public.parent_links where student_id = auth.uid();
+  insert into public.parent_links (token, student_id) values (t, auth.uid());
+  return t;
+end
+$$;
+
+create or replace function public.revoke_parent_link() returns void
+language sql security definer set search_path = '' as $$
+  delete from public.parent_links where student_id = auth.uid();
+$$;
+
+create or replace function public.has_parent_link() returns boolean
+language sql stable security definer set search_path = '' as $$
+  select exists (select 1 from public.parent_links where student_id = auth.uid());
+$$;
+
+create or replace function public.parent_view(p_token text) returns json
+language sql stable security definer set search_path = '' as $$
+  select json_build_object('username', p.username, 'updated_at', g.updated_at, 'summary', g.data -> 'summary' -> 'v')
+  from public.parent_links l
+  join public.profiles p on p.id = l.student_id
+  left join public.progress g on g.user_id = l.student_id
+  where l.token = p_token and char_length(p_token) >= 32
+$$;
+
+revoke execute on function public.comment_recording, public.create_parent_link, public.revoke_parent_link, public.has_parent_link, public.purge_recordings from public, anon;
+grant execute on function public.comment_recording, public.create_parent_link, public.revoke_parent_link, public.has_parent_link to authenticated;
+revoke execute on function public.parent_view from public;
+grant execute on function public.parent_view to anon, authenticated;

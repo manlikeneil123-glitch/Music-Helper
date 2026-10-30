@@ -32,6 +32,20 @@ fully on-device and the Account page says accounts aren't switched on yet.
 No names, emails, recordings or device details. Mic tuning and recordings never
 leave the phone.
 
+Teaching tables (same rules: each studio only ever sees its own):
+
+| Table | What | Who can read it |
+|---|---|---|
+| `assignments` | work a teacher sets (piece, bars, tempo, due date, note) | the teacher; the student it's for (or the whole studio) |
+| `shared_scores` | MusicXML a teacher shares | the teacher and their students |
+| `recordings` | takes a student chose to send (compressed audio, or the notes played on a keyboard) | the student and their teacher, for **20 days** |
+| `parent_links` | a secret token per student | nobody directly; `parent_view(token)` returns that student's summary only |
+
+**Recordings are deleted after 20 days.** They're hidden by the security rules the
+moment they're older than that, deleted whenever anyone sends a new one, and on
+Supabase the schema also schedules a nightly `pg_cron` job (Database → Extensions →
+enable *pg_cron* first, then re-run `schema.sql`, so the job gets created).
+
 ## Limits to know about
 
 - **Free plan:** 50,000 monthly active users *per project*, 500 MB database. A free

@@ -138,6 +138,11 @@ export async function rest(path, opts = {}) {
   return call(`/rest/v1/${path}`, { ...opts, token: await token() });
 }
 
+/** A function anyone may call without signing in (the parent view). */
+export async function publicRpc(name, args = {}) {
+  return call(`/rest/v1/rpc/${name}`, { method: 'POST', body: args });
+}
+
 export async function rpc(name, args = {}) {
   return call(`/rest/v1/rpc/${name}`, { method: 'POST', body: args, token: await token() });
 }

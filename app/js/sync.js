@@ -64,7 +64,24 @@ export function summarise(data, titleOf = {}, now = new Date()) {
     pieces: Object.values(pieces),
     exam,
     lastMock: mocks[0] ?? null,
+    weekBars: weekBars(checks, titleOf, now),
+    done: Object.keys(data.assignmentDone?.v ?? {}).slice(-100),
   };
+}
+
+// Where this week's mistakes clustered, per piece: the bars to start the lesson on.
+function weekBars(checks, titleOf, now) {
+  const since = now.getTime() - 7 * 86400000;
+  const per = {};
+  for (const c of checks) {
+    if (c.at < since || !c.barErrors) continue;
+    const p = (per[c.pieceId] ??= { title: titleOf[c.pieceId] ?? 'Imported piece', runs: 0, bars: {} });
+    p.runs++;
+    for (const [bar, n] of Object.entries(c.barErrors)) p.bars[bar] = (p.bars[bar] ?? 0) + n;
+  }
+  return Object.values(per)
+    .map((p) => ({ title: p.title, runs: p.runs, bars: Object.entries(p.bars).map(([bar, n]) => ({ bar: Number(bar), perRun: +(n / p.runs).toFixed(1) })).filter((b) => b.perRun >= 0.5).sort((a, b) => b.perRun - a.perRun).slice(0, 3) }))
+    .filter((p) => p.bars.length);
 }
 
 /** Piece titles for summaries (check.js knows them; sync shouldn't import it). */

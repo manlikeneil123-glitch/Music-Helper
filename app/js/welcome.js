@@ -31,6 +31,9 @@ export function mountWelcome(el, onDone) {
       <label class="field">Exam board
         <select id="w-board">${BOARDS.map((b) => `<option>${b}</option>`).join('')}</select>
       </label>
+      <label class="field" id="w-lesson-field">Lesson day
+        <select id="w-lesson"><option value="">No regular lesson</option>${['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map((d, i) => `<option value="${i}">${d}</option>`).join('')}</select>
+      </label>
       <label class="field">How strict should checking be?
         <select id="w-strict">
           <option value="gentle">Gentle: encouraging, only clear mistakes</option>
@@ -50,6 +53,7 @@ export function mountWelcome(el, onDone) {
   const setTeacher = (yes) => {
     p.teacher = yes;
     form.querySelectorAll('[data-teacher]').forEach((b) => b.setAttribute('aria-pressed', String((b.dataset.teacher === 'yes') === yes)));
+    form.querySelector('#w-lesson-field').hidden = !yes;
   };
   const setGoal = (g) => {
     p.goal = g;
@@ -60,6 +64,7 @@ export function mountWelcome(el, onDone) {
   form.querySelector('#w-level').value = p.level;
   form.querySelector('#w-board').value = p.board;
   form.querySelector('#w-strict').value = p.strictness ?? 'standard';
+  form.querySelector('#w-lesson').value = p.lessonDay ?? '';
   setTeacher(p.teacher);
   setGoal(GOALS.includes(p.goal) ? p.goal : 20);
 
@@ -68,6 +73,7 @@ export function mountWelcome(el, onDone) {
     p.level = form.querySelector('#w-level').value;
     p.board = form.querySelector('#w-board').value;
     p.strictness = form.querySelector('#w-strict').value;
+    p.lessonDay = p.teacher && form.querySelector('#w-lesson').value !== '' ? Number(form.querySelector('#w-lesson').value) : null;
     p.at = Date.now();
     save('profile', p);
     save('goal', p.goal);

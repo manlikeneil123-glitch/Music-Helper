@@ -5,7 +5,7 @@ const STAMPS = 'mh:meta:stamps'; // name -> last local change (ms), for merging 
 
 // Per-device settings that make no sense on another phone (a mic's tuning, the
 // open tab, a running timer) stay local.
-const LOCAL_ONLY = new Set(['tab', 'inputMode', 'micCal', 'micTuning', 'timer', 'mockRun', 'readAhead', 'examConditions']);
+const LOCAL_ONLY = new Set(['tab', 'inputMode', 'micCal', 'micTuning', 'timer', 'mockRun', 'readAhead', 'examConditions', 'teacherWork']);
 const listeners = new Set();
 
 export function load(name, fallback) {
@@ -78,6 +78,8 @@ const MERGE = {
     }
     return out;
   },
+  assignmentDone: (a, b) => ({ ...b, ...a }),
+  linkAssignments: (a, b) => unionBy([...a, ...b], (x) => x.id).slice(0, 30),
   cards: (a, b) => {
     const out = { ...a };
     for (const [id, card] of Object.entries(b)) if (!out[id] || (card.seen ?? 0) > (out[id].seen ?? 0)) out[id] = card;

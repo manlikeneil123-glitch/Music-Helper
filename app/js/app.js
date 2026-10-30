@@ -12,7 +12,7 @@ import { qualityStreak, qualityWeek, qualityOn, onQualityChange, CARDS_TARGET } 
 import { initMidi, renderKeyboard } from './input.js';
 import { loadPiano } from './audio.js';
 import { mountBackground, pulseBackground } from './background.js';
-import { mountWelcome, profile } from './welcome.js';
+import { mountWelcome, profile, MARK } from './welcome.js';
 import { ICONS } from './icons.js';
 import { PIECES } from './pieces.js';
 import { load, save, dayKey } from './store.js';
@@ -292,8 +292,10 @@ function refreshToday() {
 // A new phone for an existing student: sign in instead of setting up again.
 function offerSignIn(view) {
   if (!cloudReady() || profile() || view.querySelector('#w-signin')) return;
-  view.querySelector('#w-form')?.insertAdjacentHTML('afterend', '<button class="btn ghost link" id="w-signin" type="button">Already have an account? Sign in</button>');
-  view.querySelector('#w-signin')?.addEventListener('click', () => show('account'));
+  const link = (id) => `<button class="btn ghost link" id="${id}" type="button">Already have an account? Sign in</button>`;
+  view.querySelector('#w-start')?.insertAdjacentHTML('afterend', link('w-signin-splash'));
+  view.querySelector('#w-form')?.insertAdjacentHTML('afterend', link('w-signin'));
+  view.querySelectorAll('#w-signin, #w-signin-splash').forEach((b) => b.addEventListener('click', () => show('account')));
 }
 
 function showWelcome() {
@@ -319,6 +321,7 @@ function finishWelcome(p) {
   show('today');
 }
 
+document.getElementById('top-mark').innerHTML = MARK;
 document.querySelectorAll('.tabbar [data-icon]').forEach((el) => (el.innerHTML = ICONS[el.dataset.icon]));
 mountBackground();
 mountWelcome(document.getElementById('view-welcome'), finishWelcome);

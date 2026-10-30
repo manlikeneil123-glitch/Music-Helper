@@ -1,7 +1,7 @@
 {
-  "name": "Music Helper — Piano Practice",
-  "short_name": "Music Helper",
-  "description": "Note flashcards, practice timer and play-along feedback for piano.",
+  "name": "Stave — Piano Practice",
+  "short_name": "Stave",
+  "description": "Piano practice that gets you exam-ready: note flashcards, a daily plan and play-along feedback.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

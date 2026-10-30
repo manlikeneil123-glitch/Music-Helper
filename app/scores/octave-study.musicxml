@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <score-partwise version="4.0">
   <work><work-title>Octave Study in G</work-title></work>
-  <identification><creator type="composer">Music Helper (original)</creator><rights>Original study, free to use</rights></identification>
+  <identification><creator type="composer">Stave (original)</creator><rights>Original study, free to use</rights></identification>
   <part-list><score-part id="P1"><part-name>Piano</part-name></score-part></part-list>
   <part id="P1">
     <measure number="1">

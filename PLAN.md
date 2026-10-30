@@ -1,4 +1,4 @@
-# Music Helper — Product & Technical Plan (Draft v0.3)
+# Stave (formerly Music Helper) — Product & Technical Plan (Draft v0.3)
 
 > A piano practice companion that acts like a teacher between lessons, or instead of them for people who can't afford lessons.
 

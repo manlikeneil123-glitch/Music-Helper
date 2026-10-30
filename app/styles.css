@@ -133,7 +133,9 @@ body::before { content: ''; position: fixed; inset: 0 0 auto; height: env(safe-a
   width: 34px; height: 34px; border-radius: 50%; background: rgba(255, 255, 255, 0.12); flex: none;
   display: grid; place-items: center; border: 1px solid var(--edge);
 }
-.logo { font-family: 'Noto Music', serif; font-size: 21px; line-height: 1; color: #fff; transform: translateY(1px); }
+.brand-mark { color: #fff; display: grid; place-items: center; }
+.brand-mark svg { width: 24px; height: 24px; }
+.brand-name { font-weight: 800; font-size: 1.12rem; letter-spacing: -0.03em; }
 .top-pill { font-size: 0.8rem; font-weight: 650; padding: 6px 11px; border-radius: 999px; background: var(--raised); color: var(--ink); white-space: nowrap; display: inline-flex; align-items: center; gap: 5px; }
 .top-pill .icon { width: 15px; height: 15px; }
 .avatar {
@@ -251,7 +253,72 @@ fieldset.field legend { padding: 0; margin-bottom: 6px; }
 }
 .choice[aria-pressed='true'] { background: #ffffff; color: var(--on-brand); border-color: #fff; }
 
-/* ---- Welcome ---- */
+/* ---- Liquid glass: a light rim brighter at the top-left (where the light hits),
+   and a soft specular sheen across the top of the panel. ---- */
+.card:not(dialog), .tile, .stat, .glass-hero { position: relative; }
+.topbar, .tabbar, .glass-hero, .card:not(dialog) { isolation: isolate; }
+.card:not(dialog)::before, .topbar::before, .tabbar::before, .tile::before, .stat::before, .glass-hero::before {
+  content: ''; position: absolute; inset: -1px; border-radius: inherit; padding: 1px; pointer-events: none; z-index: 1;
+  background: linear-gradient(150deg, rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0.08) 32%, rgba(255, 255, 255, 0.02) 60%, rgba(255, 255, 255, 0.22));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+}
+.glass-hero::after, .topbar::after, .tabbar::after {
+  content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: -1;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0) 42%);
+}
+
+/* ---- Welcome: splash, then setup ---- */
+body[data-tab='welcome']:has(.splash:not([hidden])) .topbar { display: none; }
+.splash { position: relative; min-height: calc(100svh - 40px); display: grid; align-items: center; padding: max(24px, env(safe-area-inset-top)) 0 8px; }
+.orbs { position: fixed; inset: 0; z-index: -1; pointer-events: none; overflow: hidden; display: none; }
+body[data-tab='welcome'] .orbs { display: block; animation: fade-in 1.2s ease both; }
+.orbs i { position: absolute; width: 46vmax; height: 46vmax; border-radius: 50%; filter: blur(60px); opacity: 0.38; animation: drift 18s ease-in-out infinite alternate; }
+.orbs i:nth-child(1) { background: #2f6fe6; left: -18vmax; top: -12vmax; }
+.orbs i:nth-child(2) { background: #3fbf9a; right: -20vmax; top: 30%; animation-duration: 22s; opacity: 0.26; }
+.orbs i:nth-child(3) { background: #7a5cff; left: 20%; bottom: -26vmax; animation-duration: 26s; opacity: 0.22; }
+@keyframes drift { to { transform: translate(6vmax, 4vmax) scale(1.12); } }
+.glass-hero {
+  max-width: 460px; width: 100%; margin: 0 auto; padding: 30px 24px 22px; border-radius: 34px; text-align: center;
+  background: linear-gradient(160deg, rgba(60, 66, 78, 0.5), rgba(24, 28, 35, 0.55));
+  border: 1px solid transparent; box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45), 0 1px 0 rgba(255, 255, 255, 0.12) inset;
+  -webkit-backdrop-filter: saturate(160%) blur(28px); backdrop-filter: saturate(160%) blur(28px);
+}
+.brand-mark.big {
+  width: 76px; height: 76px; margin: 0 auto; border-radius: 24px;
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.04));
+  border: 1px solid rgba(255, 255, 255, 0.22); box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35), 0 1px 0 rgba(255, 255, 255, 0.3) inset;
+}
+.brand-mark.big svg { width: 52px; height: 52px; }
+.wordmark {
+  margin: 14px 0 4px; font-size: clamp(3.4rem, 17vw, 4.6rem); line-height: 0.95; font-weight: 800; letter-spacing: -0.06em;
+  background: linear-gradient(100deg, #ffffff 0%, #ffffff 38%, #b9d1ff 50%, #ffffff 62%, #ffffff 100%) 0 0 / 250% 100%;
+  -webkit-background-clip: text; background-clip: text; color: transparent; animation: sheen 6s ease-in-out 1.2s infinite;
+}
+@keyframes sheen { 0% { background-position: 100% 0; } 40%, 100% { background-position: 0 0; } }
+.tagline { margin: 0 auto; max-width: 26ch; color: #d6dbe3; font-size: 1.12rem; line-height: 1.35; font-weight: 500; }
+.stave-anim { display: block; width: 100%; max-width: 340px; margin: 18px auto 8px; overflow: visible; }
+.stave-anim > line { stroke: rgba(255, 255, 255, 0.28); stroke-width: 1.2; }
+.stave-anim .n { fill: #fff; stroke: #fff; stroke-width: 1.6; opacity: 0; animation: note-in 4.8s var(--ease) infinite; animation-delay: calc(var(--k) * 0.32s + 0.8s); }
+.stave-anim .n:nth-child(odd of .n) { fill: #8edbbb; stroke: #8edbbb; }
+@keyframes note-in { 0% { opacity: 0; transform: translateY(8px); } 10%, 70% { opacity: 1; transform: none; } 85%, 100% { opacity: 0; transform: translateY(-4px); } }
+.pitch { list-style: none; padding: 0; margin: 12px 0 0; display: grid; gap: 8px; text-align: left; }
+.pitch li { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 18px; background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.08); }
+.pitch b { display: block; font-size: 0.98rem; letter-spacing: -0.01em; }
+.pitch small { display: block; color: var(--muted); font-size: 0.82rem; line-height: 1.3; }
+.btn.big { min-height: 56px; font-size: 1.05rem; margin-top: 18px; }
+.glass-hero .btn.ghost.link { margin: 6px 0 0; }
+.glass-hero .fine { margin-top: 8px; }
+.setup-head { display: flex; align-items: center; gap: 14px; margin: 18px 0 0; }
+.setup-head .brand-mark { width: 52px; height: 52px; flex: none; border-radius: 17px; background: rgba(255, 255, 255, 0.1); border: 1px solid var(--edge); }
+.setup-head .brand-mark svg { width: 34px; height: 34px; }
+.setup-head h2 { margin: 0; }
+.setup-head .lede { margin: 2px 0 0; }
+.setup-step.enter { animation: rise 0.55s var(--ease) both; }
+@media (prefers-reduced-motion: reduce) {
+  .orbs i, .wordmark, .stave-anim .n { animation: none; }
+  .stave-anim .n { opacity: 1; }
+}
 .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 18px 0 4px; }
 .tile {
   background: var(--surface); border: 1px solid var(--edge); border-radius: var(--radius-sm);
@@ -679,6 +746,7 @@ a.btn { text-decoration: none; }
 .rec form input { flex: 1; min-height: 38px; }
 .teacher-note { margin: 6px 0 0; padding: 8px 10px; border-left: 3px solid var(--good); background: rgba(95, 214, 143, 0.1); border-radius: 6px; }
 #parent-link-out input { width: 100%; margin-bottom: 6px; font-size: 0.82rem; }
+dialog.card { margin: auto; }
 .report-dialog { max-width: min(520px, calc(100vw - 32px)); padding: 14px; border: 1px solid var(--edge); color: var(--ink); background: var(--surface-strong); }
 .report-dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
 .report-dialog img { width: 100%; height: auto; border-radius: 14px; display: block; margin-bottom: 12px; }

@@ -333,9 +333,9 @@ function wire() {
     });
   });
   root.querySelector('#acct-share')?.addEventListener('click', async () => {
-    const text = `Join my piano studio on Music Helper: open ${location.origin}${location.pathname}, go to Account, create a student account and enter the code ${me.studio.code}`;
+    const text = `Join my piano studio on Stave: open ${location.origin}${location.pathname}, go to Account, create a student account and enter the code ${me.studio.code}`;
     try {
-      if (navigator.share) await navigator.share({ title: 'Music Helper studio code', text });
+      if (navigator.share) await navigator.share({ title: 'Stave studio code', text });
       else { await navigator.clipboard.writeText(text); showError(''); root.querySelector('#acct-share').textContent = 'Copied'; }
     } catch {
       // Share sheet dismissed.

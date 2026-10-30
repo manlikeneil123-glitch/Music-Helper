@@ -119,7 +119,7 @@ export function openKit() {
   function download() {
     const cal = calibration();
     const files = [];
-    const labels = { made: new Date().toISOString(), app: 'Music Helper recording kit v1', device: navigator.userAgent, calibration: cal ?? null, takes: [] };
+    const labels = { made: new Date().toISOString(), app: 'Stave recording kit v1', device: navigator.userAgent, calibration: cal ?? null, takes: [] };
     for (const s of KIT_STEPS) {
       const t = takes.get(s.id);
       if (!t) continue;

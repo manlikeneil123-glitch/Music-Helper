@@ -30,7 +30,7 @@ export function openPerformanceRecorder(exam) {
       <li>Phone on a stand, landscape, about 2 m away and to the side. Good light in front of you, not behind.</li>
       <li>Your pieces, in order: ${exam.pieces.map((p, i) => esc(p.title || `Piece ${i + 1}`)).join(', ')}${exam.pieces.length < 4 ? ', plus the rest of your programme' : ''}.</li>
     </ul>
-    <p class="muted small">Check the exam board's current Performance Grade guidance before you submit; rules change. This recording stays on your phone: Music Helper never uploads it.</p>`;
+    <p class="muted small">Check the exam board's current Performance Grade guidance before you submit; rules change. This recording stays on your phone: Stave never uploads it.</p>`;
 
   const stage = (html) => { dlg.querySelector('.pg-body').innerHTML = html; };
   dlg.innerHTML = `

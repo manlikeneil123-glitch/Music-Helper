@@ -9,16 +9,36 @@ const GOALS = [10, 20, 30, 45];
 
 export const profile = () => load('profile', null);
 
+// The Stave mark: five glass lines and one rising note.
+export const MARK = `<svg viewBox="0 0 48 48"><g stroke="currentColor" stroke-opacity="0.5" stroke-width="2" stroke-linecap="round">${[12, 18, 24, 30, 36].map((y) => `<line x1="6" x2="42" y1="${y}" y2="${y}"/>`).join('')}</g><rect x="29.2" y="6" width="3.4" height="24" rx="1.7" fill="url(#mark-g)"/><ellipse cx="24.6" cy="30" rx="7.6" ry="5.6" transform="rotate(-22 24.6 30)" fill="url(#mark-g)"/></svg>`;
+
 export function mountWelcome(el, onDone) {
   const p = profile() ?? { teacher: true, level: LEVELS[0], board: BOARDS[0], goal: load('goal', 20), strictness: 'standard' };
 
+  // Two steps: a splash that says what Stave is, then the setup. "Change your setup"
+  // (a profile already exists) goes straight to the second.
   el.innerHTML = `
-    <h1 class="hero">Read. Practise. Perform.</h1>
-    <p class="lede">Your piano practice coach between lessons, or instead of them.</p>
-    <div class="tiles">
-      <div class="tile"><span class="chip">${ICONS.book}</span><b>Read</b><small>Note flashcards</small></div>
-      <div class="tile"><span class="chip">${ICONS.metronome}</span><b>Practise</b><small>Timer and daily plan</small></div>
-      <div class="tile"><span class="chip">${ICONS.piano}</span><b>Perform</b><small>Play and get feedback</small></div>
+    <div class="splash" ${profile() ? 'hidden' : ''}>
+      <div class="glass-hero">
+        <span class="brand-mark big" aria-hidden="true">${MARK}</span>
+        <h1 class="wordmark">Stave</h1>
+        <p class="tagline">Piano practice that gets you exam&#8209;ready.</p>
+        <svg class="stave-anim" viewBox="0 0 320 84" aria-hidden="true">
+          ${[0, 1, 2, 3, 4].map((k) => `<line x1="6" x2="314" y1="${14 + k * 14}" y2="${14 + k * 14}"/>`).join('')}
+          ${[[44, 56], [92, 49], [140, 42], [188, 35], [236, 28], [284, 21]].map(([x, y], k) => `<g class="n" style="--k:${k}"><ellipse cx="${x}" cy="${y}" rx="8.5" ry="6.2" transform="rotate(-20 ${x} ${y})"/><line x1="${x + 7.6}" x2="${x + 7.6}" y1="${y - 2}" y2="${y - 38}"/></g>`).join('')}
+        </svg>
+        <ul class="pitch">
+          <li><span class="chip blue">${ICONS.book}</span><span><b>Read</b><small>Note flashcards that learn what you miss</small></span></li>
+          <li><span class="chip green">${ICONS.metronome}</span><span><b>Practise</b><small>A daily plan built from your grade and your weak bars</small></span></li>
+          <li><span class="chip gold">${ICONS.piano}</span><span><b>Perform</b><small>Play into the mic and see every note you got right</small></span></li>
+        </ul>
+        <button class="btn primary block big" type="button" id="w-start">Get started</button>
+        <p class="fine">Free while we're testing. No adverts. <a href="privacy.html">Privacy</a></p>
+      </div>
+    </div>
+    <div class="setup-step" ${profile() ? '' : 'hidden'}>
+    <div class="setup-head">
+      <div><h2>${profile() ? 'Your setup' : 'Set up in 30 seconds'}</h2><p class="lede">So today's plan fits you. You can change this any time.</p></div>
     </div>
     <form class="card setup" id="w-form" novalidate>
       <div class="segmented" role="group" aria-label="How are you learning?">
@@ -46,8 +66,17 @@ export function mountWelcome(el, onDone) {
         <div class="choice-row">${GOALS.map((g) => `<button type="button" class="choice" data-goal="${g}">${g} min</button>`).join('')}</div>
       </fieldset>
       <button class="btn primary block" type="submit">Get started</button>
-      <p class="fine">Free while we're testing. Everything's unlocked and there are no adverts. Your progress stays on this device unless you make an account. <a href="privacy.html">Privacy</a></p>
-    </form>`;
+      <p class="fine">Your progress stays on this device unless you make an account. <a href="privacy.html">Privacy</a></p>
+    </form>
+    </div>`;
+
+  el.querySelector('#w-start').addEventListener('click', () => {
+    el.querySelector('.splash').hidden = true;
+    const step = el.querySelector('.setup-step');
+    step.hidden = false;
+    step.classList.add('enter');
+    scrollTo(0, 0);
+  });
 
   const form = el.querySelector('#w-form');
   const setTeacher = (yes) => {

@@ -1,5 +1,5 @@
-# Music-Helper
-A tracker for your music progress
+# Stave
+Piano practice that gets you exam-ready. (Repository: Music-Helper.)
 
 ## Prototype
 A piano practice companion PWA: note flashcards, practice timer, and play-along checking with teacher-style feedback.

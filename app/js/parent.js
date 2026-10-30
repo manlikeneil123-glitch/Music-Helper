@@ -19,7 +19,7 @@ function render(v) {
   }
   const max = Math.max(10, ...s.days.map((d) => d.minutes));
   root.innerHTML = `
-    <p class="muted small">Music Helper · practice summary</p>
+    <p class="muted small">Stave · practice summary</p>
     <h1>@${esc(v.username)}</h1>
     <p class="muted">Last practised ${ago(v.updated_at)}${s.level ? ` · ${esc(s.level)}` : ''}</p>
     <section class="card">
@@ -42,7 +42,7 @@ function render(v) {
 async function main() {
   const token = /[#&]t=([0-9a-f]{32,})/.exec(location.hash)?.[1];
   if (!cloudReady() || !token) {
-    root.innerHTML = '<h1>Link not valid</h1><p class="muted">Ask for a new link from the Account page in Music Helper.</p>';
+    root.innerHTML = '<h1>Link not valid</h1><p class="muted">Ask for a new link from the Account page in Stave.</p>';
     return;
   }
   try {

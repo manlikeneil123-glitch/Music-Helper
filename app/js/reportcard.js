@@ -75,7 +75,7 @@ function draw(r) {
   const start = new Date(Date.now() - 6 * 86400000);
   const fmt = (d) => d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
   const who = currentUser()?.username;
-  text('Music Helper · weekly report', 72, 110, 34, '#a9b0bb', 600);
+  text('Stave · weekly report', 72, 110, 34, '#a9b0bb', 600);
   text(who ? `@${who}` : 'My piano practice', 72, 180, 64, '#f3f5f8', 800);
   text(`${fmt(start)} – ${fmt(end)}`, 72, 232, 34, '#a9b0bb', 500);
 

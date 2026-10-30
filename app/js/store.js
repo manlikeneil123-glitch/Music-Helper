@@ -70,6 +70,14 @@ export function exportSynced() {
 const MERGE = {
   sessions: (a, b) => unionBy([...a, ...b], (x) => `${x.start}|${x.ms}`).sort((x, y) => x.start - y.start),
   checks: (a, b) => unionBy([...a, ...b], (x) => `${x.at}|${x.pieceId}`).sort((x, y) => x.at - y.at).slice(-300),
+  quality: (a, b) => {
+    const out = { ...a };
+    for (const [day, d] of Object.entries(b)) {
+      const o = out[day] ?? {};
+      out[day] = Object.fromEntries(['clean', 'bars', 'cards'].map((k) => [k, Math.max(o[k] ?? 0, d[k] ?? 0)]));
+    }
+    return out;
+  },
   cards: (a, b) => {
     const out = { ...a };
     for (const [id, card] of Object.entries(b)) if (!out[id] || (card.seen ?? 0) > (out[id].seen ?? 0)) out[id] = card;

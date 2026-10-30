@@ -2,7 +2,7 @@
 // with a code; teachers see each student's practice and checks. Progress still lives
 // on the phone first — the account is a backup and the teacher's window onto it.
 import { ICONS } from './icons.js';
-import { cloudReady, currentUser, usernameError, signUp, signIn, signOut, rpc, CloudError } from './cloud.js';
+import { cloudReady, currentUser, usernameError, signUp, signIn, signOut, rpc, changePassword, CloudError } from './cloud.js';
 import { pull, pushNow, syncStatus, onSyncStatus } from './sync.js';
 import { clearSynced, dataOwner, setDataOwner } from './store.js';
 
@@ -71,7 +71,7 @@ function signedOut() {
       <p class="warn-note">No email needed, so there's no way to reset a forgotten password. Write it down or save it in your phone's password manager.</p>` : ''}
       <p class="error" id="acct-error" role="alert" hidden></p>
       <button class="btn primary block" type="submit" id="acct-go">${creating ? 'Create account' : 'Sign in'}</button>
-      <p class="fine">${creating ? 'What you\'ve done on this device so far moves into your new account.' : 'Your progress on this device merges with your account.'} We store your username, your practice and your check results — no name, email or recordings.</p>
+      <p class="fine">${creating ? 'What you\'ve done on this device so far moves into your new account.' : 'Your progress on this device merges with your account.'} We store your username, your practice and your check results — no name, email or recordings. <a href="privacy.html">Privacy</a></p>
     </form>`;
 }
 
@@ -120,7 +120,10 @@ function studentRow(st) {
           ${s.recent?.length ? `<h4>Recent checks</h4><ul class="log recent">${s.recent.slice(0, 6).map((c) => `
             <li><span class="who"><span class="mini-badge ${tone(c.score)}">${c.score}</span><span>${esc(c.title)}${c.hands !== 'both' ? ` <small class="muted">(${c.hands === 'rh' ? 'RH' : 'LH'})</small>` : ''}${c.worstBar ? ` <small class="muted">· weakest bar ${c.worstBar}</small>` : ''}</span></span><small class="muted">${ago(c.at)}</small></li>`).join('')}</ul>` : '<p class="empty">No checks yet.</p>'}
           ${s.pieces?.length ? `<h4>Pieces</h4><ul class="log">${s.pieces.map((p) => `<li><span>${esc(p.title)} <small class="muted">· ${p.runs} run${p.runs === 1 ? '' : 's'}</small></span><b>${p.ready ? '✓ ready' : `best ${p.best}`}</b></li>`).join('')}</ul>` : ''}
-          <button class="btn small-btn bad" type="button" data-remove="${st.id}" data-name="${esc(st.username)}">Remove from studio</button>
+          <div class="row gap wrap">
+            <button class="btn small-btn" type="button" data-reset="${st.id}" data-name="${esc(st.username)}">Reset password</button>
+            <button class="btn small-btn bad" type="button" data-remove="${st.id}" data-name="${esc(st.username)}">Remove from studio</button>
+          </div>
         </div>
       </details>
     </li>`;
@@ -166,6 +169,15 @@ function signedIn() {
     ${me ? (role === 'teacher' ? studioForTeacher() : studioForStudent()) : '<section class="card"><p class="empty">Loading your account…</p></section>'}
     <section class="card">
       <button class="btn ghost" type="button" id="acct-setup">${ICONS.arrow} Change your setup (level, board, goal)</button>
+      <details class="pw-change">
+        <summary class="btn ghost">${ICONS.arrow} Change password</summary>
+        <form id="acct-pw" novalidate>
+          <label class="field">Current password <input id="pw-old" type="password" autocomplete="current-password"></label>
+          <label class="field">New password <input id="pw-new" type="password" autocomplete="new-password" minlength="8"></label>
+          <button class="btn accent" type="submit">Change password</button>
+        </form>
+      </details>
+      <a class="btn ghost" href="privacy.html">${ICONS.arrow} Privacy: what's stored and who sees it</a>
       <div class="row gap">
         <button class="btn" type="button" id="acct-out">Sign out</button>
         <button class="btn bad" type="button" id="acct-delete">Delete account</button>
@@ -320,6 +332,29 @@ function wire() {
     act(async () => { me = await rpc('new_studio_code'); render(); });
   });
   root.querySelector('#acct-refresh')?.addEventListener('click', () => act(async () => { await refreshMe(); render(); }));
+  root.querySelector('#acct-pw')?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const current = root.querySelector('#pw-old').value;
+    const next = root.querySelector('#pw-new').value;
+    if (next.length < 8) return showError('New passwords need at least 8 characters.');
+    if (next === current) return showError('Pick a password different from the current one.');
+    act(async () => {
+      await changePassword(current, next);
+      render();
+      showError('');
+      alert('Password changed. Use the new one next time you sign in.');
+    });
+  });
+  root.querySelectorAll('[data-reset]').forEach((b) => b.addEventListener('click', () => {
+    const temp = prompt(`Set a temporary password for @${b.dataset.name} (8+ characters). Tell them in the lesson, and ask them to change it from their Account page. They'll be signed out on their devices.`);
+    if (temp == null) return;
+    if (temp.length < 8) return showError('Temporary passwords need at least 8 characters.');
+    act(async () => {
+      await rpc('reset_student_password', { p_student: b.dataset.reset, p_password: temp });
+      showError('');
+      alert(`Done. @${b.dataset.name} can sign in with the temporary password now.`);
+    });
+  }));
   root.querySelectorAll('[data-remove]').forEach((b) => b.addEventListener('click', () => {
     if (!confirm(`Remove @${b.dataset.name} from your studio? They keep their account and progress; you stop seeing it.`)) return;
     act(async () => { await rpc('remove_student', { p_student: b.dataset.remove }); await refreshMe(); render(); });

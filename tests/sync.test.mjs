@@ -42,6 +42,12 @@ importSynced({ cards: { v: { c4: { box: 3, seen: 8 }, d4: { box: 0, seen: 2 }, e
 const cards = load('cards');
 ok(cards.c4.box === 3 && cards.d4.box === 4 && cards.e4, 'cards keep whichever copy was practised more');
 
+// Quality days merge per field.
+save('quality', { '2026-10-28': { clean: 1, bars: 0, cards: 3 } });
+importSynced({ quality: { v: { '2026-10-28': { clean: 0, bars: 2, cards: 10 }, '2026-10-29': { clean: 1, bars: 0, cards: 0 } }, t: 1 } });
+const q = load('quality');
+ok(q['2026-10-28'].clean === 1 && q['2026-10-28'].bars === 2 && q['2026-10-28'].cards === 10 && q['2026-10-29'].clean === 1, 'quality days merge field by field');
+
 // Remote device-only keys are refused even if a server sends them.
 importSynced({ micTuning: { v: { right: [], wrong: [0.9] }, t: Date.now() + 1e6 } });
 ok(load('micTuning').right[0] === 0.2, 'remote cannot overwrite device-only settings');
@@ -62,8 +68,9 @@ const s = summarise({
   checks: { v: [{ pieceId: 'p', at: 1, score: 60 }, { pieceId: 'p', at: 2, score: 88, ready: true, worstBar: 4 }] },
   cards: { v: { a: { box: 3 }, b: { box: 1 } } },
   profile: { v: { level: 'Grade 4 and above', board: 'Trinity' } },
+  quality: { v: { [day(0)]: { clean: 1 }, [day(1)]: { cards: 25 }, [day(2)]: { bars: 1 }, [day(3)]: { cards: 5 }, [day(4)]: { clean: 2 } } },
 }, { p: 'Minuet' }, now);
-ok(s.streak === 3, 'streak counts consecutive days');
+ok(s.streak === 3, 'quality streak counts consecutive quality days (5 cards is not one)');
 ok(s.week === 30 && s.days.length === 14, 'week minutes from the last 7 days only');
 ok(s.notesKnown === 1, 'notes known counts box 3+');
 ok(s.recent[0].score === 88 && s.recent[0].title === 'Minuet' && s.recent[0].worstBar === 4, 'recent checks newest first, titled');

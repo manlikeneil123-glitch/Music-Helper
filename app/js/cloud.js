@@ -103,6 +103,19 @@ export async function signOut() {
   if (s) await call('/auth/v1/logout', { method: 'POST', token: s.access_token }).catch(() => {});
 }
 
+/** Checks the current password by signing in with it, then sets the new one. */
+export async function changePassword(current, next) {
+  const s = readSession();
+  if (!s) throw new CloudError('Not signed in.');
+  try {
+    await signIn(s.user.username, current);
+  } catch (e) {
+    if (e.status === 400) throw new CloudError("That isn't your current password.");
+    throw e;
+  }
+  await call('/auth/v1/user', { method: 'PUT', body: { password: next }, token: await token() });
+}
+
 let refreshing = null;
 /** A valid access token, refreshing it when it's about to expire. */
 async function token() {

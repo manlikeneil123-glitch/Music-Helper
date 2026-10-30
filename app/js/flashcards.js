@@ -7,6 +7,7 @@
 // notes of the interval, or the chord (any octave or inversion).
 import { renderStave, stepName, stepLetter, stepToMidi, midiName, CLEFS } from './music.js';
 import { renderScore } from './render.js';
+import { logWin } from './quality.js';
 import { load, save } from './store.js';
 import { onNote } from './input.js';
 
@@ -140,6 +141,7 @@ function grade(correct, message) {
   const rec = boxes[current.id] ?? { box: 0, seen: 0, right: 0 };
   rec.seen++;
   if (correct) {
+    logWin('cards');
     rec.right++;
     rec.box = Math.min(rec.box + 1, 4);
   } else {

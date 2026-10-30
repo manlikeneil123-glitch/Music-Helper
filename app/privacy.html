@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Privacy · Music Helper</title>
+  <meta name="theme-color" content="#0d1014">
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    body { background: var(--bg); }
+    .privacy { max-width: 720px; margin: 0 auto; padding: 24px 16px 64px; line-height: 1.6; }
+    .privacy h1 { font-size: 2rem; margin: 8px 0 4px; }
+    .privacy h2 { font-size: 1.15rem; margin: 28px 0 6px; }
+    .privacy table { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
+    .privacy th, .privacy td { text-align: left; vertical-align: top; padding: 8px 6px; border-top: 1px solid var(--edge); }
+    .privacy th { color: var(--muted); font-weight: 600; }
+    .privacy li { margin: 4px 0; }
+    .privacy a { color: var(--accent); }
+  </style>
+</head>
+<body>
+  <main class="privacy">
+    <p><a href="./">← Back to Music Helper</a></p>
+    <h1>Privacy</h1>
+    <p class="lede">For students, parents and teachers. Short version: no adverts, no tracking, no selling data, and as little as we can manage. Last updated 30 October 2026.</p>
+
+    <h2>Without an account</h2>
+    <p>Everything stays on your device: your practice log, check results, flashcard progress and settings. Nothing is sent anywhere. Recordings the microphone makes for checking are analysed on the device and thrown away.</p>
+
+    <h2>With an account</h2>
+    <p>Accounts are a username and password. We don't ask for your name, email, age, school or phone number.</p>
+    <table>
+      <tr><th>What we store</th><th>Why</th><th>Who can see it</th></tr>
+      <tr><td>Your username and whether you're a student or teacher</td><td>To sign you in</td><td>You; your teacher, if you join their studio</td></tr>
+      <tr><td>Your practice progress: practice sessions, check scores, which bars went wrong, flashcard progress, your level and exam board, and pieces you imported</td><td>So it's backed up and works on a new phone</td><td>You. Your teacher sees a summary (minutes, streak, recent scores, trouble bars), never the full history</td></tr>
+      <tr><td>Which teacher's studio you joined</td><td>So your teacher can follow your practice</td><td>You and that teacher</td></tr>
+    </table>
+    <p>We never store: recordings (unless you choose to send one to your teacher; see below), your location, contacts, device details or anything for advertising.</p>
+
+    <h2>Sending a recording to your teacher</h2>
+    <p>Only when you press send. It goes only to your own teacher, and is <b>deleted automatically after 20 days</b>, or sooner if you or your teacher delete it.</p>
+
+    <h2>Performance videos</h2>
+    <p>Videos you record for a Performance Grade stay on your phone. They are never uploaded by us.</p>
+
+    <h2>Your teacher</h2>
+    <p>You choose whether to join a teacher's studio, using a code they give you. You can leave at any time from your Account page, and they stop seeing your progress straight away. A teacher can remove you, and can set a temporary password if you forget yours.</p>
+
+    <h2>Deleting everything</h2>
+    <p>Account → Delete account removes your account and everything stored with it, permanently. Signing out removes your progress from that device (it stays in your account).</p>
+
+    <h2>Where it's kept</h2>
+    <p>Accounts use <a href="https://supabase.com" rel="noopener">Supabase</a>, with data stored in the UK/EU. Each account can only read its own data (and a teacher their students' summaries); this is enforced by the database, not just the app.</p>
+
+    <h2>Under 13</h2>
+    <p>If you're under 13, a parent or carer should set up the account. Without an account, the app needs no permission at all.</p>
+
+    <h2>Questions</h2>
+    <p>Ask your teacher, or contact the app's maker through the details on the App Store listing.</p>
+  </main>
+</body>
+</html>

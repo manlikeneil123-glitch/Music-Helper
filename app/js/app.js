@@ -1,6 +1,8 @@
 import { mountFlashcards, cardStats } from './flashcards.js';
-import { mountTimer, onSessionsChange, minutesOn, goalMinutes, streak, lastDays } from './timer.js';
-import { mountCheck, onChecksChange, checkHistory, suggestedBpm, allPieces } from './check.js';
+import { mountTimer, onSessionsChange, minutesOn, goalMinutes, lastDays } from './timer.js';
+import { mountCheck, onChecksChange, checkHistory, suggestedBpm, allPieces, troubleBars } from './check.js';
+import { buildPlan } from './plan.js';
+import { qualityStreak, qualityWeek, qualityOn, onQualityChange, CARDS_TARGET } from './quality.js';
 import { initMidi, renderKeyboard } from './input.js';
 import { mountBackground, pulseBackground } from './background.js';
 import { mountWelcome, profile } from './welcome.js';
@@ -68,10 +70,11 @@ function show(tab) {
 
 function updateTopbar() {
   const p = profile();
-  const s = streak();
+  const s = qualityStreak();
   const pill = document.getElementById('top-streak');
   pill.hidden = !p || s === 0;
   pill.innerHTML = `${ICONS.flame} ${s} day${s === 1 ? '' : 's'}`;
+  pill.title = 'Quality streak: days with a clean run, a fixed bar or 20 notes read';
   const avatar = document.getElementById('top-avatar');
   avatar.hidden = !p;
   const user = currentUser();
@@ -88,30 +91,10 @@ function updateTopbar() {
 // The "teacher" layer: look at everything the student has done and decide
 // what today's practice should be — the part a self-learner never gets.
 function lessonPlan() {
-  const history = checkHistory();
-  const cards = cardStats();
-  const plan = [];
-
-  plan.push({ tab: 'play', piece: 'c-scale', mins: 5, title: 'Warm-up: C major scale', detail: `Right hand at ${suggestedBpm(PIECES[0])} bpm. Thumb tucks under on F.` });
-
-  plan.push({
-    tab: 'cards', mins: 5, title: 'Note reading',
-    detail: cards.weak ? `${cards.weak} note${cards.weak === 1 ? '' : 's'} need${cards.weak === 1 ? 's' : ''} work — they'll come up more often.` : `${cards.mastered}/${cards.total} notes mastered. Keep the streak going.`,
+  return buildPlan({
+    profile: profile(), goal: goalMinutes(), history: checkHistory(), cards: cardStats(), pieces: allPieces(),
+    bpmFor: suggestedBpm, trouble: troubleBars,
   });
-
-  const pieceStates = allPieces().slice(1).map((p) => {
-    const runs = history.filter((h) => h.pieceId === p.id);
-    const best = Math.max(0, ...runs.map((r) => r.score));
-    return { p, runs, best, ready: runs.some((r) => r.ready), last: runs[runs.length - 1] };
-  });
-  const focus = pieceStates.find((s) => !s.ready) ?? pieceStates[0];
-  plan.push({
-    tab: 'play', piece: focus.p.id, mins: 10, title: `Piece: ${focus.p.title}`,
-    detail: focus.last
-      ? `${focus.last.worstBar ? `Fix bar ${focus.last.worstBar} first, then ` : ''}full run at ${suggestedBpm(focus.p)} bpm. Best so far: ${focus.best}.`
-      : `New piece! Listen once, then play slowly at ${suggestedBpm(focus.p)} bpm.`,
-  });
-  return plan;
 }
 
 const SPARK_W = 64, SPARK_H = 26;
@@ -158,7 +141,9 @@ function renderToday() {
   const lastScores = history.slice(-8).map((h) => h.score);
   const last = history[history.length - 1];
   const prevScore = history[history.length - 2]?.score;
-  const s = streak();
+  const s = qualityStreak();
+  const qWeek = qualityWeek();
+  const qToday = qualityOn(dayKey());
 
   const p = profile();
   const max = Math.max(goal, ...week.map((d) => d.minutes), 1);
@@ -180,7 +165,7 @@ function renderToday() {
     </div>
     <div class="dash">
       <div class="stats4 span2">
-        <div class="stat"><span class="chip gold">${ICONS.flame}</span><span class="label">Day streak</span><b>${s}<small> day${s === 1 ? '' : 's'}</small></b><span class="week-dots" aria-hidden="true">${week.map((d, k) => `<i class="${d.minutes > 0 ? 'on' : ''}" style="--k:${k}"></i>`).join('')}</span></div>
+        <div class="stat"><span class="chip gold">${ICONS.flame}</span><span class="label" title="A day counts when you get a clean run (85+), fix a bar in a drill, or read ${CARDS_TARGET} notes right">Quality streak</span><b>${s}<small> day${s === 1 ? '' : 's'}</small></b><span class="week-dots" aria-hidden="true">${qWeek.map((on, k) => `<i class="${on ? 'on' : ''}" style="--k:${k}"></i>`).join('')}</span><span class="delta">${qToday.clean || qToday.bars ? 'today counts ✓' : qToday.cards >= CARDS_TARGET ? 'today counts ✓' : `today: a clean run or ${Math.max(0, CARDS_TARGET - qToday.cards)} notes`}</span></div>
         <div class="stat"><span class="chip blue">${ICONS.clock}</span><span class="label">This week</span><b>${Math.round(weekMins)}<small> min</small></b>${deltaChip(weekMins, prevWeek || null, ' min')}${spark(week.map((d) => d.minutes), 'blue')}</div>
         <div class="stat"><span class="chip green">${ICONS.trophy}</span><span class="label">Last check</span><b>${last ? last.score : '–'}${last ? '<small>/100</small>' : ''}</b>${last ? deltaChip(last.score, prevScore) : '<span class="delta">play a piece in Perform</span>'}${spark(lastScores, 'green')}</div>
         <div class="stat"><span class="chip violet">${ICONS.note}</span><span class="label">Notes known</span><b>${cards.mastered}<small>/${cards.total}</small></b>${cards.weak ? `<span class="delta down">${cards.weak} need work</span>` : ''}</div>
@@ -238,6 +223,11 @@ function renderToday() {
 
   root.querySelectorAll('.plan button').forEach((b) => b.addEventListener('click', () => {
     const item = plan[b.dataset.i];
+    const deck = document.getElementById('card-deck');
+    if (item.deck && deck && deck.value !== item.deck) {
+      deck.value = item.deck;
+      deck.dispatchEvent(new Event('change'));
+    }
     if (item.piece) {
       const sel = document.getElementById('check-piece');
       sel.value = item.piece;
@@ -306,6 +296,7 @@ mountCheck(document.getElementById('view-play'));
 renderKeyboard(document.getElementById('keyboard'), { from: 36, to: 96 });
 onSessionsChange(refreshToday);
 onChecksChange(refreshToday);
+onQualityChange(() => { refreshToday(); updateTopbar(); });
 mountAccount(document.getElementById('view-account'), { openSetup });
 setPieceTitles(() => Object.fromEntries(allPieces().map((x) => [x.id, x.title])));
 startSync();

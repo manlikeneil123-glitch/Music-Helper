@@ -22,7 +22,46 @@ export const STRICTNESS = {
  * score: the normalized score (pedal marks, dynamics); pedalEvents: [{ on, off }] sustain
  *   pedal intervals from MIDI; dense: true when the piece is hard for the mic to judge.
  */
-export function analyse({
+export function analyse(args) {
+  return capForStops(analyseOnce(args), args);
+}
+
+// A run with a stop or a restart isn't exam-ready, however clean the notes were.
+function capForStops(r, args) {
+  const c = r.continuity;
+  if (!c || (!c.stops && !c.restarts.length)) return r;
+  const capped = { ...r, score: Math.min(r.score, 85), ready: false };
+  if (r.ready) capped.feedback = feedback(capped, STRICTNESS[args.strictness] ?? STRICTNESS.standard);
+  return capped;
+}
+
+function analyseOnce(args) {
+  const first = analyseTake(args);
+  // A stop distorts everything measured against the tempo: one 2-second gap makes the
+  // whole run look like rushing then dragging. Close each gap and judge the rest as
+  // played; the stops themselves are still reported (and scored) under "kept going".
+  const gaps = first.continuity?.hesitations.filter((h) => h.ms > 0) ?? [];
+  if (!gaps.length) return first;
+  const shift = (t) => t - gaps.filter((g) => t >= g.at - 1).reduce((a, g) => a + g.ms, 0);
+  const move = (e) => ({ ...e, on: shift(e.on), off: e.off == null ? e.off : shift(e.off) });
+  const second = analyseTake({
+    ...args,
+    played: args.played.map(move),
+    unclear: (args.unclear ?? []).map(move),
+    pedalEvents: args.pedalEvents?.map((p) => ({ on: shift(p.on), off: shift(p.off) })) ?? null,
+  });
+  // Where they stopped comes from the real timings; which slips they recovered from,
+  // from the run with the gaps closed (the gaps themselves misalign the notes nearby).
+  const c1 = first.continuity;
+  const c2 = second.continuity ?? c1;
+  const continuity = { ...c1, slips: c2.slips, recovered: c2.recovered };
+  continuity.score = continuityScore(continuity);
+  const result = { ...second, continuity, stoppedAtBar: first.stoppedAtBar ?? second.stoppedAtBar };
+  result.feedback = feedback(result, STRICTNESS[args.strictness] ?? STRICTNESS.standard);
+  return result;
+}
+
+function analyseTake({
   expected, played, msPerBeat, beatsPerBar, source, unclear = [], spread = [],
   strictness = 'standard', score = null, pedalEvents = null, dense = false,
 }) {
@@ -175,7 +214,14 @@ export function analyse({
     ? checkMusicality({ notes, score, pedalEvents, predict, beatLen, barOf })
     : [];
 
+  const continuity = fit ? continuityOf(notes, extras, playedMsPerBeat, beatsPerBar, stoppedAt) : null;
+  // Pulse evenness is note-to-note against the tempo the player was following (their
+  // own rubato in the expressive modes); overall drift only counts in Exam.
+  const sdBeats = timed.length >= 4 ? Math.sqrt(timed.reduce((a, n) => a + n.timingBeats ** 2, 0) / timed.length) : null;
+  const pulse = fit && sdBeats != null ? pulseOf(sdBeats, S.expressive ? null : drift, playedBpm, tempoChanges) : null;
+
   const result = {
+    continuity, pulse, barErrors,
     score: scoreValue, notes, extras, pitchAccuracy, rhythmAccuracy, playedBpm, targetBpm, tempoRatio,
     steadinessMs, drift, worstBar, dynamics, tempoChanges, musicality, strictness, expressive: S.expressive,
     stoppedAtBar: stoppedAt?.bar ?? null, dense: dense && source === 'mic', source,
@@ -188,6 +234,67 @@ export function analyse({
     && !rushed && (strictness !== 'exam' || (rhythmAccuracy >= 0.95 && !tempoChanges.length));
   result.feedback = feedback(result, S);
   return result;
+}
+
+// ---- Keeping going and keeping the pulse ---------------------------------------------
+// Examiners reward a performance that carries on through slips. These read the same
+// alignment for hesitations (a gap much longer than the music asks for), restarts (going
+// back and replaying notes already played) and whether each slip was recovered from.
+const HESITATE_BEATS = 1.25;
+const STOP_BEATS = 2;
+
+// Gaps are measured against the player's overall tempo, not the bar-by-bar curve: the
+// curve follows rubato, which would quietly absorb a stop as "slowing down".
+export function continuityOf(notes, extras, msPerBeat, beatsPerBar, stoppedAt = null) {
+  const heard = notes.filter((n) => n.on != null && !n.grace && !n.notReached).sort((a, b) => a.on - b.on);
+  const hesitations = [];
+  const restarts = [];
+  const recentPace = [];
+  for (let i = 1; i < heard.length; i++) {
+    const a = heard[i - 1];
+    const b = heard[i];
+    if (b.beat <= a.beat) continue; // chord notes
+    // Against the pace of the last few notes, so a gradual ritardando isn't a stop
+    // but a sudden gap is.
+    const pace = recentPace.length ? median(recentPace.slice(-4)) : msPerBeat;
+    const excess = (b.on - a.on) / pace - (b.beat - a.beat);
+    recentPace.push(Math.min(pace * 1.5, (b.on - a.on) / (b.beat - a.beat)));
+    // Extras in the gap that replay notes from just before: the student went back.
+    const between = extras.filter((e) => e.on > a.on && e.on < b.on);
+    const recent = new Set(notes.filter((n) => n.beat <= b.beat && n.beat >= b.beat - 2 * beatsPerBar).map((n) => n.midi));
+    const replayed = between.filter((e) => recent.has(e.midi)).length;
+    if (between.length >= 2 && replayed / between.length >= 0.6) restarts.push({ bar: b.bar });
+    else if (excess >= HESITATE_BEATS && b.on - a.on > 600) hesitations.push({ bar: b.bar, beats: +excess.toFixed(1), stop: excess >= STOP_BEATS, at: b.on, ms: excess * pace });
+  }
+  // A slip is a wrong or missed note; it's recovered if the next few notes go on in
+  // time with no stop or restart straight after.
+  const slips = notes.filter((n) => (n.status === 'wrong' || n.status === 'missed') && !n.notReached && !n.grace);
+  const troubleBars = new Set([...hesitations.filter((h) => h.stop).map((h) => h.bar), ...restarts.map((r) => r.bar)]);
+  const recovered = slips.filter((n) => {
+    const after = notes.filter((m) => m.beat > n.beat && !m.grace).slice(0, 3);
+    return after.length && after.every((m) => !m.notReached && m.status !== 'missed') && ![n.bar, n.bar + 1].some((bar) => troubleBars.has(bar));
+  }).length;
+  const stops = hesitations.filter((h) => h.stop).length + (stoppedAt ? 1 : 0);
+  const out = { hesitations, restarts, stops, slips: slips.length, recovered };
+  out.score = continuityScore(out);
+  return out;
+}
+
+function continuityScore({ hesitations, restarts, stops, slips, recovered }) {
+  const pauses = hesitations.filter((h) => !h.stop).length;
+  return Math.max(0, Math.min(100, 100 - stops * 20 - restarts.length * 25 - pauses * 6 - (slips - recovered) * 4));
+}
+
+const median = (xs) => { const v = [...xs].sort((x, y) => x - y); return v[Math.floor(v.length / 2)]; };
+
+// Pulse: how evenly the beat was kept against the player's own tempo (no metronome
+// needed), less for drifting or rushing that the score doesn't ask for.
+export function pulseOf(sdBeats, drift, bpm, tempoChanges) {
+  let score = 100 - Math.max(0, sdBeats - 0.04) * 400;
+  if (drift != null) score -= Math.max(0, Math.abs(drift) / bpm - 0.04) * 300;
+  score -= tempoChanges.filter((c) => c.kind === 'faster').length * 10;
+  score = Math.round(Math.max(0, Math.min(100, score)));
+  return { score, label: score >= 85 ? 'steady' : score >= 65 ? 'mostly steady' : 'unsteady' };
 }
 
 // ---- Ornaments --------------------------------------------------------------------
@@ -536,6 +643,17 @@ function feedback(r, S) {
     lines.push({ kind: 'warn', text: `${r.spread.length === 1 ? 'A chord was' : `${r.spread.length} chords were`} not played together (e.g. bar ${first.bar}, beat ${+first.beatInBar.toFixed(2)}: notes ~${first.ms} ms apart). Place your hand over the chord first, then press all the keys at once.` });
   }
   if (r.cutShort) lines.push({ kind: 'warn', text: `${r.cutShort} long note${r.cutShort > 1 ? 's were' : ' was'} released too early. Hold notes for their full value.` });
+  const c = r.continuity;
+  if (c && !r.stoppedAtBar) {
+    if (c.restarts.length) lines.push({ kind: 'bad', text: `You went back and replayed at bar ${c.restarts.map((x) => x.bar).join(', ')}. In an exam, keep going: a restart costs more than the slip.` });
+    const stops = c.hesitations.filter((h) => h.stop);
+    if (stops.length) lines.push({ kind: 'bad', text: `You stopped for a moment at bar ${stops.map((h) => h.bar).join(', ')}.` });
+    const pauses = c.hesitations.filter((h) => !h.stop);
+    if (pauses.length) lines.push({ kind: 'warn', text: `Small hesitation${pauses.length > 1 ? 's' : ''} at bar ${pauses.slice(0, 4).map((h) => h.bar).join(', ')}. Look ahead so the next notes are ready before you need them.` });
+    if (c.slips && c.recovered === c.slips) lines.push({ kind: 'good', text: `You kept going after every slip (${c.slips}). That's exactly what examiners want to hear.` });
+    else if (c.slips >= 2) lines.push({ kind: 'warn', text: `You recovered from ${c.recovered} of ${c.slips} slips without losing your place.` });
+  }
+  if (r.pulse && r.pulse.score < 65) lines.push({ kind: 'warn', text: `Your pulse wandered (${r.pulse.score}/100). Tap your foot or count in your head; practise once without the metronome to test it.` });
   for (const m of r.musicality) lines.push(m);
   if (r.dense) lines.push({ kind: 'warn', text: "This piece is dense for the microphone, so I've only flagged notes I'm fairly sure about. For full note-by-note checking, use a MIDI keyboard." });
 
@@ -550,6 +668,9 @@ function feedback(r, S) {
   } else if (r.rhythmAccuracy < 0.8) {
     headline = 'Right notes. Now lock in the rhythm.';
     next = `Turn the metronome on and play at ${slower} bpm. Count out loud.`;
+  } else if (r.continuity && (r.continuity.stops || r.continuity.restarts.length)) {
+    headline = 'Right notes. Now play it without stopping.';
+    next = `Play it through at ${slower} bpm. If you slip, keep going and fix it afterwards. Examiners mark the whole performance, and stopping costs more than a slip.`;
   } else if (r.tempoChanges.some((c) => c.kind === 'faster' && c.extreme / c.median >= 1.15)) {
     const c = r.tempoChanges.find((x) => x.kind === 'faster');
     headline = 'Keep a steady pulse.';

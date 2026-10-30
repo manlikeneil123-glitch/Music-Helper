@@ -601,3 +601,24 @@ input::placeholder { color: var(--muted); opacity: 0.8; }
 .mini-chart i { flex: 1; background: var(--accent); border-radius: 3px 3px 1px 1px; opacity: 0.85; }
 .mini-chart i:last-child { opacity: 1; }
 #view-account .row.gap { flex-wrap: wrap; }
+
+/* Perform: sub-scores, trouble bars, sections, read-ahead */
+.subscores { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 2px; }
+.sub { display: inline-flex; align-items: baseline; gap: 6px; padding: 6px 12px; border-radius: 99px; background: var(--raised); font-size: 0.86rem; color: var(--muted); }
+.sub b { color: var(--ink); font-size: 1rem; }
+.sub.good b { color: var(--good); } .sub.warn b { color: var(--warn); } .sub.bad b { color: var(--bad); }
+.heat { padding: 12px 14px; }
+.heat-strip { display: flex; gap: 3px; margin: 8px 0 4px; overflow-x: auto; padding-bottom: 2px; }
+.heat-cell {
+  flex: 1 0 26px; min-height: 34px; border: 0; border-radius: 6px; cursor: pointer; color: var(--ink); font: inherit; font-size: 0.72rem;
+  background: color-mix(in srgb, var(--bad) calc(var(--h) * 85%), rgba(95, 214, 143, 0.22));
+}
+.heat-cell:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.section summary { cursor: pointer; font-weight: 600; }
+.section-row { margin-top: 10px; align-items: center; }
+.section-row input[type='number'] { width: 4.2em; min-height: 40px; }
+.veil { fill: var(--surface-solid); }
+.pw-change summary { list-style: none; }
+.pw-change summary::-webkit-details-marker { display: none; }
+.pw-change form { padding: 0 4px 10px; }
+a.btn { text-decoration: none; }

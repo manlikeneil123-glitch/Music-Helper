@@ -87,6 +87,29 @@ do $$ begin perform public.remove_student('00000000-0000-0000-0000-00000000000b'
 select pg_temp.act('teacher');
 select pg_temp.ok((select count(*) from public.studio_students()) = 1, 'other teacher could not remove ana');
 
+-- Password resets: only the student's own teacher, only 8+ characters, signs them out.
+reset role;
+insert into auth.sessions (user_id) values ('00000000-0000-0000-0000-00000000000b');
+set role authenticated;
+select pg_temp.act('teacher');
+do $$ begin perform public.reset_student_password('00000000-0000-0000-0000-00000000000b', 'short'); raise exception 'FAIL: short password accepted';
+exception when raise_exception then if sqlerrm like 'FAIL%' then raise; end if; raise notice 'ok: short reset password rejected'; end $$;
+select public.reset_student_password('00000000-0000-0000-0000-00000000000b', 'new-secret-1');
+reset role;
+select pg_temp.ok((select encrypted_password = extensions.crypt('new-secret-1', encrypted_password) from auth.users where id = '00000000-0000-0000-0000-00000000000b'), 'teacher reset the student''s password');
+select pg_temp.ok((select count(*) from auth.sessions where user_id = '00000000-0000-0000-0000-00000000000b') = 0, 'reset signs the student out');
+set role authenticated;
+select pg_temp.act('teacher');
+do $$ begin perform public.reset_student_password('00000000-0000-0000-0000-00000000000c', 'new-secret-1'); raise exception 'FAIL: reset a non-member';
+exception when raise_exception then if sqlerrm like 'FAIL%' then raise; end if; raise notice 'ok: cannot reset a student outside the studio'; end $$;
+select pg_temp.act('other');
+do $$ begin perform public.reset_student_password('00000000-0000-0000-0000-00000000000b', 'hijacked-99'); raise exception 'FAIL: other teacher reset';
+exception when raise_exception then if sqlerrm like 'FAIL%' then raise; end if; raise notice 'ok: another teacher cannot reset'; end $$;
+select pg_temp.act('ana');
+do $$ begin perform public.reset_student_password('00000000-0000-0000-0000-00000000000c', 'hijacked-99'); raise exception 'FAIL: student reset someone';
+exception when raise_exception then if sqlerrm like 'FAIL%' then raise; end if; raise notice 'ok: students cannot reset passwords'; end $$;
+select pg_temp.act('teacher');
+
 -- Code rotation locks out the old code; removal and leaving work.
 select public.new_studio_code();
 select pg_temp.ok((public.me() -> 'studio' ->> 'code') <> (select c from code), 'code rotated');

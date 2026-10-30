@@ -43,7 +43,7 @@ export function mountWelcome(el, onDone) {
         <div class="choice-row">${GOALS.map((g) => `<button type="button" class="choice" data-goal="${g}">${g} min</button>`).join('')}</div>
       </fieldset>
       <button class="btn primary block" type="submit">Get started</button>
-      <p class="fine">Free while we're testing. Everything's unlocked and there are no adverts. Your progress stays on this device unless you make an account.</p>
+      <p class="fine">Free while we're testing. Everything's unlocked and there are no adverts. Your progress stays on this device unless you make an account. <a href="privacy.html">Privacy</a></p>
     </form>`;
 
   const form = el.querySelector('#w-form');

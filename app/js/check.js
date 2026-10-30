@@ -18,9 +18,12 @@ import { midiName } from './music.js';
 import { load, save } from './store.js';
 import { setBackgroundPaused } from './background.js';
 import { ICONS } from './icons.js';
+import { logWin } from './quality.js';
+import { dayKey } from './store.js';
 
 const COUNT_IN = 4;
 const DRILL_STREAK = 3;
+const ADD_STREAK = 2; // clean runs before "add a bar" grows the section
 const MAX_IMPORTS = 6;
 const STATUS_COLOR = { correct: 'good', wrong: 'bad', missed: 'miss', early: 'warn', late: 'warn', unclear: 'unclear' };
 
@@ -31,8 +34,8 @@ let base = library[0]; // the piece as chosen
 let piece = base; // what's being played now (hand filter / drill excerpt applied)
 let rec = null; // active Perform take
 let learn = null; // active Learn session
-let drill = null; // { bar, streak, runs, bpm }
-let history = load('checks', []); // [{ pieceId, hands, at, score, ready, bpm, playedBpm, worstBar, input }]
+let drill = null; // { from, to, end, kind: 'loop' | 'add', streak, runs, bpm }
+let history = load('checks', []); // [{ pieceId, hands, at, score, ready, bpm, playedBpm, worstBar, input, barErrors, keptGoing, pulse }]
 let lastResult = null;
 let lastTake = null; // last mic take, for the test lab
 let lastMic = null; // { args, evidence, record, reported } of the last mic analysis, to re-run after a correction
@@ -43,6 +46,8 @@ let layout = load('scoreLayout', 'scroll'); // 'scroll' | 'page'
 let hands = 'both';
 let strictness = load('profile', null)?.strictness ?? 'standard';
 let tempoUnlocked = false;
+let readAhead = load('readAhead', false); // hide each bar as you reach it
+let examMode = load('examConditions', false); // no metronome, no beat light
 let midiStatus = null;
 const changeListeners = new Set();
 
@@ -54,6 +59,7 @@ export const allPieces = () => [...library, ...imported];
 
 const bpm = () => Number(root.querySelector('#check-bpm').value);
 const $ = (sel) => root.querySelector(sel);
+const tone = (score) => (score >= 85 ? 'good' : score >= 60 ? 'warn' : 'bad');
 
 // ---- Which notes are being practised ----------------------------------------------
 function applyHands(score, which) {
@@ -64,7 +70,7 @@ function applyHands(score, which) {
 
 function refreshPiece() {
   let p = base;
-  if (drill) p = excerpt(p, drill.bar, drill.bar);
+  if (drill) p = excerpt(p, drill.from, drill.to);
   piece = applyHands(p, hands);
   lastResult = null;
   drawScore();
@@ -75,7 +81,7 @@ function drawScore(result = lastResult) {
   const box = $('#check-score');
   const colours = new Map();
   if (result) for (const n of result.notes) colours.set(`${n.beat}|${n.midi}|${n.staff ?? 1}`, STATUS_COLOR[n.status]);
-  const shown = drill ? excerpt(base, drill.bar, drill.bar) : base;
+  const shown = drill ? excerpt(base, drill.from, drill.to) : base;
   scoreView = renderScore(shown, {
     mode: layout,
     width: box.clientWidth || 600,
@@ -84,6 +90,7 @@ function drawScore(result = lastResult) {
   });
   box.classList.toggle('page', layout === 'page');
   box.replaceChildren(...scoreView.systems.map((s) => s.svg));
+  renderHeat();
 }
 
 function moveCursor(beat) {
@@ -114,6 +121,7 @@ function animateCursor(t0, msPerBeat, done, cancelled = () => false) {
   const pulse = $('#check-pulse');
   let lastIdx = -2;
   let lastBeat = null;
+  let hiddenTo = 0;
   const frame = () => {
     const now = performance.now();
     if (now > end || cancelled()) {
@@ -121,9 +129,14 @@ function animateCursor(t0, msPerBeat, done, cancelled = () => false) {
       return done?.();
     }
     const beat = (now - t0) / msPerBeat;
+    // Read-ahead: the bar you're in disappears, so your eyes have to be on the next one.
+    if (readAhead && rec && beat >= 0) {
+      const barEnd = (Math.floor(beat / piece.beatsPerBar) + 1) * piece.beatsPerBar;
+      if (barEnd !== hiddenTo) scoreView?.hideThrough((hiddenTo = barEnd));
+    }
     // Visual metronome: the mic should hear only the piano, so the beat is shown, not clicked.
     const whole = Math.floor(beat);
-    if (whole !== lastBeat) {
+    if (whole !== lastBeat && !(examMode && rec && beat >= 0)) {
       lastBeat = whole;
       pulse.classList.remove('on', 'accent');
       void pulse.offsetWidth;
@@ -160,7 +173,7 @@ async function start() {
   const ac = audio();
   const spb = 60 / bpm();
   const begin = ac.currentTime + 0.25;
-  const metronome = $('#check-metro').checked;
+  const metronome = $('#check-metro').checked && !examMode;
   const beats = totalBeats(piece);
   for (let b = 0; b < COUNT_IN; b++) click(begin + b * spb, b === 0);
   if (metronome) for (let b = 0; b < beats; b++) click(begin + (COUNT_IN + b) * spb, b % piece.beatsPerBar === 0);
@@ -176,7 +189,24 @@ async function start() {
   setTimeout(() => rec && setStatus(mode === 'mic' ? 'Play! (listening…)' : 'Play!', 'good'), (beat0Ctx - ac.currentTime) * 1000 - 50);
   const session = rec;
   animateCursor(t0, msPerBeat, null, () => session.cancelled);
-  rec.timer = setTimeout(stop, t0 - performance.now() + (beats + 1.5) * msPerBeat);
+  rec.timer = setTimeout(() => endWhenQuiet(session), t0 - performance.now() + (beats + 1.5) * msPerBeat);
+}
+
+// A student who paused or went back is still playing when the music "should" have
+// ended. Keep listening while notes are still coming (up to 16 extra beats), so the
+// end of the piece isn't marked as missed.
+const EXTRA_BEATS = 16;
+function endWhenQuiet(session) {
+  if (rec !== session) return;
+  const now = performance.now();
+  const lastNote = session.events.length ? session.t0 + session.events[session.events.length - 1].on : 0;
+  const last = Math.max(lastNote, session.lastLoud ?? 0);
+  const over = (now - session.t0) / session.msPerBeat - totalBeats(piece) - 1.5;
+  if (now - last < 1.5 * session.msPerBeat && over < EXTRA_BEATS) {
+    session.timer = setTimeout(() => endWhenQuiet(session), session.msPerBeat);
+    return;
+  }
+  stop();
 }
 
 function stop() {
@@ -239,7 +269,12 @@ function finish({ played, source, msPerBeat, unclear = [], spread = [], pedalEve
   });
   lastResult = result;
   if (played.length && record && !drill) {
-    history.push({ pieceId: base.id, hands, at: Date.now(), score: result.score, ready: result.ready && hands === 'both', bpm: bpm(), playedBpm: Math.round(result.playedBpm), worstBar: result.worstBar, input: source });
+    history.push({
+      pieceId: base.id, hands, at: Date.now(), score: result.score, ready: result.ready && hands === 'both', bpm: bpm(), playedBpm: Math.round(result.playedBpm),
+      worstBar: result.worstBar, input: source, barErrors: result.barErrors, keptGoing: result.continuity?.score ?? null, pulse: result.pulse?.score ?? null,
+      exam: examMode || undefined,
+    });
+    if (result.score >= 85) logWin('clean');
     save('checks', history.slice(-300));
     changeListeners.forEach((fn) => fn());
   }
@@ -260,12 +295,17 @@ function showResult(r, source) {
       <div class="score-badge ${r.score >= 85 ? 'good' : r.score >= 60 ? 'warn' : 'bad'}">${r.score}</div>
       <div><b>${r.feedback.headline}</b><div class="muted">Notes ${pct(r.pitchAccuracy)} · Rhythm ${pct(r.rhythmAccuracy)} · ${Math.round(r.playedBpm)} bpm${source === 'mic' ? ' · microphone' : ''} · ${STRICTNESS[r.strictness].label}</div></div>
     </div>
+    ${r.continuity || r.pulse ? `<div class="subscores">
+      ${r.continuity ? `<span class="sub ${tone(r.continuity.score)}" title="Stops, restarts and hesitations"><b>${r.continuity.score}</b> Kept going</span>` : ''}
+      ${r.pulse ? `<span class="sub ${tone(r.pulse.score)}" title="How evenly you kept the beat${examMode ? ', with no metronome' : ''}"><b>${r.pulse.score}</b> Pulse${examMode ? ' (no metronome)' : ''}</span>` : ''}
+      ${r.continuity?.slips ? `<span class="sub" title="Slips you played straight through"><b>${r.continuity.recovered}/${r.continuity.slips}</b> Slips recovered</span>` : ''}
+    </div>` : ''}
     <ul class="feedback-list">${r.feedback.lines.map((l) => `<li class="${l.kind}">${l.text}</li>`).join('')}</ul>
     <p class="next"><b>Next step:</b> ${r.feedback.next}</p>
     ${canDrill ? `<button class="btn primary block" id="drill-start" type="button">Drill bar ${r.worstBar} until it's clean ${DRILL_STREAK}× in a row</button>` : ''}
     <div class="legend"><span class="good">● correct</span><span class="warn">● timing</span><span class="bad">● wrong</span><span class="miss">● missed</span>${source === 'mic' ? '<span class="unclear">● unclear</span>' : ''}</div>
     ${source === 'mic' && lastMic ? verdictPanel(r) : ''}`;
-  box.querySelector('#drill-start')?.addEventListener('click', () => startDrill(r.worstBar));
+  box.querySelector('#drill-start')?.addEventListener('click', () => startDrill(r.worstBar, r.worstBar));
   box.querySelectorAll('[data-verdict]').forEach((b) => b.addEventListener('click', () => correctVerdict(b.dataset.verdict, b.dataset.key)));
   box.querySelector('#verdict-wrong')?.addEventListener('click', () => {
     const key = box.querySelector('#verdict-pick').value;
@@ -315,9 +355,10 @@ function correctVerdict(kind, key) {
 }
 
 // ---- Bar drills: loop one bar until it's clean N times in a row ---------------------
-function startDrill(bar) {
+function startDrill(from, to = from, kind = 'loop') {
+  if (rec || learn) return;
   const drillBpm = Math.max(40, Math.round((suggestedBpm(base) * 0.85) / 2) * 2);
-  drill = { bar, streak: 0, runs: 0, bpm: drillBpm };
+  drill = { from, to: kind === 'add' ? from : to, end: to, kind, streak: 0, runs: 0, bpm: drillBpm };
   practice = 'perform';
   syncPracticeButtons();
   refreshPiece();
@@ -326,17 +367,31 @@ function startDrill(bar) {
   updateBpmLabel();
   $('#check-result').hidden = true;
   renderDrillBanner();
-  setStatus(`Drill: bar ${bar} at ${drillBpm} bpm. Get it clean ${DRILL_STREAK} times in a row.`, '');
+  setStatus(kind === 'add'
+    ? `Building bars ${from}–${to} one bar at a time, at ${drillBpm} bpm. Each bar is added after ${ADD_STREAK} clean runs.`
+    : `Drill: ${span(drill)} at ${drillBpm} bpm. Get it clean ${DRILL_STREAK} times in a row.`, '');
   setTimeout(() => drill && start(), 600);
 }
+
+const span = (d) => (d.from === d.to ? `bar ${d.from}` : `bars ${d.from}–${d.to}`);
 
 function drillRunDone(r) {
   drill.runs++;
   const clean = r.pitchAccuracy === 1 && r.rhythmAccuracy >= 0.9 && r.counts.extra === 0;
   drill.streak = clean ? drill.streak + 1 : 0;
-  renderDrillBanner(clean ? 'Clean!' : r.feedback.lines.find((l) => l.kind === 'bad')?.text ?? 'Not quite. Again.');
-  if (drill.streak >= DRILL_STREAK) return endDrill(true);
-  setStatus(clean ? `Clean run ${drill.streak} of ${DRILL_STREAK}. Again…` : 'Not clean yet: the streak starts again. Again…', clean ? 'good' : 'warn');
+  let note = clean ? 'Clean!' : r.feedback.lines.find((l) => l.kind === 'bad')?.text ?? 'Not quite. Again.';
+  // "Add a bar": once the section is secure, the next bar joins it.
+  if (drill.kind === 'add' && drill.to < drill.end && drill.streak >= ADD_STREAK) {
+    drill.to++;
+    drill.streak = 0;
+    note = `Secure. Bar ${drill.to} added: now ${span(drill)}.`;
+    refreshPiece();
+  }
+  renderDrillBanner(note);
+  const need = drill.kind === 'add' && drill.to < drill.end ? ADD_STREAK : DRILL_STREAK;
+  if (drill.to >= drill.end && drill.streak >= DRILL_STREAK) return endDrill(true);
+  if (/added/.test(note)) setStatus(`${note} Again…`, 'good');
+  else setStatus(clean ? `Clean run ${drill.streak} of ${need}. Again…` : 'Not clean yet: the streak starts again. Again…', clean ? 'good' : 'warn');
   setTimeout(() => drill && !rec && start(), 1800);
 }
 
@@ -347,22 +402,76 @@ function endDrill(done) {
   refreshPiece();
   updateTempoLock();
   setStartLabel(false);
-  if (done && d) setStatus(`Bar ${d.bar} is secure (${d.runs} runs). Now play the whole piece through.`, 'good');
+  if (done && d) {
+    logWin('bars');
+    setStatus(`${span(d)[0].toUpperCase()}${span(d).slice(1)} ${d.from === d.to ? 'is' : 'are'} secure (${d.runs} runs). Now play the whole piece through.`, 'good');
+  }
 }
 
 function renderDrillBanner(note = '') {
   const b = $('#drill-banner');
   b.hidden = !drill;
   if (!drill) return;
-  const dots = Array.from({ length: DRILL_STREAK }, (_, i) => `<span class="streak-dot${i < drill.streak ? ' on' : ''}"></span>`).join('');
-  b.innerHTML = `<div class="row between"><b>Drilling bar ${drill.bar} · ${drill.bpm} bpm</b><span class="dots" role="img" aria-label="${drill.streak} of ${DRILL_STREAK} clean">${dots}</span></div>
+  const need = drill.kind === 'add' && drill.to < drill.end ? ADD_STREAK : DRILL_STREAK;
+  const dots = Array.from({ length: need }, (_, i) => `<span class="streak-dot${i < drill.streak ? ' on' : ''}"></span>`).join('');
+  const title = drill.kind === 'add' ? `Building bars ${drill.from}–${drill.end}: now ${span(drill)}` : `Drilling ${span(drill)}`;
+  b.innerHTML = `<div class="row between"><b>${title} · ${drill.bpm} bpm</b><span class="dots" role="img" aria-label="${drill.streak} of ${need} clean">${dots}</span></div>
     ${note ? `<p class="small">${note}</p>` : ''}
-    <button class="btn block" id="drill-stop" type="button">Stop drilling</button>`;
+    <button class="btn block" id="drill-stop" type="button">Stop</button>`;
   b.querySelector('#drill-stop').addEventListener('click', () => {
     if (rec) stop();
     endDrill(false);
-    setStatus('Drill stopped.', '');
+    setStatus('Stopped.', '');
   });
+}
+
+// ---- Trouble bars: where this week's mistakes cluster ----------------------------------
+const barCount = (p) => Math.max(1, Math.round(totalBeats(p) / p.beatsPerBar));
+
+/** Errors per run for each bar of a piece over the last 7 days (runs that recorded bars). */
+export function troubleBars(pieceId, days = 7) {
+  const since = Date.now() - days * 86400000;
+  const runs = history.filter((h) => h.pieceId === pieceId && h.at >= since && h.barErrors);
+  const sum = {};
+  for (const r of runs) for (const [bar, n] of Object.entries(r.barErrors)) sum[bar] = (sum[bar] ?? 0) + n;
+  return { runs: runs.length, perRun: Object.fromEntries(Object.entries(sum).map(([b, n]) => [b, n / runs.length])) };
+}
+
+function renderHeat() {
+  const box = $('#heat');
+  if (!box) return;
+  const { runs, perRun } = troubleBars(base.id);
+  if (runs < 2 || drill) { box.hidden = true; return; }
+  const n = barCount(base);
+  const off = base.barOffset ?? 0;
+  const worst = Math.max(1, ...Object.values(perRun));
+  const cells = Array.from({ length: n }, (_, i) => {
+    const bar = i + 1 + off;
+    const v = perRun[bar] ?? 0;
+    return `<button type="button" class="heat-cell" data-bar="${bar}" style="--h:${(v / worst).toFixed(2)}" title="Bar ${bar}: ${v ? `${v.toFixed(1)} mistakes per run` : 'clean'}" aria-label="Bar ${bar}, ${v ? `${v.toFixed(1)} mistakes per run` : 'no mistakes'}"><span>${bar}</span></button>`;
+  }).join('');
+  const top = Object.entries(perRun).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([b]) => b);
+  box.hidden = false;
+  box.innerHTML = `<div class="row between"><b class="small">Bars costing marks · last 7 days, ${runs} runs</b><span class="muted small">${top.length ? `worst: ${top.join(', ')}` : 'all clean'}</span></div>
+    <div class="heat-strip">${cells}</div><p class="muted small">Tap a bar to practise it.</p>`;
+  box.querySelectorAll('[data-bar]').forEach((b) => b.addEventListener('click', () => {
+    $('#sec-from').value = b.dataset.bar;
+    $('#sec-to').value = b.dataset.bar;
+    $('#section').open = true;
+    $('#section').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }));
+}
+
+function syncSectionInputs() {
+  const n = barCount(base);
+  const off = base.barOffset ?? 0;
+  for (const id of ['#sec-from', '#sec-to']) {
+    const el = $(id);
+    el.min = 1 + off;
+    el.max = n + off;
+  }
+  $('#sec-from').value = 1 + off;
+  $('#sec-to').value = Math.min(n + off, 4 + off);
 }
 
 // ---- Learn: wait for each note --------------------------------------------------------
@@ -520,6 +629,7 @@ function selectPiece(id) {
   $('#remove-import').hidden = !imported.some((p) => p.id === base.id);
   $('#check-piece').value = base.id;
   $('#lab-bpm').value = base.targetBpm;
+  syncSectionInputs();
   refreshPiece();
   updateTempoLock();
 }
@@ -562,6 +672,7 @@ function setStartLabel(running) {
 function showLevel(level) {
   // ~ -50 dB → 0%, ~ -6 dB → 100%
   const db = 20 * Math.log10(Math.max(level, 1e-5));
+  if (rec && db > -38) rec.lastLoud = performance.now();
   $('#mic-level > div').style.width = `${Math.max(0, Math.min(100, ((db + 50) / 44) * 100))}%`;
 }
 
@@ -692,12 +803,27 @@ export function mountCheck(el) {
         <button type="button" data-layout="page" aria-pressed="false">Page</button>
       </div>
     </div>
+    <section class="card heat" id="heat" hidden></section>
     <div class="score-scroll paper" id="check-score"></div>
     <section class="card drill" id="drill-banner" hidden></section>
+    <details class="card section" id="section">
+      <summary>Practise a section</summary>
+      <div class="row gap wrap section-row">
+        <label class="field inline">Bars <input id="sec-from" type="number" inputmode="numeric" step="1"> to <input id="sec-to" type="number" inputmode="numeric" step="1"></label>
+        <select id="sec-kind" aria-label="How to practise it">
+          <option value="loop">Loop until clean ${DRILL_STREAK}× in a row</option>
+          <option value="add">Add a bar at a time</option>
+        </select>
+        <button class="btn accent" id="sec-go" type="button">Start</button>
+      </div>
+      <p class="muted small">"Add a bar at a time" starts with the first bar and adds the next one each time it's clean ${ADD_STREAK}× running, so the joins between bars get practised too.</p>
+    </details>
     <div id="perform-options">
       <div class="row between wrap">
         <label class="field inline">Tempo <input id="check-bpm" type="range" min="40" max="160" step="2"> <span id="check-bpm-label"></span></label>
         <label class="field inline"><input id="check-metro" type="checkbox" checked> Metronome sound</label>
+        <label class="field inline" title="No metronome and no beat light: tests your own pulse, like the exam room"><input id="check-exam" type="checkbox"> Exam conditions</label>
+        <label class="field inline" title="Each bar disappears as you reach it, so you have to read ahead"><input id="check-readahead" type="checkbox"> Read ahead</label>
         <span class="pulse" id="check-pulse" aria-hidden="true"></span>
       </div>
       <p class="lock-note" id="tempo-lock" hidden><span id="tempo-lock-text"></span> <button class="linkish" id="tempo-unlock" type="button">Unlock (teacher)</button></p>
@@ -746,6 +872,20 @@ export function mountCheck(el) {
     strictness = e.target.value;
     const p = load('profile', null);
     if (p) save('profile', { ...p, strictness });
+  });
+  $('#check-exam').checked = examMode;
+  $('#check-exam').addEventListener('change', (e) => { examMode = e.target.checked; save('examConditions', examMode); });
+  $('#check-readahead').checked = readAhead;
+  $('#check-readahead').addEventListener('change', (e) => { readAhead = e.target.checked; save('readAhead', readAhead); });
+  $('#sec-go').addEventListener('click', () => {
+    const lo = Number($('#sec-from').min);
+    const hi = Number($('#sec-from').max);
+    const clamp = (v) => Math.max(lo, Math.min(hi, Math.round(Number(v) || lo)));
+    let from = clamp($('#sec-from').value);
+    let to = clamp($('#sec-to').value);
+    if (to < from) [from, to] = [to, from];
+    $('#section').open = false;
+    startDrill(from, to, $('#sec-kind').value);
   });
   $('#tempo-unlock').addEventListener('click', () => {
     tempoUnlocked = true;

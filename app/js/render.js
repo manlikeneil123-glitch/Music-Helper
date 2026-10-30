@@ -272,6 +272,20 @@ export function renderScore(piece, opts = {}) {
       return { system: idx, x: systems[idx].xOf(beat) };
     },
     positions,
+    /** Read-ahead: cover everything before `beat` (null shows it all again). */
+    hideThrough(beat) {
+      for (const sy of systems) {
+        if (!sy.veil) {
+          sy.veil = el('rect', { y: 0, height: '100%', class: 'veil' });
+          sy.svg.append(sy.veil);
+        }
+        const to = beat == null ? sy.fromBeat : Math.min(Math.max(beat, sy.fromBeat), sy.toBeat);
+        const x0 = sy.xOf(sy.fromBeat) - 12;
+        const x1 = to >= sy.toBeat ? Number(sy.svg.getAttribute('width')) : sy.xOf(to) - 10;
+        sy.veil.setAttribute('x', x0);
+        sy.veil.setAttribute('width', Math.max(0, x1 - x0));
+      }
+    },
     setCursor(beat) {
       let found = null;
       systems.forEach((sy, i) => {

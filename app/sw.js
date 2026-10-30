@@ -1,5 +1,5 @@
 // Offline-first app shell. Bump VERSION when shipping changes.
-const VERSION = 'mh-v8';
+const VERSION = 'mh-v9';
 const SHELL = [
   './',
   'index.html',
@@ -28,7 +28,7 @@ const SHELL = [
   'scores/octave-study.musicxml',
   'js/mic.js',
   'js/micanalysis.js',
-  'js/tuning.js', 'js/config.js', 'js/cloud.js', 'js/sync.js', 'js/account.js',
+  'js/tuning.js', 'js/config.js', 'js/cloud.js', 'js/sync.js', 'js/account.js', 'js/quality.js', 'js/plan.js', 'privacy.html',
   'img/piano-room-1920.webp',
   'img/piano-room-900.webp',
 ];

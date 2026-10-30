@@ -197,6 +197,23 @@ language sql stable security definer set search_path = '' as $$
   order by p.username
 $$;
 
+-- A student who forgets their password has no email to reset it with, so their
+-- teacher can set a temporary one. Only for students in the teacher's own studio;
+-- it also signs the student out everywhere.
+create or replace function public.reset_student_password(p_student uuid, p_password text) returns void
+language plpgsql security definer set search_path = '' as $$
+begin
+  if char_length(coalesce(p_password, '')) < 8 then
+    raise exception 'Passwords need at least 8 characters.';
+  end if;
+  if not exists (select 1 from public.profiles where id = p_student and studio_id is not null and studio_id = public.taught_studio()) then
+    raise exception 'You can only reset passwords for students in your studio.';
+  end if;
+  update auth.users set encrypted_password = extensions.crypt(p_password, extensions.gen_salt('bf')), updated_at = now() where id = p_student;
+  delete from auth.sessions where user_id = p_student;
+end
+$$;
+
 -- Right to erasure: deletes the account and, by cascade, everything attached to it.
 create or replace function public.delete_me() returns void
 language sql security definer set search_path = '' as $$
@@ -205,5 +222,7 @@ $$;
 
 revoke execute on function public.my_studio, public.taught_studio, public.handle_new_user, public.new_code from public, anon, authenticated;
 grant execute on function public.my_studio, public.taught_studio to authenticated;
+revoke execute on function public.reset_student_password from public, anon;
+grant execute on function public.reset_student_password to authenticated;
 revoke execute on function public.me, public.create_studio, public.new_studio_code, public.join_studio, public.leave_studio, public.remove_student, public.studio_students, public.delete_me from public, anon;
 grant execute on function public.me, public.create_studio, public.new_studio_code, public.join_studio, public.leave_studio, public.remove_student, public.studio_students, public.delete_me to authenticated;

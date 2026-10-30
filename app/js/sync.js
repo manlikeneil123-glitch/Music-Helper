@@ -3,6 +3,7 @@
 // start-up, and every save is pushed a few seconds later.
 import { onSave, exportSynced, importSynced, dayKey } from './store.js';
 import { cloudReady, currentUser, rest } from './cloud.js';
+import { qualityStreak } from './quality.js';
 
 const PUSH_DELAY = 4000;
 let timer = null;
@@ -34,13 +35,7 @@ export function summarise(data, titleOf = {}, now = new Date()) {
     d.setDate(d.getDate() - (13 - i));
     return { day: dayKey(d), minutes: Math.round(minutesOn(dayKey(d))) };
   });
-  let streak = 0;
-  const d = new Date(now);
-  if (minutesOn(dayKey(d)) === 0) d.setDate(d.getDate() - 1);
-  while (minutesOn(dayKey(d)) > 0) {
-    streak++;
-    d.setDate(d.getDate() - 1);
-  }
+  const streak = qualityStreak(data.quality?.v ?? {}, now);
   const pieces = {};
   for (const c of checks) {
     const p = (pieces[c.pieceId] ??= { title: titleOf[c.pieceId] ?? 'Imported piece', runs: 0, best: 0, last: 0, ready: false });

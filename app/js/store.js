@@ -47,6 +47,21 @@ export function onSave(fn) {
   return () => listeners.delete(fn);
 }
 
+/** Everything this device holds for the app, for "Download my data". */
+export function exportAll() {
+  const out = {};
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key.startsWith(PREFIX)) out[key.slice(PREFIX.length)] = JSON.parse(localStorage.getItem(key));
+      else if (key.startsWith('stave:')) out[key] = localStorage.getItem(key);
+    }
+  } catch {
+    // Blocked storage: export what we could read.
+  }
+  return out;
+}
+
 /** Everything that syncs, as { name: { v, t } }. */
 export function exportSynced() {
   const out = {};

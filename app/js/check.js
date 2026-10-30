@@ -20,6 +20,8 @@ import { setBackgroundPaused } from './background.js';
 import { ICONS } from './icons.js';
 import { logWin } from './quality.js';
 import { dayKey } from './store.js';
+import { tap } from './haptics.js';
+
 
 const COUNT_IN = 4;
 const DRILL_STREAK = 3;
@@ -260,11 +262,11 @@ async function start() {
   const t0 = ctxToPerf(beat0Ctx);
   const msPerBeat = spb * 1000;
   rec = { t0, beat0Ctx, msPerBeat, events: [], open: new Map(), pedal: [], pedalDown: null, sawPedal: false, source: null, cancelled: false, recorder };
-  setStatus('Count-in… 1 2 3 4', 'warn');
+  setStatus('Count-in: 1 2 3 4', 'warn');
   setStartLabel(true);
   $('#check-result').hidden = true;
 
-  setTimeout(() => rec && setStatus(mode === 'mic' ? 'Play! (listening…)' : 'Play!', 'good'), (beat0Ctx - ac.currentTime) * 1000 - 50);
+  setTimeout(() => rec && setStatus(mode === 'mic' ? 'Play! Listening.' : 'Play!', 'good'), (beat0Ctx - ac.currentTime) * 1000 - 50);
   const session = rec;
   animateCursor(t0, msPerBeat, null, () => session.cancelled);
   rec.timer = setTimeout(() => endWhenQuiet(session), t0 - performance.now() + (beats + 1.5) * msPerBeat);
@@ -310,7 +312,7 @@ function stop() {
     lastTake = { ...take, beat0Sec: r.beat0Ctx - take.startCtx, pieceId: piece.id, bpm: bpm() };
     lastNotes = null;
     $('#lab-download').hidden = false;
-    setStatus('Analysing…', '');
+    setStatus('Analysing', '');
     // Let the status paint before the (short) analysis blocks the thread.
     setTimeout(() => {
       const cal = calibration();
@@ -362,6 +364,7 @@ function finish({ played, source, msPerBeat, unclear = [], spread = [], pedalEve
     changeListeners.forEach((fn) => fn());
   }
   drawScore(result);
+  tap(result.score >= 85 ? 'success' : 'light');
   if (drill) return drillRunDone(result);
   showResult(result, source);
   if (record) tellTake({ pieceId: base.id, hands, bpm: bpm(), playedBpm: result.playedBpm, score: result.score, barErrors: result.barErrors, source });
@@ -398,7 +401,7 @@ function showResult(r, source) {
   box.querySelector('#send-take')?.addEventListener('click', async (e) => {
     const btn = e.currentTarget;
     btn.disabled = true;
-    btn.textContent = 'Sending…';
+    btn.textContent = 'Sending';
     try {
       const title = `${base.title}${drill ? ` (${span(drill)})` : ''} · ${r.score}/100`;
       await sendHook(lastTake?.compressed
@@ -439,7 +442,7 @@ function verdictPanel(r) {
     <div class="verdict-chips">${flagged.map((n) => `<button class="verdict-chip" type="button" data-verdict="right" data-key="${noteKey(n)}">${noteLabel(n)} (${n.status}) · it was right</button>`).join('')}</div>` : ''}
     ${wrongs ? `<p class="muted small">Wrong-note verdicts can't be overruled here: the microphone heard a different note louder. If you're sure, ask your teacher to listen to the recording.</p>` : ''}
     ${passed.length ? `<p class="small"><b>Marked correct, but you played it wrong:</b></p>
-    <div class="row gap wrap"><select id="verdict-pick"><option value="">Choose the note…</option>${passed.map((n) => `<option value="${noteKey(n)}">${noteLabel(n)}</option>`).join('')}</select>
+    <div class="row gap wrap"><select id="verdict-pick"><option value="">Choose the note</option>${passed.map((n) => `<option value="${noteKey(n)}">${noteLabel(n)}</option>`).join('')}</select>
     <button class="btn small-btn" type="button" id="verdict-wrong">It was wrong</button></div>` : ''}
   </details>`;
 }
@@ -496,8 +499,8 @@ function drillRunDone(r) {
   renderDrillBanner(note);
   const need = drill.kind === 'add' && drill.to < drill.end ? ADD_STREAK : DRILL_STREAK;
   if (drill.to >= drill.end && drill.streak >= DRILL_STREAK) return endDrill(true);
-  if (/added/.test(note)) setStatus(`${note} Again…`, 'good');
-  else setStatus(clean ? `Clean run ${drill.streak} of ${need}. Again…` : 'Not clean yet: the streak starts again. Again…', clean ? 'good' : 'warn');
+  if (/added/.test(note)) setStatus(`${note} Again.`, 'good');
+  else setStatus(clean ? `Clean run ${drill.streak} of ${need}. Go again.` : 'Not clean yet: the streak starts again. Go again.', clean ? 'good' : 'warn');
   setTimeout(() => drill && !rec && start(), 1800);
 }
 
@@ -742,7 +745,7 @@ function selectPiece(id) {
 }
 
 async function importFile(file) {
-  setStatus(`Reading ${file.name}…`, '');
+  setStatus(`Reading ${file.name}`, '');
   try {
     const score = normalize(await readScoreFile(file));
     if (!score.notes.length) throw new Error('No notes found in this file.');
@@ -835,7 +838,7 @@ async function runCalibration() {
 
 // Test lab: score a recording file, so mic accuracy can be measured on real pianos.
 async function analyseFile(file) {
-  setStatus(`Analysing ${file.name}…`, '');
+  setStatus(`Analysing ${file.name}`, '');
   try {
     const buf = await audio().decodeAudioData(await file.arrayBuffer());
     const ch = buf.numberOfChannels;
@@ -953,7 +956,7 @@ export function mountCheck(el) {
       <summary>Test lab: score a recording</summary>
       <p class="muted small">Upload a recording of the selected piece, starting on beat 1. Use this to check microphone accuracy on real pianos.</p>
       <label class="field inline">Recorded at <input id="lab-bpm" type="number" min="30" max="240" step="1" inputmode="numeric"> bpm</label>
-      <input id="lab-file" type="file" accept="audio/*">
+      <input id="lab-file" type="file" accept="audio/*" aria-label="Choose a recording to analyse">
       <button class="btn block" id="lab-download" type="button" hidden>Save last mic take (.wav)</button>
       <button class="btn block" id="lab-kit" type="button">Recording kit: tune checking to real pianos</button>
     </details>

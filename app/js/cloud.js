@@ -31,6 +31,9 @@ function keepSession(s) {
 
 export const currentUser = () => readSession()?.user ?? null;
 
+// Messages raised by supabase/schema.sql, already in plain English.
+const OUR_ERRORS = ['No studio has that code', 'Only student accounts', 'Only teacher accounts', 'Passwords need at least', 'Sign in first', 'You can only reset passwords'];
+
 // Supabase's messages are written for developers; students get plain English.
 function friendly(status, body) {
   const msg = `${body?.msg ?? body?.error_description ?? body?.message ?? ''}`;
@@ -40,7 +43,10 @@ function friendly(status, body) {
   if (/password/i.test(msg) && /characters|weak|short/i.test(msg)) return 'Pick a longer password: at least 8 characters.';
   if (/database error saving new user/i.test(msg)) return 'That username is taken or not allowed. Try another.';
   if (/email/i.test(msg) && /invalid/i.test(msg)) return 'The server rejected the account address. (Setup: check USERNAME_DOMAIN in config.js.)';
-  return msg || `The server said no (error ${status}).`;
+  // Our own database errors are already written for students; anything else isn't.
+  if (OUR_ERRORS.some((ours) => msg.startsWith(ours))) return msg;
+  if (status >= 500) return 'The server is having trouble. Try again in a minute.';
+  return 'That didn\'t work. Check your details and try again.';
 }
 
 async function call(path, { method = 'GET', body, token, headers = {} } = {}) {

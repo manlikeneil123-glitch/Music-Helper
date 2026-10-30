@@ -1,6 +1,9 @@
 // Practice timer + log. Timer state is timestamp-based and persisted, so it
 // survives the tab sleeping, the phone locking, or the app being closed.
 import { load, save, dayKey } from './store.js';
+import { tap } from './haptics.js';
+
+let goalBuzzed = false;
 
 let state = load('timer', { running: false, startedAt: 0, accumulated: 0, focus: 'Pieces' });
 let sessions = load('sessions', []); // [{ day, start, ms, focus }]
@@ -69,6 +72,9 @@ function render() {
   const goal = goalMinutes();
   root.querySelector('#timer-today').textContent = `${Math.floor(today)} / ${goal} min today`;
   root.querySelector('#timer-goalbar').style.width = `${Math.min(100, (today / goal) * 100)}%`;
+  // One buzz the moment today's goal is reached (Android; iPhone browsers can't vibrate).
+  if (state.running && today >= goal && !goalBuzzed) { goalBuzzed = true; tap('success'); }
+  if (today < goal) goalBuzzed = false;
 
   const days = lastDays(7);
   const max = Math.max(goal, ...days.map((d) => d.minutes));

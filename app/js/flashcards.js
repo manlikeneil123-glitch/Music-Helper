@@ -10,6 +10,8 @@ import { renderScore } from './render.js';
 import { logWin } from './quality.js';
 import { load, save } from './store.js';
 import { onNote } from './input.js';
+import { tap } from './haptics.js';
+
 
 const RANGES = { treble: [28, 40], bass: [16, 28] }; // C4–A5, E2–C4 incl. ledger lines
 const BOX_WEIGHTS = [16, 8, 4, 2, 1];
@@ -138,6 +140,7 @@ export function cardStats(kind = 'notes') {
 
 function grade(correct, message) {
   if (!current) return;
+  tap(correct ? 'success' : 'error');
   const rec = boxes[current.id] ?? { box: 0, seen: 0, right: 0 };
   rec.seen++;
   if (correct) {

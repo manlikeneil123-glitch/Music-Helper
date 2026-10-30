@@ -37,7 +37,8 @@ function render(v) {
       <p class="muted small">Readiness covers right notes and rhythm only, from the last few runs. It isn't an exam mark.</p></section>` : ''}
     ${s.recent?.length ? `<section class="card"><h3>Recent checks</h3><ul class="log recent">${s.recent.slice(0, 6).map((c) => `<li><span class="who"><span class="mini-badge ${tone(c.score)}">${c.score}</span><span>${esc(c.title)}</span></span><small class="muted">${ago(c.at)}</small></li>`).join('')}</ul></section>` : ''}
     ${s.weekBars?.length ? `<section class="card"><h3>Working on</h3><ul class="log">${s.weekBars.map((p) => `<li><span>${esc(p.title)}</span><span class="muted">${p.bars.map((b) => `bar ${b.bar}`).join(', ')}</span></li>`).join('')}</ul></section>` : ''}
-    <p class="fine">This link was shared by @${esc(v.username)} and can be turned off by them at any time. <a href="privacy.html">Privacy</a></p>`;
+    <p class="fine">This link was shared by @${esc(v.username)} and can be turned off by them at any time.</p>
+    <nav class="legal-links" aria-label="About Stave"><a href="privacy.html">Privacy</a><a href="help.html#adults">For parents and carers</a></nav>`;
 }
 
 async function main() {

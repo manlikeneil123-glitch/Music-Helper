@@ -663,10 +663,10 @@ function feedback(r, S) {
   const cap = r.dense ? 2 : 3;
   const wrongText = (n) => `${r.dense ? 'Probably a wrong note' : 'Wrong note'} at ${where(n)}: ${r.dense ? 'I heard' : 'you played'} ${midiName(n.playedMidi)}, it should be ${midiName(n.midi)}${n.finger ? ` (finger ${n.finger})` : ''}.`;
   for (const n of wrong.slice(0, cap)) lines.push({ kind: 'bad', text: wrongText(n) });
-  if (wrong.length > cap) lines.push({ kind: 'bad', text: `…and ${wrong.length - cap} more wrong notes.` });
+  if (wrong.length > cap) lines.push({ kind: 'bad', text: `And ${wrong.length - cap} more wrong notes.` });
   if (r.stoppedAtBar) lines.push({ kind: 'bad', text: `You stopped at bar ${r.stoppedAtBar}. Play through to the end, even with mistakes. Stopping is a habit that's hard to break.` });
   for (const n of missed.slice(0, 2)) lines.push({ kind: 'bad', text: `Missed ${midiName(n.midi)} at ${where(n)}.` });
-  if (missed.length > 2) lines.push({ kind: 'bad', text: `…and ${missed.length - 2} more missed notes.` });
+  if (missed.length > 2) lines.push({ kind: 'bad', text: `And ${missed.length - 2} more missed notes.` });
   if (r.counts.unclear) lines.push({ kind: 'warn', text: `${r.counts.unclear} note${r.counts.unclear > 1 ? 's were' : ' was'} unclear to the microphone and not counted. Move the device closer to the piano, or use less pedal.` });
   if (r.counts.extra) lines.push({ kind: 'warn', text: `${r.counts.extra} extra note${r.counts.extra > 1 ? 's' : ''}, usually a slip or a restart. Keep going through mistakes instead of fixing them mid-piece.` });
 

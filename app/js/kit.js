@@ -84,13 +84,13 @@ export function openKit() {
         for (let b = 0; b < COUNT_IN; b++) click(begin + b * spb, b === 0);
         const beat0Ctx = begin + COUNT_IN * spb;
         seconds = (beat0Ctx - ac.currentTime) + (totalBeats(sp.piece) + 2) * spb;
-        status('Count-in… then play.');
+        status('Count-in, then play.');
         await new Promise((r) => setTimeout(r, seconds * 1000));
         const take = recorder.stop();
         beat0Sec = beat0Ctx - take.startCtx;
         save(step, take, beat0Sec, sp);
       } else {
-        status('Recording the room… keep still.');
+        status('Recording the room. Keep still.');
         await new Promise((r) => setTimeout(r, step.seconds * 1000));
         save(step, recorder.stop(), null, null);
       }

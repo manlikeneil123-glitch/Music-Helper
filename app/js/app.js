@@ -19,11 +19,13 @@ import { load, save, dayKey } from './store.js';
 import { mountAccount, renderAccount, resumeAccount } from './account.js';
 import { startSync, setPieceTitles } from './sync.js';
 import { cloudReady, currentUser } from './cloud.js';
+import { initSettings, still } from './settings.js';
+import { tap } from './haptics.js';
 
 const TABS = ['welcome', 'today', 'cards', 'practice', 'play', 'exam', 'account'];
 const WITH_KEYBOARD = new Set(['cards', 'play']);
 
-const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+const reducedMotion = still;
 let switchToken = 0;
 
 // Give each block of a view a stagger index, so it rises in reading order (the
@@ -324,6 +326,7 @@ function finishWelcome(p) {
 
 document.getElementById('top-mark').innerHTML = MARK;
 document.querySelectorAll('.tabbar [data-icon]').forEach((el) => (el.innerHTML = ICONS[el.dataset.icon]));
+initSettings();
 mountBackground();
 mountWelcome(document.getElementById('view-welcome'), finishWelcome);
 mountFlashcards(document.getElementById('view-cards'));
@@ -348,6 +351,9 @@ document.getElementById('top-avatar').addEventListener('click', () => show('acco
 addEventListener('mh:account', updateTopbar);
 
 document.querySelectorAll('.tabbar button').forEach((b) => b.addEventListener('click', () => show(b.dataset.tab)));
+// A light tick when a selection changes (tabs, switches, choice chips). Presses that
+// start something give their own feedback where they finish.
+document.addEventListener('click', (e) => { if (e.target.closest?.('.tabbar button, .segmented button, .choice')) tap('selection'); });
 // Opened an assignment link from a teacher (no account needed). If the app is
 // already open, the browser only changes the #hash, so listen for that too.
 function takeAssignmentLink() {

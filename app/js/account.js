@@ -8,6 +8,7 @@ import { clearSynced, dataOwner, setDataOwner } from './store.js';
 import { loadTeacherExtras, studentTeaching, studioTeaching, wireTeacher, loadStudentExtras, studentCards, wireStudent } from './studio.js';
 import { refreshTeacherWork } from './teach.js';
 import { examTitle } from './exam.js';
+import { settingsCard, wireSettings } from './settings.js';
 
 let root;
 let mode = 'create'; // signed-out form: 'create' | 'signin'
@@ -35,8 +36,8 @@ function ago(t) {
 function syncLine() {
   const s = syncStatus();
   if (s.state === 'error') return `<span class="sync bad">Not saved to your account: ${esc(s.error)}</span>`;
-  if (s.state === 'saving' || s.state === 'loading') return '<span class="sync">Saving…</span>';
-  if (s.state === 'pending') return '<span class="sync">Changes waiting to save…</span>';
+  if (s.state === 'saving' || s.state === 'loading') return '<span class="sync">Saving</span>';
+  if (s.state === 'pending') return '<span class="sync">Changes waiting to save</span>';
   if (s.at) return `<span class="sync good">${ICONS.check} Saved to your account ${ago(s.at)}</span>`;
   return '<span class="sync">Progress saves to your account as you practise.</span>';
 }
@@ -66,7 +67,7 @@ function signedOut() {
       </label>
       ${creating ? `
       <fieldset class="field">
-        <legend>I'm a…</legend>
+        <legend>I'm a</legend>
         <div class="segmented" role="group" aria-label="Role">
           <button type="button" data-role="student" aria-pressed="true">Student</button>
           <button type="button" data-role="teacher" aria-pressed="false">Teacher</button>
@@ -76,7 +77,8 @@ function signedOut() {
       <p class="warn-note">No email needed, so there's no way to reset a forgotten password. Write it down or save it in your phone's password manager.</p>` : ''}
       <p class="error" id="acct-error" role="alert" hidden></p>
       <button class="btn primary block" type="submit" id="acct-go">${creating ? 'Create account' : 'Sign in'}</button>
-      <p class="fine">${creating ? 'What you\'ve done on this device so far moves into your new account.' : 'Your progress on this device merges with your account.'} We store your username, your practice and your check results — no name, email or recordings. <a href="privacy.html">Privacy</a></p>
+      <p class="fine">${creating ? 'What you\'ve done on this device so far moves into your new account.' : 'Your progress on this device merges with your account.'} We store your username, your practice and your check results, never your name or email. ${creating ? 'By creating an account you agree to the <a href="terms.html">Terms</a>.' : ''}</p>
+      <nav class="legal-links" aria-label="About Stave"><a href="privacy.html">Privacy</a><a href="terms.html">Terms</a><a href="help.html">Help</a></nav>
     </form>`;
 }
 
@@ -151,7 +153,7 @@ function studioForTeacher() {
   }
   return `
     <section class="card">
-      <div class="row between"><h3>${esc(s.name)}</h3><span class="pill">${students?.length ?? '…'} student${students?.length === 1 ? '' : 's'}</span></div>
+      <div class="row between"><h3>${esc(s.name)}</h3><span class="pill">${students?.length ?? '–'} student${students?.length === 1 ? '' : 's'}</span></div>
       <p class="muted small">Students join from their Account page with this code:</p>
       <div class="studio-code"><b id="acct-code-text">${esc(s.code)}</b>
         <button class="btn small-btn" type="button" id="acct-share">Share</button>
@@ -160,7 +162,7 @@ function studioForTeacher() {
     </section>
     <section class="card">
       <div class="row between"><h3>Students</h3><button class="btn small-btn" type="button" id="acct-refresh">Refresh</button></div>
-      ${students == null ? '<p class="empty">Loading…</p>' : students.length ? `<ul class="log students">${students.map(studentRow).join('')}</ul>` : '<p class="empty">No one has joined yet. Share your code with your students.</p>'}
+      ${students == null ? '<p class="empty">Loading</p>' : students.length ? `<ul class="log students">${students.map(studentRow).join('')}</ul>` : '<p class="empty">No one has joined yet. Share your code with your students.</p>'}
     </section>
     ${extras ? studioTeaching(extras) : ''}`;
 }
@@ -176,7 +178,7 @@ function signedIn() {
       <p class="small" id="acct-sync-line">${syncLine()}</p>
       <p class="error" id="acct-error" role="alert" hidden></p>
     </section>
-    ${me ? (role === 'teacher' ? studioForTeacher() : studioForStudent() + (sExtras ? studentCards(sExtras, Boolean(me.studio)) : '')) : '<section class="card"><p class="empty">Loading your account…</p></section>'}
+    ${me ? (role === 'teacher' ? studioForTeacher() : studioForStudent() + (sExtras ? studentCards(sExtras, Boolean(me.studio)) : '')) : '<section class="card"><p class="empty">Loading your account</p></section>'}
     <section class="card">
       <button class="btn ghost" type="button" id="acct-setup">${ICONS.arrow} Change your setup (level, board, goal)</button>
       <details class="pw-change">
@@ -187,7 +189,6 @@ function signedIn() {
           <button class="btn accent" type="submit">Change password</button>
         </form>
       </details>
-      <a class="btn ghost" href="privacy.html">${ICONS.arrow} Privacy: what's stored and who sees it</a>
       <div class="row gap">
         <button class="btn" type="button" id="acct-out">Sign out</button>
         <button class="btn bad" type="button" id="acct-delete">Delete account</button>
@@ -204,7 +205,8 @@ function render() {
     <h2>Account</h2>
     <p class="lede">${currentUser() ? 'Your progress, backed up.' : 'Back up your progress and connect with your teacher.'}</p>
     ${!cloudReady() ? notReady() : currentUser() ? signedIn() : signedOut()}
-    ${!currentUser() ? `<button class="btn ghost link" id="acct-setup" type="button">Change your setup</button>` : ''}`;
+    ${!currentUser() ? `<button class="btn ghost link" id="acct-setup" type="button">Change your setup</button>` : ''}
+    ${settingsCard()}`;
   open.forEach((id) => root.querySelector(`[data-remove="${id}"]`)?.closest('details')?.setAttribute('open', ''));
   wire();
 }
@@ -227,7 +229,7 @@ async function act(fn) {
     // Redraw signed-in pages to drop half-done state; leave the sign-in form alone so
     // a typo in the password doesn't also wipe the username.
     if (currentUser()) render();
-    showError(e instanceof CloudError ? e.message : `Something went wrong: ${e.message}`);
+    showError(e instanceof CloudError ? e.message : 'Something went wrong. Check your connection and try again.');
   } finally {
     busy = false;
     root.querySelectorAll('button').forEach((b) => (b.disabled = false));
@@ -252,6 +254,7 @@ async function afterSignIn(user) {
 }
 
 function wire() {
+  wireSettings(root);
   root.querySelector('#acct-setup')?.addEventListener('click', () => onOpenSetup());
   const again = async () => { await refreshMe(); render(); };
   if (me?.role === 'teacher' && me.studio && extras) wireTeacher(root, { act, refresh: again, studioId: me.studio.id });

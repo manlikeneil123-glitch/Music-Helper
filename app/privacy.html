@@ -4,65 +4,100 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Privacy · Stave</title>
+  <meta name="description" content="What Stave stores, who can see it, and your rights.">
   <meta name="theme-color" content="#0d1014">
+  <script src="js/theme-boot.js"></script>
   <link rel="stylesheet" href="styles.css">
-  <style>
-    body { background: var(--bg); }
-    .privacy { max-width: 720px; margin: 0 auto; padding: 24px 16px 64px; line-height: 1.6; }
-    .privacy h1 { font-size: 2rem; margin: 8px 0 4px; }
-    .privacy h2 { font-size: 1.15rem; margin: 28px 0 6px; }
-    .privacy table { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
-    .privacy th, .privacy td { text-align: left; vertical-align: top; padding: 8px 6px; border-top: 1px solid var(--edge); }
-    .privacy th { color: var(--muted); font-weight: 600; }
-    .privacy li { margin: 4px 0; }
-    .privacy a { color: var(--accent); }
-  </style>
 </head>
-<body>
-  <main class="privacy">
+<body class="doc-page">
+  <main class="doc">
     <p><a href="./">← Back to Stave</a></p>
+
     <h1>Privacy</h1>
-    <p class="lede">For students, parents and teachers. Short version: no adverts, no tracking, no selling data, and as little as we can manage. Last updated 30 October 2026.</p>
+    <p class="lede">For students, parents, carers and teachers. Last updated 30 October 2026.</p>
 
-    <h2>Without an account</h2>
-    <p>Everything stays on your device: your practice log, check results, flashcard progress and settings. Nothing is sent anywhere. Recordings the microphone makes for checking are analysed on the device and thrown away.</p>
+    <h2>Our promises</h2>
+    <ul>
+      <li>No adverts.</li>
+      <li>We never sell your data or share it for advertising.</li>
+      <li>No tracking or analytics: we don't record what you tap or how long you stay.</li>
+      <li>Nothing is shared with anyone unless you choose to (joining a teacher's studio, sending a recording, making a parent link).</li>
+    </ul>
 
-    <h2>With an account</h2>
-    <p>Accounts are a username and password. We don't ask for your name, email, age, school or phone number.</p>
+    <h2>1. Who we are</h2>
+    <p>Stave is a free piano practice app made by an independent developer in the UK. It is not connected to ABRSM or Trinity College London. To contact us, open an issue on <a href="https://github.com/manlikeneil123-glitch/Music-Helper/issues" rel="noopener">our GitHub page</a>. Issues there are public, so don't post anything personal: just say you'd like a private reply, and we'll give you a way to reach us privately.</p>
+
+    <h2>2. What we collect</h2>
+    <p><b>Without an account</b>, nothing you do leaves your device. Your practice log, check results, flashcard progress, exam plan and settings are kept in your browser's storage.</p>
+    <p><b>With an account</b> (a username and password; we never ask for your name, email, age, school or phone number):</p>
     <table>
-      <tr><th>What we store</th><th>Why</th><th>Who can see it</th></tr>
-      <tr><td>Your username and whether you're a student or teacher</td><td>To sign you in</td><td>You; your teacher, if you join their studio</td></tr>
-      <tr><td>Your practice progress: practice sessions, check scores, which bars went wrong, flashcard progress, your level and exam board, and pieces you imported</td><td>So it's backed up and works on a new phone</td><td>You. Your teacher sees a summary (minutes, streak, recent scores, trouble bars), never the full history</td></tr>
+      <tr><th>What</th><th>Why</th><th>Who can see it</th></tr>
+      <tr><td>Your username, and whether you're a student or teacher</td><td>To sign you in</td><td>You, and your teacher if you join their studio</td></tr>
+      <tr><td>Your practice progress: sessions, check scores, which bars went wrong, flashcard progress, your level, exam board and exam plan, and pieces you imported</td><td>So it's backed up and works on a new phone</td><td>You. Your teacher sees a summary (minutes, streak, recent scores, exam readiness, trouble bars), never the full history</td></tr>
       <tr><td>Which teacher's studio you joined</td><td>So your teacher can follow your practice</td><td>You and that teacher</td></tr>
+      <tr><td>Work your teacher sets you, and scores they share</td><td>So it appears in your plan</td><td>That teacher and their students</td></tr>
     </table>
-    <p>We never store: recordings (unless you choose to send one to your teacher; see below), your location, contacts, device details or anything for advertising.</p>
+    <p><b>Technical data:</b> the website is hosted on GitHub Pages. Like any web host, GitHub's servers see your IP address and browser type when the app loads (<a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement" rel="noopener">GitHub's privacy statement</a>). We don't receive or keep these logs.</p>
 
-    <h2>Sending a recording to your teacher</h2>
-    <p>Only when you press send. It goes only to your own teacher, and is <b>deleted automatically after 20 days</b>, or sooner if you or your teacher delete it.</p>
+    <h2>3. Health and body data</h2>
+    <p>None. Stave doesn't ask about or store anything about your health or body.</p>
 
-    <h2>Work from your teacher</h2>
-    <p>If you're in a teacher's studio, the app downloads the work they set you and any scores they share with their students. Shared scores are only ever visible to that teacher's students. Assignment links a teacher sends you contain only the piece, bars, tempo, due date and their note, and are kept on your device.</p>
+    <h2>4. Sound, recordings, videos and files</h2>
+    <ul>
+      <li><b>Microphone:</b> when you check a piece, the sound is analysed on your device and thrown away. It is never uploaded.</li>
+      <li><b>Sending a recording to your teacher:</b> only when you press send. It goes only to your own teacher, and is <b>deleted automatically after 20 days</b>, or sooner if you or your teacher delete it.</li>
+      <li><b>Performance Grade videos</b> stay on your phone. We never upload them; you submit them to the exam board yourself.</li>
+      <li><b>Imported scores</b> (MusicXML files) are kept on your device, and in your account if you have one.</li>
+      <li><b>The recording kit</b> (in Perform, for testing the microphone) saves a .zip on your device. It only goes anywhere if you send it yourself.</li>
+    </ul>
 
-    <h2>Parent link</h2>
-    <p>You can make a private link for a parent or carer. It shows a summary only (practice, streak, recent check scores, exam readiness, the bars you're working on), never recordings or messages. Making a new link turns the old one off, and you can turn it off completely from your Account page.</p>
+    <h2>5. Why we're allowed to use it</h2>
+    <p>Under UK data protection law (UK GDPR): your account data, to provide the service you signed up for (contract); recordings you send and parent links, because you chose to (consent, which you can take back by deleting them); and keeping accounts secure (legitimate interests).</p>
 
-    <h2>Performance videos</h2>
-    <p>Videos you record for a Performance Grade stay on your phone. They are never uploaded by us.</p>
+    <h2>6. Who can see what</h2>
+    <p>Private by default. Your teacher sees a summary only if you join their studio with their code, and stops seeing it the moment you leave (Account page). A parent or carer sees a summary only through a private link you make; making a new link turns the old one off, and you can turn it off completely. Teachers can remove a student and set a temporary password if one is forgotten. The database enforces these rules itself, not just the app.</p>
 
-    <h2>Your teacher</h2>
-    <p>You choose whether to join a teacher's studio, using a code they give you. You can leave at any time from your Account page, and they stop seeing your progress straight away. A teacher can remove you, and can set a temporary password if you forget yours.</p>
+    <h2>7. Who helps us run it</h2>
+    <ul>
+      <li><a href="https://docs.github.com/en/pages" rel="noopener">GitHub Pages</a>: hosts the website.</li>
+      <li><a href="https://supabase.com/privacy" rel="noopener">Supabase</a>: stores accounts and synced progress, in the UK/EU. Only used if you make an account.</li>
+    </ul>
+    <p>Fonts, piano sounds and images are served from our own site, so no other company sees your visit.</p>
 
-    <h2>Deleting everything</h2>
-    <p>Account → Delete account removes your account and everything stored with it, permanently. Signing out removes your progress from that device (it stays in your account).</p>
+    <h2>8. AI</h2>
+    <p>Stave uses no AI services. Checking your playing happens on your device.</p>
 
-    <h2>Where it's kept</h2>
-    <p>Accounts use <a href="https://supabase.com" rel="noopener">Supabase</a>, with data stored in the UK/EU. Each account can only read its own data (and a teacher their students' summaries); this is enforced by the database, not just the app.</p>
+    <h2>9. Connected devices</h2>
+    <p>If you plug in a MIDI keyboard, the browser passes its notes to the app on your device. Nothing about the keyboard is sent anywhere. You can withdraw the browser's MIDI or microphone permission at any time in its settings.</p>
 
-    <h2>Under 13</h2>
-    <p>If you're under 13, a parent or carer should set up the account. Without an account, the app needs no permission at all.</p>
+    <h2>10. What stays only on your device</h2>
+    <p>Microphone calibration, which tab you were on, a running timer, a mock exam in progress, your theme and motion settings, and everything else if you don't have an account.</p>
 
-    <h2>Questions</h2>
-    <p>Ask your teacher, or contact the app's maker through the details on the App Store listing.</p>
+    <h2>11. How long we keep it</h2>
+    <ul>
+      <li>Account data: until you delete your account. Deleting removes it straight away; we keep no backup copies of deleted accounts.</li>
+      <li>Recordings sent to a teacher: 20 days at most.</li>
+      <li>Parent links: until you turn them off or make a new one.</li>
+      <li>Data on your device: until you clear it, sign out, or uninstall the app.</li>
+    </ul>
+
+    <h2>12. Your rights</h2>
+    <ul>
+      <li><b>See and download</b> everything: Settings, then Download my data (a JSON file).</li>
+      <li><b>Correct</b> it: change your setup, exam plan and pieces in the app.</li>
+      <li><b>Delete</b> it: Account, then Delete account (permanent). Without an account, clear the site's data in your browser.</li>
+      <li><b>Object or complain:</b> contact us first. You can also complain to the <a href="https://ico.org.uk/make-a-complaint/" rel="noopener">Information Commissioner's Office</a>.</li>
+    </ul>
+
+    <h2>13. Young people</h2>
+    <p>Most people using Stave are under 18, so we follow the UK Age Appropriate Design Code: the most private settings are the default, nothing is shared unless you choose, there are no adverts or nudges to share more, and no tricks to keep you in the app. You need to be 13 or over to make an account yourself; if you're younger, a parent or carer should set it up. Without an account, the app needs no permission at all. Parents, carers and teachers: see <a href="help.html#adults">Help and support</a>.</p>
+
+    <h2>14. Security</h2>
+    <p>Everything travels over HTTPS. Passwords are stored hashed by Supabase and never seen by us. Each account can read only its own data (and a teacher their own students' summaries), enforced by row-level security in the database.</p>
+
+    <h2>15. Changes to this policy</h2>
+    <p>When something changes we update the date at the top and mention it in the app's What's new note. We won't start using your data in a new way without asking.</p>
+    <nav class="doc-nav" aria-label="Stave pages"><a href="privacy.html" aria-current="page">Privacy</a><a href="terms.html">Terms</a><a href="help.html">Help and support</a><a href="accessibility.html">Accessibility</a></nav>
   </main>
 </body>
 </html>

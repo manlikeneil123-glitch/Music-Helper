@@ -59,11 +59,14 @@ function draw(r) {
   bg.addColorStop(1, '#0d1014');
   g.fillStyle = bg;
   g.fillRect(0, 0, W, H);
-  const text = (t, x, y, size, color = '#f3f5f8', weight = 600, align = 'left') => {
+  // maxW: long titles step down in size (not cut short), and only squeeze as a last resort.
+  const text = (t, x, y, size, color = '#f3f5f8', weight = 600, align = 'left', maxW) => {
     g.font = font(size, weight);
+    while (maxW && size > 24 && g.measureText(t).width > maxW) g.font = font((size -= 2), weight);
     g.fillStyle = color;
     g.textAlign = align;
-    g.fillText(t, x, y);
+    if (maxW) g.fillText(t, x, y, maxW);
+    else g.fillText(t, x, y);
   };
   const panel = (x, y, w, h) => {
     g.fillStyle = 'rgba(255,255,255,0.06)';
@@ -112,7 +115,7 @@ function draw(r) {
   for (const p of r.pieces) {
     panel(60, y, W - 120, 112);
     const exam = r.exam?.pieces.find((x) => x.pieceId === p.id)?.readiness;
-    text(p.title.length > 34 ? `${p.title.slice(0, 33)}…` : p.title, 96, y + 50, 34, '#f3f5f8', 700);
+    text(p.title, 96, y + 50, 34, '#f3f5f8', 700, 'left', W - 96 - (exam?.band ? 300 : 96));
     text(`${p.runs} run${p.runs === 1 ? '' : 's'} · best ${p.best}${p.last > p.first ? ` · up ${p.last - p.first}` : ''}${p.trouble.length ? ` · work on bar ${p.trouble.join(', ')}` : ''}`, 96, y + 92, 26, '#a9b0bb', 500);
     if (exam?.band) {
       const [label, color] = BAND[exam.band];

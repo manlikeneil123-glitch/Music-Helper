@@ -113,13 +113,13 @@ export async function calibrate(onStep, onLevel) {
   await openMic();
   const ac = audio();
 
-  onStep('1/3 · Stay quiet for a moment…');
+  onStep('1/3 · Stay quiet for a moment');
   let r = startRecording({ onLevel });
   await wait(1500);
   const quiet = r.stop();
   const noise = rms(quiet.samples.subarray(Math.floor(quiet.samples.length * 0.3)));
 
-  onStep('2/3 · Listening to clicks — keep the volume up and stay quiet…');
+  onStep('2/3 · Listening to clicks. Keep the volume up and stay quiet.');
   r = startRecording({ onLevel });
   await wait(300);
   const t0 = ac.currentTime + 0.3;
@@ -129,7 +129,7 @@ export async function calibrate(onStep, onLevel) {
   const clickRec = r.stop();
   const latencyMs = measureLatency(clickRec.samples, clickRec.sampleRate, clicks.map((t) => t - clickRec.startCtx));
 
-  onStep('3/3 · Play the A above middle C and hold it…');
+  onStep('3/3 · Play the A above middle C and hold it');
   r = startRecording({ onLevel });
   await wait(3500);
   const aRec = r.stop();

@@ -39,7 +39,8 @@ export function mountWelcome(el, onDone) {
           <li><span class="chip gold">${ICONS.piano}</span><span><b>Perform</b><small>Play into the mic and see every note you got right</small></span></li>
         </ul>
         <button class="btn primary block big" type="button" id="w-start">Get started</button>
-        <p class="fine">Free while we're testing. No adverts. <a href="privacy.html">Privacy</a></p>
+        <p class="fine">Free while we're testing. No adverts.</p>
+        <nav class="legal-links" aria-label="About Stave"><a href="privacy.html">Privacy</a><a href="terms.html">Terms</a><a href="help.html">Help</a><a href="accessibility.html">Accessibility</a></nav>
       </div>
     </div>
     <div class="setup-step" ${profile() ? '' : 'hidden'}>
@@ -73,7 +74,8 @@ export function mountWelcome(el, onDone) {
       </fieldset>
       <button class="btn primary block" type="submit">Get started</button>
       ${profile() ? '' : '<button class="btn ghost link" type="button" id="w-skip">Skip for now (uses the usual settings)</button>'}
-      <p class="fine">Your progress stays on this device unless you make an account. <a href="privacy.html">Privacy</a></p>
+      <p class="fine">Your progress stays on this device unless you make an account.</p>
+      <nav class="legal-links" aria-label="About Stave"><a href="privacy.html">Privacy</a><a href="terms.html">Terms</a><a href="help.html">Help</a><a href="accessibility.html">Accessibility</a></nav>
     </form>
     </div>`;
 

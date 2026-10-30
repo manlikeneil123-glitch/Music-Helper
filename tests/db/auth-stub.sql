@@ -1,4 +1,4 @@
--- The bits of Supabase that schema.sql relies on, for testing on plain Postgres.
+-- The bits of Supabase that the migrations rely on, for testing on plain Postgres.
 create role anon nologin;
 create role authenticated nologin;
 create schema auth;

@@ -1,4 +1,4 @@
--- Row-level security checks for supabase/schema.sql. Each block acts as one user.
+-- Row-level security checks for supabase/migrations. Each block acts as one user.
 \set ON_ERROR_STOP 1
 insert into auth.users (id, email, raw_user_meta_data) values
   ('00000000-0000-0000-0000-00000000000a', 'miss_t@x', '{"username":"Miss_T","role":"teacher"}'),

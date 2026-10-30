@@ -31,7 +31,7 @@ function keepSession(s) {
 
 export const currentUser = () => readSession()?.user ?? null;
 
-// Messages raised by supabase/schema.sql, already in plain English.
+// Messages raised by supabase/migrations, already in plain English.
 const OUR_ERRORS = ['No studio has that code', 'Only student accounts', 'Only teacher accounts', 'Passwords need at least', 'Sign in first', 'You can only reset passwords'];
 
 // Supabase's messages are written for developers; students get plain English.

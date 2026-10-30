@@ -22,6 +22,7 @@ Don't put model names in commits. Follow `docs/APP-PLAYBOOK.md`, minus the decis
 | 2026-10 | Parent view: a private link the student can turn off, no parent account. |
 | 2026-10 | Exam pieces: the student or teacher types their own 3 (or 4) pieces; no syllabus database. |
 | 2026-10 | Deferred: F1 sight-reading generator ("later"). Not now: G5 photo-to-score. E5 camera hand hints: an experiment only, never a score. |
+| 2026-10 | Streak: one rest day in any seven doesn't break it (playbook §17). Two missed days in a row, or two rest days within a week, do. |
 | 2026-10 | Agent autonomy: fix bugs and small polish without asking; ask for anything with product or design choices. Ship in batches, push each. |
 
 ## Facts that took research
@@ -33,6 +34,9 @@ Don't put model names in commits. Follow `docs/APP-PLAYBOOK.md`, minus the decis
 ## Habits
 
 - Run every `tests/*.test.mjs` (and `tests/db/run.sh` when SQL changes) before committing.
-- Bump `VERSION` in `app/version.js` and add a `CHANGELOG.md` entry for each release; `tools/ship.sh` checks the rest.
-- After pushing, confirm the live site serves the new version.
+- Releases: add an entry at the top of `app/js/changelog.js` (plain words, for students), run `node tools/bump.mjs` (writes `app/js/version.js`, the service worker cache name and `CHANGELOG.md`), commit, then `sh tools/ship.sh --push`: it runs the checks, pushes, waits for the live site to serve the new version and compares file hashes. `tests/copy.test.mjs` fails if the version numbers disagree.
+- Database: new numbered file in `supabase/migrations/`, safe to re-run; the owner runs it in Supabase **before** code that needs it is pushed; `supabase/audit.sql` after. `tests/db/run.sh` must run as a non-root user (in this container: copy to /tmp and `su postgres`).
+- UI changes: `node tools/ui-audit.mjs` (needs the app served on :8765) and `tests/contrast.test.mjs`. If the background photo, `--photo-filter` or `--shade` change, re-measure the backdrop colours in the contrast test.
+- Mark any temporary test code `TEMP-DEV`; the copy test refuses to ship it.
+- GitHub project pages can't serve a domain-root robots.txt; use `noindex` meta tags instead.
 - Never vendor outside code without asking (an earlier attempt was blocked); write it or ask.

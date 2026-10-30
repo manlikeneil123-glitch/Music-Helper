@@ -21,6 +21,8 @@ import { startSync, setPieceTitles } from './sync.js';
 import { cloudReady, currentUser } from './cloud.js';
 import { initSettings, still } from './settings.js';
 import { tap } from './haptics.js';
+import { newsLine, openWhatsNew } from './whatsnew.js';
+import { mountOffline, installCard, wireInstall } from './pwa.js';
 
 const TABS = ['welcome', 'today', 'cards', 'practice', 'play', 'exam', 'account'];
 const WITH_KEYBOARD = new Set(['cards', 'play']);
@@ -168,6 +170,7 @@ function renderToday() {
   };
 
   root.innerHTML = `
+    ${newsLine()}
     <div class="dash-head">
       <div>
         <h2>${greeting()}</h2>
@@ -178,7 +181,7 @@ function renderToday() {
     </div>
     <div class="dash">
       <div class="stats4 span2">
-        <div class="stat"><span class="chip gold">${ICONS.flame}</span><span class="label" title="A day counts when you get a clean run (85+), fix a bar in a drill, or read ${CARDS_TARGET} notes right">Quality streak</span><b>${s}<small> day${s === 1 ? '' : 's'}</small></b><span class="week-dots" aria-hidden="true">${qWeek.map((on, k) => `<i class="${on ? 'on' : ''}" style="--k:${k}"></i>`).join('')}</span><span class="delta">${qToday.clean || qToday.bars ? 'today counts ✓' : qToday.cards >= CARDS_TARGET ? 'today counts ✓' : `today: a clean run or ${Math.max(0, CARDS_TARGET - qToday.cards)} notes`}</span></div>
+        <div class="stat"><span class="chip gold">${ICONS.flame}</span><span class="label" title="A day counts when you get a clean run (85+), fix a bar in a drill, or read ${CARDS_TARGET} notes right. One rest day a week won't break it.">Quality streak</span><b>${s}<small> day${s === 1 ? '' : 's'}</small></b><span class="week-dots" aria-hidden="true">${qWeek.map((on, k) => `<i class="${on ? 'on' : ''}" style="--k:${k}"></i>`).join('')}</span><span class="delta">${qToday.clean || qToday.bars ? 'today counts ✓' : qToday.cards >= CARDS_TARGET ? 'today counts ✓' : `today: a clean run or ${Math.max(0, CARDS_TARGET - qToday.cards)} notes`}</span></div>
         <div class="stat"><span class="chip blue">${ICONS.clock}</span><span class="label">This week</span><b>${Math.round(weekMins)}<small> min</small></b>${deltaChip(weekMins, prevWeek || null, ' min')}${spark(week.map((d) => d.minutes), 'blue')}</div>
         <div class="stat"><span class="chip green">${ICONS.trophy}</span><span class="label">Last check</span><b>${last ? last.score : '–'}${last ? '<small>/100</small>' : ''}</b>${last ? deltaChip(last.score, prevScore) : '<span class="delta">play a piece in Perform</span>'}${spark(lastScores, 'green')}</div>
         <div class="stat"><span class="chip violet">${ICONS.note}</span><span class="label">Notes known</span><b>${cards.mastered}<small>/${cards.total}</small></b>${cards.weak ? `<span class="delta down">${cards.weak} need work</span>` : ''}</div>
@@ -232,6 +235,7 @@ function renderToday() {
         </section>
       </div>
     </div>
+    ${installCard()}
     <button class="btn" id="today-report" type="button">${ICONS.trophy} This week's report card</button>
     <button class="btn ghost link" id="today-setup" type="button">Change your setup</button>
     <p class="credit">Background photo: <a href="https://unsplash.com/photos/a-grand-piano-in-front-of-a-large-window-Iu2pgfqkK2g" target="_blank" rel="noopener">Oswald on Unsplash</a> · Piano sound: Salamander Grand Piano by Alexander Holm (<a href="https://creativecommons.org/licenses/by/3.0/" target="_blank" rel="noopener">CC BY 3.0</a>)</p>`;
@@ -256,6 +260,8 @@ function renderToday() {
     show(item.tab);
   }));
   root.querySelector('#today-setup').addEventListener('click', openSetup);
+  root.querySelector('#news-open')?.addEventListener('click', () => openWhatsNew(refreshToday));
+  wireInstall(root, refreshToday);
   root.querySelector('[data-go=exam]')?.addEventListener('click', () => show('exam'));
   root.querySelector('#today-report').addEventListener('click', openReportCard);
   root.querySelector('#today-timer').addEventListener('click', () => {
@@ -328,6 +334,7 @@ document.getElementById('top-mark').innerHTML = MARK;
 document.querySelectorAll('.tabbar [data-icon]').forEach((el) => (el.innerHTML = ICONS[el.dataset.icon]));
 initSettings();
 mountBackground();
+mountOffline();
 mountWelcome(document.getElementById('view-welcome'), finishWelcome);
 mountFlashcards(document.getElementById('view-cards'));
 mountTimer(document.getElementById('view-practice'));
@@ -364,7 +371,10 @@ function takeAssignmentLink() {
   return linked;
 }
 const linked = takeAssignmentLink();
-show(linked && profile() ? 'today' : load('tab', 'today'));
+// Home-screen shortcuts open straight into a tab (?go=practice), then tidy the address.
+const go = new URLSearchParams(location.search).get('go');
+if (go) history.replaceState(null, '', location.pathname + location.hash);
+show(linked && profile() ? 'today' : TABS.includes(go) ? go : load('tab', 'today'));
 addEventListener('hashchange', () => takeAssignmentLink() && profile() && show('today'));
 resumeAccount().then((reloading) => {
   if (reloading) return;

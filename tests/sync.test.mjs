@@ -68,7 +68,7 @@ const s = summarise({
   checks: { v: [{ pieceId: 'p', at: 1, score: 60 }, { pieceId: 'p', at: 2, score: 88, ready: true, worstBar: 4 }] },
   cards: { v: { a: { box: 3 }, b: { box: 1 } } },
   profile: { v: { level: 'Grade 4 and above', board: 'Trinity' } },
-  quality: { v: { [day(0)]: { clean: 1 }, [day(1)]: { cards: 25 }, [day(2)]: { bars: 1 }, [day(3)]: { cards: 5 }, [day(4)]: { clean: 2 } } },
+  quality: { v: { [day(0)]: { clean: 1 }, [day(1)]: { cards: 25 }, [day(2)]: { bars: 1 }, [day(3)]: { cards: 5 }, [day(4)]: { cards: 4 }, [day(5)]: { clean: 2 } } },
 }, { p: 'Minuet' }, now);
 ok(s.streak === 3, 'quality streak counts consecutive quality days (5 cards is not one)');
 ok(s.week === 30 && s.days.length === 14, 'week minutes from the last 7 days only');

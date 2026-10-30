@@ -2,15 +2,24 @@
   "name": "Stave — Piano Practice",
   "short_name": "Stave",
   "description": "Piano practice that gets you exam-ready: note flashcards, a daily plan and play-along feedback.",
+  "id": "./",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "any",
+  "lang": "en-GB",
+  "categories": ["education", "music"],
   "background_color": "#0d1014",
   "theme_color": "#0d1014",
   "icons": [
     { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
     { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
     { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ],
+  "shortcuts": [
+    { "name": "Start practice", "short_name": "Practise", "url": "./?go=practice", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Note flashcards", "short_name": "Read", "url": "./?go=cards", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Exam", "short_name": "Exam", "url": "./?go=exam", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] }
   ]
 }

@@ -1,5 +1,6 @@
 #!/bin/sh
-# Runs supabase/schema.sql on a throwaway Postgres and checks the security rules.
+# Runs every supabase/migrations/*.sql in order on a throwaway Postgres (twice: re-running
+# must be safe), checks the security rules, then runs supabase/audit.sql.
 # Needs Postgres 15+ binaries (pg_ctl, initdb) on PATH or in /usr/lib/postgresql/*/bin.
 set -e
 cd "$(dirname "$0")/../.."
@@ -10,7 +11,11 @@ trap '"$BIN/pg_ctl" -D "$DIR/data" stop -m immediate >/dev/null 2>&1; rm -rf "$D
 "$BIN/pg_ctl" -D "$DIR/data" -o "-k $DIR -c listen_addresses=''" -l "$DIR/log" start >/dev/null
 psql() { command psql -h "$DIR" -U postgres -q -v ON_ERROR_STOP=1 "$@"; }
 psql -f tests/db/auth-stub.sql
-psql -f supabase/schema.sql 2>/dev/null
-psql -f supabase/schema.sql 2>/dev/null # re-running must be safe
+for pass in 1 2; do for f in supabase/migrations/*.sql; do psql -f "$f" 2>/dev/null; done; done
 out=$(psql -f tests/db/rls-test.sql 2>&1) || { echo "$out" | grep -v 'NOTICE:  ok'; exit 1; }
 echo "$out" | grep -c 'NOTICE:  ok' | xargs printf '%s checks passed\n'
+# The audit: anon may call parent_view only; nothing else should come back. (The
+# storage query needs Supabase itself, so it's skipped here.)
+audit=$(grep -v 'storage.buckets' supabase/audit.sql | psql -At -f - 2>&1)
+[ "$audit" = "parent_view" ] || { echo "audit.sql found problems:"; echo "$audit"; exit 1; }
+echo "audit.sql: clean"

@@ -892,3 +892,34 @@ input[role='switch']:checked { background: var(--accent); border-color: var(--ac
 input[role='switch']:checked::after { transform: translateX(20px); background: #fff; opacity: 1; }
 input[role='switch']:disabled { opacity: 0.6; cursor: default; }
 input[role='switch']:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* ---- What's new: one quiet line, never a pop-up ---- */
+.news-line {
+  display: flex; gap: 8px; align-items: center; width: 100%; margin: 14px 0 0; padding: 10px 14px; min-height: 44px; cursor: pointer;
+  border: 1px solid var(--edge); border-radius: 999px; background: var(--surface); color: var(--ink); font: inherit; font-size: 0.9rem; text-align: left;
+  -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur);
+}
+.news-line b { color: var(--link); white-space: nowrap; }
+.news-dialog { max-width: min(520px, calc(100vw - 32px)); max-height: calc(100dvh - 48px); overflow: auto; padding: 18px; border: 1px solid var(--edge); color: var(--ink); background: var(--surface-strong); }
+.news-dialog h4 { margin: 16px 0 4px; }
+.news-dialog ul { margin: 0; padding-left: 20px; }
+.news-dialog li { margin: 4px 0; }
+.news-dialog summary { cursor: pointer; margin-top: 16px; font-weight: 650; min-height: 44px; display: flex; align-items: center; }
+
+/* ---- Offline notice and install card ---- */
+.offline-bar {
+  position: fixed; z-index: 20; left: 50%; transform: translateX(-50%); top: calc(env(safe-area-inset-top, 0px) + 70px);
+  max-width: calc(100vw - 32px); padding: 8px 14px; border-radius: 999px; font-size: 0.85rem; font-weight: 600; text-align: center;
+  background: var(--surface-strong); color: var(--ink); border: 1px solid var(--edge); box-shadow: var(--shadow);
+  -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur);
+}
+.install-card { display: grid; gap: 10px; }
+.install-card h3 { margin-bottom: 4px; }
+.install-card p { margin: 0; }
+
+/* ---- Loading: grey lines in the shape of what's coming, not a spinner ---- */
+.skeleton { display: grid; gap: 10px; padding: 4px 0; }
+.skeleton i { display: block; height: 14px; border-radius: 7px; background: linear-gradient(90deg, var(--raised), var(--raised-hover), var(--raised)) 0 0 / 200% 100%; animation: shimmer 1.4s ease-in-out infinite; }
+.skeleton i.short { width: 55%; }
+@keyframes shimmer { to { background-position: -200% 0; } }
+:root.still .skeleton i { animation: none; }

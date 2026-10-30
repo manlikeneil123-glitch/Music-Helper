@@ -1,0 +1,20 @@
+# Stave
+
+> Stave is a free piano practice web app (PWA) for students taking ABRSM and Trinity graded exams in the UK, and their teachers. It runs in the browser and works offline.
+
+What it does:
+- Note-reading flashcards that repeat the notes you miss.
+- A daily practice plan built from your grade, exam board, lesson day and the bars you keep getting wrong.
+- Play a piece into the microphone (or a MIDI keyboard) and see every right, wrong, early, late and missed note, with "kept going" and pulse scores.
+- An exam countdown with weekly targets, a Pitch & Time readiness band for each piece (not an exam mark), and a mock exam in the real order.
+- Pieces-only exams (ABRSM Performance Grade, Trinity repertoire-only): four pieces, no scales or sight-reading, and a video recorder whose videos stay on the phone.
+- Optional accounts (username and password, no email) so teachers can set work and see a practice summary, and a private parent link.
+
+No adverts, no tracking, no data sold. Not connected to ABRSM or Trinity College London.
+
+## Pages
+- [Open the app](https://manlikeneil123-glitch.github.io/Music-Helper/)
+- [Help and support](https://manlikeneil123-glitch.github.io/Music-Helper/help.html)
+- [Privacy](https://manlikeneil123-glitch.github.io/Music-Helper/privacy.html)
+- [Terms](https://manlikeneil123-glitch.github.io/Music-Helper/terms.html)
+- [Accessibility](https://manlikeneil123-glitch.github.io/Music-Helper/accessibility.html)

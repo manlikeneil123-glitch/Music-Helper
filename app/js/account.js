@@ -47,7 +47,7 @@ function notReady() {
     <section class="card">
       <h3>Accounts aren't switched on yet</h3>
       <p class="muted">Everything you do is saved on this device. Accounts will back it up, carry it to a new phone and let your teacher follow your practice.</p>
-      <p class="fine">For whoever runs this app: create a free Supabase project, run <code>supabase/schema.sql</code>, then put the project URL and anon key in <code>app/js/config.js</code>. Steps are in <code>supabase/README.md</code>.</p>
+      <p class="fine">For whoever runs this app: create a free Supabase project, run the files in <code>supabase/migrations</code> in order, then put the project URL and anon key in <code>app/js/config.js</code>. Steps are in <code>supabase/README.md</code>.</p>
     </section>`;
 }
 
@@ -162,7 +162,7 @@ function studioForTeacher() {
     </section>
     <section class="card">
       <div class="row between"><h3>Students</h3><button class="btn small-btn" type="button" id="acct-refresh">Refresh</button></div>
-      ${students == null ? '<p class="empty">Loading</p>' : students.length ? `<ul class="log students">${students.map(studentRow).join('')}</ul>` : '<p class="empty">No one has joined yet. Share your code with your students.</p>'}
+      ${students == null ? '<div class="skeleton" role="status" aria-label="Loading"><i></i><i></i><i class="short"></i></div>' : students.length ? `<ul class="log students">${students.map(studentRow).join('')}</ul>` : '<p class="empty">No one has joined yet. Share your code with your students.</p>'}
     </section>
     ${extras ? studioTeaching(extras) : ''}`;
 }
@@ -178,7 +178,7 @@ function signedIn() {
       <p class="small" id="acct-sync-line">${syncLine()}</p>
       <p class="error" id="acct-error" role="alert" hidden></p>
     </section>
-    ${me ? (role === 'teacher' ? studioForTeacher() : studioForStudent() + (sExtras ? studentCards(sExtras, Boolean(me.studio)) : '')) : '<section class="card"><p class="empty">Loading your account</p></section>'}
+    ${me ? (role === 'teacher' ? studioForTeacher() : studioForStudent() + (sExtras ? studentCards(sExtras, Boolean(me.studio)) : '')) : '<section class="card"><div class="skeleton" role="status" aria-label="Loading"><i></i><i></i><i class="short"></i></div></section>'}
     <section class="card">
       <button class="btn ghost" type="button" id="acct-setup">${ICONS.arrow} Change your setup (level, board, goal)</button>
       <details class="pw-change">

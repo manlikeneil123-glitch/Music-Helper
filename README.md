@@ -11,11 +11,15 @@ cd app && python3 -m http.server 8000   # open http://localhost:8000
 See [PLAN.md](PLAN.md) for the product plan, commercial assessment and roadmap.
 
 ```sh
-node tests/mic-synthetic.test.mjs   # microphone checking (synthetic piano audio)
-node tests/analysis.test.mjs        # timing, rubato, ornaments, musicality, strictness
-node tests/musicxml.test.mjs        # MusicXML / .mxl import
-node tests/tuning.test.mjs          # per-user mic tuning
+for t in tests/*.test.mjs; do node "$t"; done   # all unit tests, incl. contrast and copy checks
+sh tests/db/run.sh                             # database security rules (needs Postgres, non-root)
+node tools/ui-audit.mjs                        # UI audit at phone widths, both themes (needs Playwright)
 ```
+
+Releasing: add an entry to `app/js/changelog.js`, run `node tools/bump.mjs`, commit,
+then `sh tools/ship.sh --push`. Notes for whoever works on this next, including every
+decision the owner has made, are in [AGENTS.md](AGENTS.md); the rules followed are in
+[docs/APP-PLAYBOOK.md](docs/APP-PLAYBOOK.md).
 
 ## Test on your phone
 

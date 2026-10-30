@@ -1,0 +1,36 @@
+# Weekly encrypted database backup (see supabase/README.md → Backups). Does nothing
+# until the SUPABASE_DB_URL and BACKUP_PASSPHRASE secrets are set.
+name: Backup database
+on:
+  schedule:
+    - cron: '17 3 * * 1'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip until configured
+        id: ready
+        run: '[ -n "$SUPABASE_DB_URL" ] && [ -n "$BACKUP_PASSPHRASE" ] && echo ok=1 >> "$GITHUB_OUTPUT" || echo "Backup secrets not set; skipping."'
+      - name: Install pg_dump 17
+        if: steps.ready.outputs.ok
+        run: |
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSo /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
+          sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client-17
+      - name: Back up
+        if: steps.ready.outputs.ok
+        run: PATH=/usr/lib/postgresql/17/bin:$PATH sh tools/backup.sh
+      - uses: actions/upload-artifact@v4
+        if: steps.ready.outputs.ok
+        with:
+          name: stave-backup
+          path: backups/
+          retention-days: 60

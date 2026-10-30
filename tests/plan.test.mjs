@@ -34,7 +34,10 @@ ok(!/bar 9/.test(piece.detail), 'bars with few mistakes are left out');
 const d = (o) => { const x = new Date('2026-10-30T12:00'); x.setDate(x.getDate() - o); return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`; };
 ok(!isQualityDay({ clean: 0, bars: 0, cards: 19 }) && isQualityDay({ cards: 20 }) && isQualityDay({ bars: 1 }), 'what makes a quality day');
 ok(qualityStreak({ [d(1)]: { clean: 1 }, [d(2)]: { bars: 1 } }, new Date('2026-10-30T12:00')) === 2, 'streak survives until today is done');
-ok(qualityStreak({ [d(0)]: { clean: 1 }, [d(2)]: { bars: 1 } }, new Date('2026-10-30T12:00')) === 1, 'a gap breaks the streak');
+ok(qualityStreak({ [d(0)]: { clean: 1 }, [d(2)]: { bars: 1 } }, new Date('2026-10-30T12:00')) === 2, 'one rest day keeps the streak (and does not add to it)');
+ok(qualityStreak({ [d(0)]: { clean: 1 }, [d(3)]: { bars: 1 } }, new Date('2026-10-30T12:00')) === 1, 'two missed days in a row break it');
+ok(qualityStreak({ [d(0)]: { clean: 1 }, [d(2)]: { clean: 1 }, [d(4)]: { clean: 1 } }, new Date('2026-10-30T12:00')) === 2, 'only one rest day a week');
+ok(qualityStreak({ [d(0)]: { clean: 1 }, [d(2)]: { clean: 1 }, [d(3)]: { clean: 1 }, [d(4)]: { clean: 1 }, [d(5)]: { clean: 1 }, [d(6)]: { clean: 1 }, [d(7)]: { clean: 1 }, [d(8)]: { clean: 1 }, [d(10)]: { clean: 1 } }, new Date('2026-10-30T12:00')) === 9, 'a rest day a week apart is fine again');
 
 // Pieces-only exam: no scales or sight-reading anywhere in the day.
 for (const [goal, board] of [[20, 'ABRSM'], [45, 'ABRSM'], [30, 'Trinity']]) {

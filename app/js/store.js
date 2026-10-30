@@ -5,7 +5,7 @@ const STAMPS = 'mh:meta:stamps'; // name -> last local change (ms), for merging 
 
 // Per-device settings that make no sense on another phone (a mic's tuning, the
 // open tab, a running timer) stay local.
-const LOCAL_ONLY = new Set(['tab', 'inputMode', 'micCal', 'micTuning', 'timer', 'mockRun', 'readAhead', 'examConditions', 'teacherWork']);
+const LOCAL_ONLY = new Set(['tab', 'inputMode', 'micCal', 'micTuning', 'timer', 'mockRun', 'readAhead', 'examConditions', 'teacherWork', 'seenVersion', 'installCoach']);
 const listeners = new Set();
 
 export function load(name, fallback) {

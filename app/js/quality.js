@@ -26,16 +26,24 @@ export function qualityOn(day, all = load(KEY, {})) {
   return all[day] ?? { clean: 0, bars: 0, cards: 0 };
 }
 
-/** Consecutive quality days ending today (or yesterday, if today isn't done yet). */
+// Fair and kind: one rest day in any seven doesn't break the streak (it just doesn't
+// add to it). Two missed days in a row, or two rest days within a week, do.
+const REST_EVERY = 7;
+
+/** Quality days in the current streak, ending today (or yesterday, if today isn't done yet). */
 export function qualityStreak(all = load(KEY, {}), now = new Date()) {
   const d = new Date(now);
   if (!isQualityDay(all[dayKey(d)])) d.setDate(d.getDate() - 1);
   let n = 0;
-  while (isQualityDay(all[dayKey(d)])) {
-    n++;
-    d.setDate(d.getDate() - 1);
+  let lastRest = -Infinity; // days back from the start of the walk
+  for (let back = 0; ; back++, d.setDate(d.getDate() - 1)) {
+    if (isQualityDay(all[dayKey(d)])) { n++; continue; }
+    const prev = new Date(d);
+    prev.setDate(prev.getDate() - 1);
+    // A rest day needs a quality day either side and no other rest within a week.
+    if (n > 0 && isQualityDay(all[dayKey(prev)]) && back - lastRest >= REST_EVERY) { lastRest = back; continue; }
+    return n;
   }
-  return n;
 }
 
 export function qualityWeek(all = load(KEY, {}), now = new Date()) {

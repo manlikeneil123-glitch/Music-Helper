@@ -81,6 +81,8 @@ export const onTakeDone = (fn) => takeListeners.add(fn);
 /** fn(take) → Promise, or null when there's no teacher to send to. */
 export const setSendTake = (fn) => (sendHook = fn);
 let shareHook = null;
+let kitHook = null;
+export const setOpenKit = (fn) => (kitHook = fn);
 export const setShareSection = (fn) => (shareHook = fn);
 const tellTake = (info) => takeListeners.forEach((fn) => fn(info));
 
@@ -953,6 +955,7 @@ export function mountCheck(el) {
       <label class="field inline">Recorded at <input id="lab-bpm" type="number" min="30" max="240" step="1" inputmode="numeric"> bpm</label>
       <input id="lab-file" type="file" accept="audio/*">
       <button class="btn block" id="lab-download" type="button" hidden>Save last mic take (.wav)</button>
+      <button class="btn block" id="lab-kit" type="button">Recording kit: tune checking to real pianos</button>
     </details>
     <section class="card roadmap">
       <h3>Coming next</h3>
@@ -1023,6 +1026,7 @@ export function mountCheck(el) {
   });
   $('#lab-file').addEventListener('change', (e) => e.target.files[0] && analyseFile(e.target.files[0]));
   $('#lab-download').addEventListener('click', downloadTake);
+  $('#lab-kit').addEventListener('click', () => kitHook?.());
   let resizeTimer;
   addEventListener('resize', () => {
     clearTimeout(resizeTimer);

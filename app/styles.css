@@ -716,3 +716,12 @@ input[type='date'] { font: inherit; color: var(--ink); background: var(--raised)
 .pg-guide .keys { bottom: 6%; width: 84%; height: 44%; }
 .pg-timer { position: absolute; top: 10px; right: 12px; padding: 4px 10px; border-radius: 99px; background: rgba(220, 40, 40, 0.85); color: #fff; font-weight: 700; font-variant-numeric: tabular-nums; }
 .pg-criteria { list-style: none; padding: 0; margin: 6px 0; display: grid; gap: 6px; }
+
+/* Recording kit */
+.kit-dialog { width: min(640px, calc(100vw - 24px)); max-height: calc(100dvh - 24px); overflow: auto; padding: 16px; border: 1px solid var(--edge); color: var(--ink); background: var(--surface-strong); }
+.kit-dialog::backdrop { background: rgba(0, 0, 0, 0.7); }
+.kit-steps { padding-left: 22px; display: grid; gap: 12px; }
+.kit-steps li p { margin: 4px 0; }
+.kit-steps li.done > .row b::after { content: ' ✓'; color: var(--good); }
+.kit-score { margin-top: 8px; border-radius: 10px; overflow-x: auto; }
+.kit-sum { padding: 8px 10px; border-radius: 10px; background: var(--raised); }

@@ -14,7 +14,10 @@
 import { robustRegress } from './analysis.js';
 
 // Tuned on synthetic piano audio; to be re-tuned on real recordings.
-export const THRESHOLDS = { present: 0.3, absent: 0.12, wrongNeighbour: 0.45, wrongRatio: 2.5, minOddShare: 0.3, minFundShare: 0.12 };
+// minSustain: sound left 30 ms after an onset, relative to the attack (a knock or a
+// click dies at once; a piano note rings). minTonal: how far a pitch's harmonics must
+// stand above the spectrum around them (noise is flat; a note has sharp peaks).
+export const THRESHOLDS = { present: 0.3, absent: 0.12, wrongNeighbour: 0.45, wrongRatio: 2.5, minOddShare: 0.3, minFundShare: 0.12, minSustain: 0.08, minTonal: 4 };
 
 const HARMONIC_WEIGHTS = [1, 0.5, 0.6, 0.3, 0.4, 0.2, 0.3, 0.15]; // h = 1..8; odd harmonics count more (see pitchEvidence)
 
@@ -125,6 +128,32 @@ function harmonicPeaks(mag, sampleRate, N, midi, tuningCents) {
   return peaks;
 }
 
+// Peak-to-surroundings contrast at a pitch's strongest low harmonics. A struck string
+// gives a narrow peak far above the spectrum beside it; a knock, a cough or page
+// noise is broadband, so its "harmonics" barely stand out.
+function tonality(mag, sampleRate, N, midi, tuningCents, peaks) {
+  const f0 = midiFreq(midi, tuningCents);
+  const top = Math.max(...peaks);
+  const contrasts = [];
+  for (let h = 1; h <= Math.min(4, peaks.length); h++) {
+    if (peaks[h - 1] < 0.05 * top) continue;
+    const bin = (h * f0 * N) / sampleRate;
+    const width = Math.max(12, bin * 0.12);
+    const keepOut = Math.max(4, bin * 0.024);
+    const around = [];
+    for (let b = Math.floor(bin - width); b <= Math.ceil(bin + width); b++) if (b > 0 && b < mag.length && Math.abs(b - bin) > keepOut) around.push(mag[b]);
+    if (around.length < 6) continue;
+    around.sort((x, y) => x - y);
+    const floor = around[Math.floor(around.length / 2)] + 1e-12;
+    contrasts.push(peaks[h - 1] / floor);
+  }
+  if (!contrasts.length) return 0;
+  // The typical harmonic, not the best one: noise gets lucky at one harmonic, a real
+  // note stands out at all of its strong ones.
+  contrasts.sort((a, b) => a - b);
+  return contrasts[Math.floor((contrasts.length - 1) / 2)];
+}
+
 function pitchEvidence(mag, sampleRate, N, midi, tuningCents, peaks = harmonicPeaks(mag, sampleRate, N, midi, tuningCents)) {
   let odd = 0, even = 0, fund = 0;
   for (let h = 1; h <= peaks.length; h++) {
@@ -155,12 +184,14 @@ function onsetEvidence(samples, sampleRate, firstSec, lastSec, nextOnsetSec, can
   const rises = {};
   const oddShare = {};
   const fundShare = {};
+  const tonal = {};
   let maxStrength = 1e-9;
   for (const m of candidates) {
     // Compressed evidence: how strong this pitch is relative to the loudest one now.
     const pa = harmonicPeaks(after, sr, N, m, tuningCents);
     const pb = harmonicPeaks(before, sr, N, m, tuningCents).map((v) => v * scale);
     const a = pitchEvidence(after, sr, N, m, tuningCents, pa);
+    tonal[m] = tonality(after, sr, N, m, tuningCents, pa);
     strength[m] = a.total;
     oddShare[m] = a.oddShare;
     fundShare[m] = a.fundShare;
@@ -183,7 +214,12 @@ function onsetEvidence(samples, sampleRate, firstSec, lastSec, nextOnsetSec, can
   let energy = 0;
   const e0 = Math.round(firstSec * sr);
   for (let i = e0; i < Math.min(samples.length, e0 + Math.round(0.05 * sr)); i++) energy += samples[i] * samples[i];
-  return { presence, sounding, restruck, rises, oddShare, fundShare, level: maxStrength, rms: Math.sqrt(energy / Math.max(1, 0.05 * sr)) };
+  const rms = Math.sqrt(energy / Math.max(1, 0.05 * sr));
+  // How much is still sounding in the analysis window, relative to the attack.
+  let tail = 0;
+  for (let i = startA; i < Math.min(samples.length, startA + lenA); i++) tail += samples[i] * samples[i];
+  const sustain = Math.sqrt(tail / Math.max(1, lenA)) / (rms + 1e-12);
+  return { presence, sounding, restruck, rises, oddShare, fundShare, tonal, sustain, level: maxStrength, rms };
 }
 
 // 0 = only decaying, 1 = clearly (re)struck. Uses the strongest rise across harmonics.
@@ -260,6 +296,19 @@ export function analyseAudio({ samples, sampleRate, expected, msPerBeat, beat0Se
   // only a knock or a breath. Onsets with little new pitched energy carry no evidence.
   const maxLevel = Math.max(1e-9, ...ev.map((e) => e.level));
   for (const e of [...ev, ...ev2]) if (e && e.level < 0.12 * maxLevel) for (const m of candidates) e.presence[m] = e.sounding[m] = 0;
+  // Nothing rings on after it (a knock, a click, a tap on the stand): not a note.
+  for (const e of [...ev, ...ev2]) if (e && e.sustain < (T.minSustain ?? 0)) for (const m of candidates) e.presence[m] = e.sounding[m] = 0;
+  // A pitch whose harmonics don't stand out from the noise around them isn't sounding,
+  // however loud the onset was. Fades in between half and the full required contrast.
+  const tonalGate = (x) => Math.max(0, Math.min(1, (x - (T.minTonal ?? 0) / 2) / Math.max(1e-9, (T.minTonal ?? 0) / 2)));
+  for (const e of [...ev, ...ev2]) {
+    if (!e || !T.minTonal) continue;
+    for (const m of candidates) {
+      const g = tonalGate(e.tonal[m]);
+      e.presence[m] *= g;
+      e.sounding[m] *= g;
+    }
+  }
   const maxRms = Math.max(1e-9, ...ev.map((e) => e.rms));
 
   // ---- 2. Align onsets to chords. Pass 1 against the target tempo; pass 2 against

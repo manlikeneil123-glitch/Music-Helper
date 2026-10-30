@@ -36,6 +36,16 @@ Username + password (no email), student and teacher roles, studio join codes. Of
 a Supabase project is connected: follow [`supabase/README.md`](supabase/README.md), then
 fill in [`app/js/config.js`](app/js/config.js).
 
+## Tuning the microphone on real pianos
+
+1. On your phone: Perform → Microphone → **Calibrate**, then Perform → *Test lab* →
+   **Recording kit**. Record the 12 takes (about 10 minutes; some ask for deliberate
+   mistakes) and press **Download the kit**.
+2. Score it, and search for better thresholds:
+   `node tools/evaluate-kit.mjs mic-kit-YYYY-MM-DD.zip --tune`
+3. Change `THRESHOLDS` in `app/js/micanalysis.js` only when several kits (different
+   pianos, phones, rooms) agree. One piano can mislead.
+
 ## Tests
 
 `node tests/<name>.test.mjs` for the analysis, MusicXML, mic, tuning and sync tests;

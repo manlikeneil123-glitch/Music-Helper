@@ -4,39 +4,10 @@ import { PIECES as BUILT_IN, timeline } from '../app/js/pieces.js';
 const PIECES = [...BUILT_IN];
 import { midiName } from '../app/js/music.js';
 
-const SR = 44100;
-let seed = 7; const rand = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
-const gauss = () => { let s = 0; for (let i = 0; i < 6; i++) s += rand(); return (s - 3) / 1.2; };
+import { SR, setSeed, rand, gauss, synth } from './helpers/synth.mjs';
 
 // Synthetic-audio regression tests for microphone checking: node tests/mic-synthetic.test.mjs
 // Synthetic audio is cleaner than a real piano, so passing here is necessary, not sufficient.
-
-// Crude piano: inharmonic partials, per-partial decay, hammer noise, damper on release.
-function synth(notes, durSec, { cents = 0, noise = 0.002, pedal = false, offsetSec = 0.5 } = {}) {
-  const out = new Float32Array(Math.ceil((durSec + offsetSec + 2) * SR));
-  for (const n of notes) {
-    const f0 = 440 * 2 ** ((n.midi - 69 + (cents + gauss() * 3) / 100) / 12);
-    const start = Math.round((n.on + offsetSec) * SR);
-    const end = pedal ? out.length : Math.round((n.off + offsetSec) * SR);
-    const B = 3e-4, vel = n.vel ?? 0.7;
-    for (let h = 1; h <= 12; h++) {
-      const f = h * f0 * Math.sqrt(1 + B * h * h);
-      if (f > SR / 2.2) break;
-      const amp = vel * (1 / h) * (h % 2 ? 1 : 0.75) * (0.6 + 0.4 * rand());
-      const decay = 0.6 + 0.5 * h, ph = rand() * 6.28;
-      for (let i = start; i < out.length; i++) {
-        const t = (i - start) / SR;
-        let env = Math.exp(-decay * t) * Math.min(1, t / 0.003);
-        if (i > end) env *= Math.exp(-((i - end) / SR) / 0.06);
-        if (t > 0.01 && env < 1e-4) break;
-        out[i] += 0.15 * amp * env * Math.sin(6.2832 * f * t + ph);
-      }
-    }
-    for (let i = start; i < start + 0.01 * SR && i < out.length; i++) out[i] += 0.05 * vel * gauss() * Math.exp(-(i - start) / (0.003 * SR));
-  }
-  for (let i = 0; i < out.length; i++) out[i] += noise * gauss();
-  return out;
-}
 
 // jitterMs: timing error of each note/chord. spreadMs: how far apart the notes of
 // one chord land (players never hit them all at exactly the same instant).
@@ -56,7 +27,7 @@ function perform(piece, bpm, { tweak = (n) => n, jitterMs = 20, spreadMs = 8, ..
 let failures = 0;
 let lastMic = null;
 function run(name, pieceId, bpm, opts = {}, analyseOpts = {}, expect = []) {
-  seed = Number(process.env.SEED || 7); // each case is independent and repeatable
+  setSeed(Number(process.env.SEED || 7)); // each case is independent and repeatable
   const piece = PIECES.find((p) => p.id === pieceId);
   const { samples, mpb, tl, offset } = perform(piece, bpm, opts);
   const beat0 = analyseOpts.useFirstOnset ? firstOnsetSec(samples, SR) : offset;
@@ -117,7 +88,7 @@ PIECES.push(
 );
 // Flagged = the analyser reports *something* wrong at that note (wrong or missed).
 function flags(name, pieceId, bpm, opts, where) {
-  seed = Number(process.env.SEED || 7);
+  setSeed(Number(process.env.SEED || 7));
   const piece = PIECES.find((p) => p.id === pieceId);
   const { samples, mpb, tl, offset } = perform(piece, bpm, opts);
   const mic = analyseAudio({ samples, sampleRate: SR, expected: tl, msPerBeat: mpb, beat0Sec: offset });
@@ -149,6 +120,40 @@ const tuneOk = tune != null && Math.abs(tune + 27) <= 6; // synth detunes each n
 if (!latOk || !tuneOk) failures++;
 console.log(`${latOk ? 'PASS' : 'FAIL'}  latency: measured ${Math.round(lat)} ms (true 180)`);
 console.log(`${tuneOk ? 'PASS' : 'FAIL'}  tuning: measured ${tune?.toFixed(1)} cents (true -27)`);
+
+// Not notes: clicks or noise bursts in time with the beat must not pass as the piece
+// (a tap on the music stand, a cough). Real staccato notes still must.
+{
+  setSeed(5);
+  const piece = PIECES.find((p) => p.id === 'c-scale');
+  const tl = timeline(piece);
+  const mpb = 1000;
+  const judge = (samples) => {
+    const mic = analyseAudio({ samples, sampleRate: SR, expected: tl, msPerBeat: mpb, beat0Sec: 0.5 });
+    return analyse({ expected: tl, played: mic.played, unclear: mic.unclear, spread: mic.spread, msPerBeat: mpb, beatsPerBar: 4, source: 'mic' });
+  };
+  const len = Math.ceil((tl.length + 3) * SR);
+  const clicks = new Float32Array(len);
+  const bursts = new Float32Array(len);
+  for (const n of tl) {
+    const at = Math.round((0.5 + (n.beat * mpb) / 1000) * SR);
+    for (let i = 0; i < 0.0015 * SR; i++) clicks[at + i] = 0.9;
+    for (let i = 0; i < 0.15 * SR; i++) bursts[at + i] = 0.5 * gauss() * Math.exp(-i / (0.06 * SR));
+  }
+  const c = judge(clicks);
+  const okClicks = c.counts.correct === 0;
+  if (!okClicks) failures++;
+  console.log(`${okClicks ? 'PASS' : 'FAIL'}  clicks in time are not notes (${c.counts.correct} accepted)`);
+  const b = judge(bursts);
+  const okBursts = b.counts.correct <= 1;
+  if (!okBursts) failures++;
+  console.log(`${okBursts ? 'PASS' : 'FAIL'}  noise bursts in time are not notes (${b.counts.correct} accepted)`);
+  const notes = tl.map((n) => ({ midi: n.midi, on: (n.beat * mpb) / 1000, off: (n.beat * mpb) / 1000 + 0.07, vel: 0.7 }));
+  const st = judge(synth(notes, tl.length, {}));
+  const okStacc = st.counts.correct + st.counts.early + st.counts.late >= tl.length - 1;
+  if (!okStacc) failures++;
+  console.log(`${okStacc ? 'PASS' : 'FAIL'}  very short staccato notes still count (${st.counts.correct + st.counts.early + st.counts.late}/${tl.length})`);
+}
 
 console.log(failures ? `\n${failures} failing` : '\nAll passing');
 process.exit(failures ? 1 : 0);

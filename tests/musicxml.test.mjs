@@ -107,6 +107,66 @@ const r = (dur) => `<note><rest/><duration>${dur}</duration></note>`;
   check('non-MusicXML gives a clear error', /doesn't look like a MusicXML/.test(msg), msg);
 }
 
+// D.C. / D.S. jumps. One whole note per bar so the order reads off the pitches.
+{
+  const W = (step) => n(step, 4, 8);
+  const order = (sc) => timeline(sc).map((x) => 'CDEFGAB'[[0, 2, 4, 5, 7, 9, 11].indexOf(x.midi % 12)]).join('');
+  const fine = '<direction><direction-type><words>Fine</words></direction-type><sound fine="yes"/></direction>';
+  const dcAlFine = '<direction><direction-type><words>D.C. al Fine</words></direction-type><sound dacapo="yes"/></direction>';
+  const a = parseMusicXML(wrap([W('C'), W('D') + fine, W('E'), W('F') + dcAlFine]));
+  check('D.C. al Fine: back to the start, stop at Fine', order(a) === 'CDEFCD', order(a));
+  check('D.C. no longer warns', !a.warnings.some((w) => /D\.C\./.test(w)), a.warnings.join(' '));
+
+  const segno = '<direction><direction-type><segno/></direction-type><sound segno="s1"/></direction>';
+  const toCoda = '<direction><direction-type><words>To Coda</words></direction-type><sound tocoda="c1"/></direction>';
+  const ds = '<direction><direction-type><words>D.S. al Coda</words></direction-type><sound dalsegno="s1"/></direction>';
+  const coda = '<direction><direction-type><coda/></direction-type><sound coda="c1"/></direction>';
+  const b = parseMusicXML(wrap([W('C'), segno + W('D'), W('E') + toCoda, W('F') + ds, coda + W('G')]));
+  check('D.S. al Coda: back to the segno, jump at To Coda', order(b) === 'CDEFDEG', order(b));
+
+  // Words only (no <sound>), as some programs export.
+  const c = parseMusicXML(wrap([W('C'), W('D') + '<direction><direction-type><words>Fine</words></direction-type></direction>', W('E') + '<direction><direction-type><words>D.C. al Fine</words></direction-type></direction>']));
+  check('D.C. al Fine from printed words alone', order(c) === 'CDECD', order(c));
+
+  // Repeats are taken the first time, not after the jump; only the last ending after a jump.
+  const fwd = '<barline location="left"><repeat direction="forward"/></barline>';
+  const back = '<barline location="right"><repeat direction="backward"/></barline>';
+  const end1 = '<barline location="left"><ending number="1" type="start"/></barline>';
+  const end1stop = '<barline location="right"><ending number="1" type="stop"/><repeat direction="backward"/></barline>';
+  const end2 = '<barline location="left"><ending number="2" type="start"/></barline>';
+  const end2stop = '<barline location="right"><ending number="2" type="discontinue"/></barline>';
+  const d = parseMusicXML(wrap([fwd + W('C'), end1 + W('D') + end1stop, end2 + W('E') + fine + end2stop, W('F') + dcAlFine]));
+  check('repeat with endings, then D.C.: last ending only after the jump', order(d) === 'CDCEFCE', order(d));
+
+  const e = parseMusicXML(wrap([fwd + W('C'), W('D') + back, W('E') + dcAlFine.replace('al Fine', '')]));
+  check('a D.C. with no Fine plays to the jump and warns', order(e) === 'CDCDECDE' && e.warnings.some((w) => /no Fine or Coda/.test(w)), `${order(e)} ${e.warnings}`);
+}
+
+// Time signature changes with the same beat unit are followed; bar numbers stay right.
+{
+  const t34 = '<attributes><time><beats>3</beats><beat-type>4</beat-type></time></attributes>';
+  const t44 = '<attributes><time><beats>4</beats><beat-type>4</beat-type></time></attributes>';
+  const s = parseMusicXML(wrap([n('C', 4, 8), t34 + n('D', 4, 6), n('E', 4, 6), t44 + n('F', 4, 8)]));
+  const tl = timeline(s);
+  check('metre changes are recorded', s.meters?.length === 3 && s.meters[1].beat === 4 && s.meters[1].beatsPerBar === 3, JSON.stringify(s.meters));
+  check('notes after a 3/4 bar land in the right bars', tl.map((x) => x.bar).join() === '1,2,3,4', tl.map((x) => `${x.bar}@${x.beat}`).join());
+  check('beat-in-bar restarts after the change', tl[3].beatInBar === 1 && tl[3].beat === 10, JSON.stringify(tl[3]));
+  check('total length follows the bars', totalBeats(s) === 14, totalBeats(s));
+  check('no time-signature warning for a same-unit change', !s.warnings.some((w) => /time signature|beat changes/i.test(w)), s.warnings.join(' '));
+  const ex = excerpt(s, 2, 3);
+  check('an excerpt of the 3/4 bars is in 3/4', ex.beatsPerBar === 3 && timeline(ex).map((x) => x.bar).join() === '2,3', `${ex.beatsPerBar} ${timeline(ex).map((x) => x.bar)}`);
+  const u = parseMusicXML(wrap([n('C', 4, 8), '<attributes><time><beats>6</beats><beat-type>8</beat-type></time></attributes>' + n('D', 4, 6)]));
+  check('a change of beat unit still warns', u.warnings.some((w) => /beat changes/.test(w)), u.warnings.join(' '));
+}
+
+// Hairpins
+{
+  const s = parseMusicXML(wrap([
+    '<direction><direction-type><wedge type="crescendo"/></direction-type></direction>' + n('C', 4, 2) + n('D', 4, 2) + n('E', 4, 2) + '<direction><direction-type><wedge type="stop"/></direction-type></direction>' + n('F', 4, 2),
+  ]));
+  check('crescendo hairpin is read with its span', s.hairpins.length === 1 && s.hairpins[0].type === 'cresc' && s.hairpins[0].start === 0 && s.hairpins[0].end === 3, JSON.stringify(s.hairpins));
+}
+
 console.log(failures ? `\n${failures} failing` : '\nAll passing');
 process.exit(failures ? 1 : 0);
 

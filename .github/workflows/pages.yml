@@ -33,6 +33,7 @@ jobs:
       - run: node tests/plan.test.mjs
       - run: node tests/exam.test.mjs
       - run: node tests/teach.test.mjs
+      - run: node tests/dynamics.test.mjs
       # Account security rules on a throwaway Postgres (preinstalled on GitHub's Ubuntu runners).
       - run: sh tests/db/run.sh
 

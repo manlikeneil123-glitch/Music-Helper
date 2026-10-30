@@ -2,7 +2,7 @@
 // we verify against the score instead of blind transcription — far more robust.
 // Pure functions, no DOM: same code can later run on a server or in tests.
 import { midiName } from './music.js';
-import { DYNAMIC_LEVELS } from './score.js';
+import { DYNAMIC_LEVELS, barMap } from './score.js';
 
 // How strict the checker is (set per student). Exam judges against one steady tempo;
 // the others follow the player's own tempo bar by bar, so expressive rubato isn't
@@ -188,7 +188,9 @@ function analyseTake({
     const b = regress(anchors.slice(half));
     if (a.b > 0 && b.b > 0) drift = 60000 / b.b - 60000 / a.b; // + = sped up
   }
-  const barOf = (beat) => Math.floor(beat / beatsPerBar + 1e-9) + 1 + (score?.barOffset ?? 0);
+  const bars = score ? barMap(score) : null;
+  const barOf = (beat) => (bars ? bars.indexAt(beat) : Math.floor(beat / beatsPerBar + 1e-9)) + 1 + (score?.barOffset ?? 0);
+  const beatInBarOf = (beat) => (bars ? beat - bars.starts[bars.indexAt(beat)] : beat % beatsPerBar) + 1;
   const tempoChanges = curve ? findTempoChanges(curve, anchors, beatsPerBar, barOf) : [];
   // Rushing isn't rubato: a run that runs away from its own tempo can't score as "ready".
   const rushed = tempoChanges.some((c) => c.kind === 'faster' && c.extreme / c.median >= 1.15);
@@ -212,7 +214,7 @@ function analyseTake({
 
   const musicality = source === 'midi'
     ? checkMusicality({ notes, score, pedalEvents, predict, beatLen, barOf })
-    : [];
+    : source === 'mic' && !dense ? micDynamics(notes, score) : [];
 
   const continuity = fit ? continuityOf(notes, extras, playedMsPerBeat, beatsPerBar, stoppedAt) : null;
   // Pulse evenness is note-to-note against the tempo the player was following (their
@@ -225,7 +227,7 @@ function analyseTake({
     score: scoreValue, notes, extras, pitchAccuracy, rhythmAccuracy, playedBpm, targetBpm, tempoRatio,
     steadinessMs, drift, worstBar, dynamics, tempoChanges, musicality, strictness, expressive: S.expressive,
     stoppedAtBar: stoppedAt?.bar ?? null, dense: dense && source === 'mic', source,
-    spread: spread.map((x) => ({ ...x, bar: barOf(x.beat), beatInBar: (x.beat % beatsPerBar) + 1 })),
+    spread: spread.map((x) => ({ ...x, bar: barOf(x.beat), beatInBar: beatInBarOf(x.beat) })),
     counts: { correct: count('correct'), wrong: count('wrong'), missed: count('missed'), early: count('early'), late: count('late'), extra: extras.length, unclear: count('unclear'), optional: count('optional') },
     cutShort: notes.filter((n) => n.cutShort).length,
   };
@@ -395,6 +397,59 @@ function findTempoChanges(local, anchors, beatsPerBar, barOf) {
 }
 
 // ---- Musicality (MIDI only: exact velocities, note-offs and pedal) -----------------
+// ---- Dynamics from the microphone ------------------------------------------------------
+// The mic gives each onset a loudness (the energy just after it). That depends on the
+// room, the piano and where the phone sits, so only *changes* within one take are
+// compared, in decibels, and chords are corrected for having more notes. Wording stays
+// cautious: "I couldn't hear", not "you didn't".
+const MIC_DB_PER_LEVEL = 2; // the least change per dynamic step we expect to hear
+export function micDynamics(notes, score = null) {
+  const events = new Map();
+  for (const n of notes) {
+    if (n.on == null || n.velocity == null || n.velocity <= 0 || n.status === 'wrong' || n.grace) continue;
+    const e = events.get(n.event) ?? { beat: n.beat, bar: n.bar, dyn: n.dyn, count: 0, v: n.velocity };
+    e.count++;
+    events.set(n.event, e);
+  }
+  const heard = [...events.values()].sort((a, b) => a.beat - b.beat).map((e) => ({ ...e, db: 20 * Math.log10(e.v) - 10 * Math.log10(e.count) }));
+  const out = [];
+  const mean = (a) => a.reduce((x, y) => x + y, 0) / a.length;
+  const segments = [];
+  for (const e of heard) {
+    if (!e.dyn) continue;
+    const last = segments[segments.length - 1];
+    if (last && last.mark === e.dyn) last.db.push(e.db);
+    else segments.push({ mark: e.dyn, bar: e.bar, db: [e.db] });
+  }
+  for (let i = 1; i < segments.length; i++) {
+    const a = segments[i - 1];
+    const b = segments[i];
+    const d = (DYNAMIC_LEVELS[b.mark] ?? 5) - (DYNAMIC_LEVELS[a.mark] ?? 5);
+    if (!d || a.db.length < 2 || b.db.length < 2) continue;
+    const change = mean(b.db) - mean(a.db);
+    const need = MIC_DB_PER_LEVEL * Math.min(2, Math.abs(d));
+    if (d > 0 && change < need) out.push({ kind: 'warn', area: 'dynamics', bar: b.bar, text: `Bar ${b.bar} is marked ${b.mark}, but I couldn't hear it get louder than the ${a.mark} before it. Make the change bigger than feels natural: the microphone hears less contrast than you do.` });
+    if (d < 0 && -change < need) out.push({ kind: 'warn', area: 'dynamics', bar: b.bar, text: `Bar ${b.bar} is marked ${b.mark}, but I couldn't hear it get softer than the ${a.mark} before it.` });
+    if ((d > 0 && change >= need) || (d < 0 && -change >= need)) out.push({ kind: 'good', area: 'dynamics', bar: b.bar, text: `The ${b.mark} at bar ${b.bar} came through clearly (${change > 0 ? '+' : ''}${Math.round(change)} dB).` });
+  }
+  // Hairpins: the loudness should move the right way across them.
+  for (const h of score?.hairpins ?? []) {
+    const inside = heard.filter((e) => e.beat >= h.start - 1e-6 && e.beat <= h.end + 1e-6);
+    if (inside.length < 3) continue;
+    const half = Math.floor(inside.length / 2);
+    const change = mean(inside.slice(-half).map((e) => e.db)) - mean(inside.slice(0, half).map((e) => e.db));
+    const bar = inside[0].bar;
+    if (h.type === 'cresc' && change < 1.5) out.push({ kind: 'warn', area: 'dynamics', bar, text: `I couldn't hear the crescendo from bar ${bar}. Start it softer so there's room to grow.` });
+    if (h.type === 'dim' && change > -1.5) out.push({ kind: 'warn', area: 'dynamics', bar, text: `I couldn't hear the diminuendo from bar ${bar}. Let the sound fall away to the end of it.` });
+  }
+  // No markings at all: say only if it was completely flat.
+  if (!segments.length && !(score?.hairpins ?? []).length && heard.length > 10) {
+    const dbs = heard.map((e) => e.db);
+    if (Math.max(...dbs) - Math.min(...dbs) < 3) out.push({ kind: 'warn', area: 'dynamics', text: 'It all sounded about the same volume. Shape the phrases: louder towards the high points, softer at the ends.' });
+  }
+  return out;
+}
+
 function checkMusicality({ notes, score, pedalEvents, predict, beatLen, barOf }) {
   const out = [];
   const playedNotes = notes.filter((n) => n.on != null && n.status !== 'wrong');

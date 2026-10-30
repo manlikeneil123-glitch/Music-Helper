@@ -5,7 +5,7 @@
 // Bar drills loop the weakest bar until it's clean 3 times in a row; the tempo is
 // locked at the speed you've earned so mistakes don't get practised in at speed.
 import { PIECES } from './pieces.js';
-import { normalize, timeline, totalBeats, excerpt, density } from './score.js';
+import { normalize, timeline, totalBeats, excerpt, density, barMap, barCount as barsIn } from './score.js';
 import { renderScore } from './render.js';
 import { readScoreFile, parseMusicXML } from './musicxml.js';
 import { analyse, STRICTNESS } from './analysis.js';
@@ -205,7 +205,8 @@ function animateCursor(t0, msPerBeat, done, cancelled = () => false) {
     const beat = (now - t0) / msPerBeat;
     // Read-ahead: the bar you're in disappears, so your eyes have to be on the next one.
     if (readAhead && rec && beat >= 0) {
-      const barEnd = (Math.floor(beat / piece.beatsPerBar) + 1) * piece.beatsPerBar;
+      const map = barMap(piece);
+      const barEnd = map.starts[Math.min(map.count, map.indexAt(beat) + 1)];
       if (barEnd !== hiddenTo) scoreView?.hideThrough((hiddenTo = barEnd));
     }
     // Visual metronome: the mic should hear only the piano, so the beat is shown, not clicked.
@@ -215,7 +216,7 @@ function animateCursor(t0, msPerBeat, done, cancelled = () => false) {
       pulse.classList.remove('on', 'accent');
       void pulse.offsetWidth;
       pulse.classList.add('on');
-      if (((whole % piece.beatsPerBar) + piece.beatsPerBar) % piece.beatsPerBar === 0) pulse.classList.add('accent');
+      if (whole >= 0 && barMap(piece).starts.includes(whole)) pulse.classList.add('accent');
     }
     // Snap the cursor to the current note, like a page-turner following along.
     const idx = beat < 0 ? -1 : tl.findLastIndex((n) => n.beat <= beat);
@@ -250,7 +251,8 @@ async function start() {
   const metronome = $('#check-metro').checked && !examMode;
   const beats = totalBeats(piece);
   for (let b = 0; b < COUNT_IN; b++) click(begin + b * spb, b === 0);
-  if (metronome) for (let b = 0; b < beats; b++) click(begin + (COUNT_IN + b) * spb, b % piece.beatsPerBar === 0);
+  const downbeats = new Set(barMap(piece).starts);
+  if (metronome) for (let b = 0; b < beats; b++) click(begin + (COUNT_IN + b) * spb, downbeats.has(b));
 
   const beat0Ctx = begin + COUNT_IN * spb;
   const t0 = ctxToPerf(beat0Ctx);
@@ -529,7 +531,7 @@ function renderDrillBanner(note = '') {
 }
 
 // ---- Trouble bars: where this week's mistakes cluster ----------------------------------
-const barCount = (p) => Math.max(1, Math.round(totalBeats(p) / p.beatsPerBar));
+const barCount = (p) => Math.max(1, barsIn(p));
 
 /** Errors per run for each bar of a piece over the last 7 days (runs that recorded bars). */
 export function troubleBars(pieceId, days = 7) {
@@ -746,7 +748,7 @@ async function importFile(file) {
     save('imports', imported);
     fillPieceSelect();
     selectPiece(score.id);
-    setStatus(`Imported “${score.title}”: ${timeline(score).length} notes, ${Math.round(totalBeats(score) / score.beatsPerBar)} bars.`, 'good');
+    setStatus(`Imported “${score.title}”: ${timeline(score).length} notes, ${barsIn(score)} bars.`, 'good');
   } catch (e) {
     setStatus(`Couldn't import that file. ${e.message}`, 'bad');
   }

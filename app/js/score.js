@@ -55,6 +55,7 @@ export function normalize(piece) {
     beatsPerBar: piece.beatsPerBar ?? 4, beatUnit: piece.beatUnit ?? 4, keyFifths: piece.keyFifths ?? 0,
     staves: piece.staves ?? 1, clefs: piece.clefs ?? [piece.clef ?? 'treble', 'bass'],
     notes: [], rests: piece.rests ?? [], dynamics: piece.dynamics ?? [], pedal: piece.pedal ?? [],
+    hairpins: piece.hairpins ?? [], meters: piece.meters ?? null, clefChanges: piece.clefChanges ?? [], slurs: piece.slurs ?? [],
     source: piece.source ?? 'built-in', _normalized: true,
   };
   if (piece.notes.length && legacyNote(piece.notes[0])) {
@@ -75,13 +76,49 @@ export function normalize(piece) {
   return score;
 }
 
-export function totalBeats(piece) {
+// Where each bar starts, in beats. Uniform unless the score changes metre:
+// meters = [{ beat, beatsPerBar }] (same beat unit throughout).
+const barMaps = new WeakMap();
+export function barMap(piece) {
   const s = normalize(piece);
+  if (barMaps.has(s)) return barMaps.get(s);
   const end = Math.max(0, ...s.notes.map((n) => n.beat + n.beats), ...s.rests.map((r) => r.beat + r.beats));
-  return Math.ceil(end / s.beatsPerBar - 1e-9) * s.beatsPerBar || end;
+  const changes = (s.meters ?? []).filter((m) => m.beatsPerBar > 0).sort((a, b) => a.beat - b.beat);
+  const starts = [0];
+  let bpb = s.beatsPerBar;
+  let beat = 0;
+  let ci = 0;
+  do {
+    while (ci < changes.length && changes[ci].beat <= beat + 1e-6) bpb = changes[ci++].beatsPerBar;
+    beat += bpb;
+    starts.push(beat);
+  } while (beat < end - 1e-6 && starts.length < 5000);
+  const count = starts.length - 1;
+  const map = {
+    starts,
+    count,
+    /** 0-based bar index containing `beat`. */
+    indexAt(b) {
+      let lo = 0;
+      let hi = count - 1;
+      while (lo < hi) {
+        const mid = (lo + hi + 1) >> 1;
+        if (starts[mid] <= b + 1e-9) lo = mid;
+        else hi = mid - 1;
+      }
+      return lo;
+    },
+    lengthOf: (i) => starts[i + 1] - starts[i],
+    uniform: !changes.some((m) => m.beatsPerBar !== s.beatsPerBar),
+  };
+  barMaps.set(s, map);
+  return map;
 }
 
-export const barCount = (piece) => Math.round(totalBeats(piece) / normalize(piece).beatsPerBar);
+export const totalBeats = (piece) => barMap(piece).starts[barMap(piece).count];
+export const barCount = (piece) => barMap(piece).count;
+/** Bar number as printed (barOffset applied) for a beat. */
+export const barNumberAt = (piece, beat) => barMap(piece).indexAt(beat) + 1 + (normalize(piece).barOffset ?? 0);
 
 /**
  * Notes in playing order, one per pitch, grouped into "events" (everything that
@@ -91,6 +128,7 @@ export const barCount = (piece) => Math.round(totalBeats(piece) / normalize(piec
 export function timeline(piece) {
   const s = normalize(piece);
   const dyn = [...s.dynamics].sort((a, b) => a.beat - b.beat);
+  const bars = barMap(s);
   const notes = s.notes
     .filter((n) => !n.tieStop)
     .map((n) => ({ ...n }))
@@ -103,10 +141,11 @@ export function timeline(piece) {
       lastBeat = n.beat;
     }
     const mark = dyn.filter((d) => d.beat <= n.beat + 1e-6).pop()?.mark ?? null;
+    const idx = bars.indexAt(n.beat);
     return {
       ...n, i, event,
-      bar: Math.floor(n.beat / s.beatsPerBar + 1e-9) + 1 + (s.barOffset ?? 0),
-      beatInBar: +((n.beat % s.beatsPerBar) + 1).toFixed(3),
+      bar: idx + 1 + (s.barOffset ?? 0),
+      beatInBar: +(n.beat - bars.starts[idx] + 1).toFixed(3),
       dyn: mark,
     };
   });
@@ -116,8 +155,14 @@ export function timeline(piece) {
 export function excerpt(piece, fromBar, toBar) {
   const s = normalize(piece);
   const off = s.barOffset ?? 0;
-  const b0 = (fromBar - 1 - off) * s.beatsPerBar;
-  const b1 = (toBar - off) * s.beatsPerBar;
+  const map = barMap(s);
+  const clampBar = (b) => Math.max(0, Math.min(map.count, b));
+  const b0 = map.starts[clampBar(fromBar - 1 - off)];
+  const b1 = map.starts[clampBar(toBar - off)];
+  const meters = map.uniform ? null : [
+    { beat: 0, beatsPerBar: map.lengthOf(map.indexAt(b0)) },
+    ...(s.meters ?? []).filter((m) => m.beat > b0 + 1e-6 && m.beat < b1 - 1e-6).map((m) => ({ ...m, beat: m.beat - b0 })),
+  ];
   const inRange = (x) => x.beat >= b0 - 1e-6 && x.beat < b1 - 1e-6;
   const shift = (x) => ({ ...x, beat: x.beat - b0 });
   const lastDyn = s.dynamics.filter((d) => d.beat <= b0 + 1e-6).pop();
@@ -129,6 +174,13 @@ export function excerpt(piece, fromBar, toBar) {
     rests: s.rests.filter(inRange).map(shift),
     dynamics: [...(lastDyn ? [{ ...lastDyn, beat: 0 }] : []), ...s.dynamics.filter((d) => d.beat > b0 + 1e-6 && d.beat < b1).map(shift)],
     pedal: s.pedal.filter((p) => p.end > b0 && p.start < b1).map((p) => ({ start: Math.max(0, p.start - b0), end: Math.min(b1 - b0, p.end - b0) })),
+    hairpins: (s.hairpins ?? []).filter((h) => h.end > b0 && h.start < b1).map((h) => ({ ...h, start: Math.max(0, h.start - b0), end: Math.min(b1 - b0, h.end - b0) })),
+    slurs: (s.slurs ?? []).filter((h) => h.end > b0 && h.start < b1).map((h) => ({ ...h, start: Math.max(0, h.start - b0), end: Math.min(b1 - b0, h.end - b0) })),
+    // Start in whichever clef is in force at the first bar of the excerpt.
+    clefs: s.clefs.map((c, i) => (s.clefChanges ?? []).filter((x) => x.staff === i + 1 && x.beat <= b0 + 1e-6).sort((a, b) => a.beat - b.beat).pop()?.clef ?? c),
+    clefChanges: (s.clefChanges ?? []).filter((c) => c.beat > b0 + 1e-6 && c.beat < b1).map((c) => ({ ...c, beat: c.beat - b0 })),
+    meters,
+    beatsPerBar: meters ? meters[0].beatsPerBar : s.beatsPerBar,
     barOffset: fromBar - 1,
     targetBpm: s.targetBpm,
     _normalized: true,

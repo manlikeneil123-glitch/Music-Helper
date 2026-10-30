@@ -111,7 +111,7 @@ export function parseMusicXML(text, { id = 'imported' } = {}) {
   const score = {
     id, title: composer ? `${composer}: ${title}` : title, level: 'Imported', targetBpm: null,
     beatsPerBar: 4, beatUnit: 4, keyFifths: 0, staves: 1, clefs: ['treble', 'bass'],
-    notes: [], rests: [], dynamics: [], pedal: [], barOffset: 0, source: 'musicxml', _normalized: true,
+    notes: [], rests: [], dynamics: [], pedal: [], hairpins: [], meters: null, clefChanges: [], slurs: [], barOffset: 0, source: 'musicxml', _normalized: true,
   };
 
   // Measures are unfolded (repeats, endings) using the first part's barlines.
@@ -126,6 +126,8 @@ export function parseMusicXML(text, { id = 'imported' } = {}) {
     let quarterPos = 0; // running position (quarters) in the unfolded performance
     const openTies = new Map();
     const openPedal = { at: null };
+    const openWedges = new Map();
+    const ottava = {}; // staff → display shift in octaves under 8va (-1) / 8vb (+1)
     let firstMeasure = true;
 
     for (const mi of measureOrder) {
@@ -152,8 +154,15 @@ export function parseMusicXML(text, { id = 'imported' } = {}) {
                 score.beatsPerBar = b;
                 score.beatUnit = u;
               }
-            } else if (b !== beatsPerBar || u !== beatUnit) {
-              warnings.add('The time signature changes during the piece. Bar numbers after the change may be off.');
+            } else if (u !== beatUnit) {
+              warnings.add(`The beat changes during the piece (${beatsPerBar}/${beatUnit} to ${b}/${u}). Timing is checked in the first beat unit, so bar numbers after the change may be off.`);
+            } else if (b !== beatsPerBar) {
+              // Same beat unit, different bar length (4/4 → 3/4): followed exactly.
+              if (partIdx === 0) {
+                score.meters ??= [{ beat: 0, beatsPerBar: score.beatsPerBar }];
+                score.meters.push({ beat: atBeat(pos), beatsPerBar: b });
+              }
+              beatsPerBar = b;
             }
           }
           const staves = num(node, 'staves', null);
@@ -164,7 +173,9 @@ export function parseMusicXML(text, { id = 'imported' } = {}) {
           for (const c of kids(node, 'clef')) {
             const n = Number(c.attrs.number ?? 1) + staffBase;
             const sign = txt(c, 'sign');
-            if (n <= 2 && firstMeasure) score.clefs[n - 1] = sign === 'F' ? 'bass' : 'treble';
+            const clef = sign === 'F' ? 'bass' : 'treble';
+            if (n <= 2 && firstMeasure) score.clefs[n - 1] = clef;
+            else if (n <= 2) score.clefChanges.push({ staff: n, beat: atBeat(pos), clef });
           }
         } else if (node.name === 'backup') {
           pos -= num(node, 'duration', 0);
@@ -177,6 +188,24 @@ export function parseMusicXML(text, { id = 'imported' } = {}) {
             const dyn = kid(dt, 'dynamics');
             const mark = dyn?.children.map((c) => c.name).find((nm) => DYNAMICS.includes(nm));
             if (mark && partIdx === 0) score.dynamics.push({ beat: at, mark: ['sf', 'sfz', 'fp'].includes(mark) ? 'f' : mark });
+            // 8va/8vb: pitches in MusicXML are the real ones; only the display moves.
+            const shift = kid(dt, 'octave-shift');
+            if (shift) {
+              const st = Math.min(2, num(node, 'staff', 1) + staffBase);
+              const size = Number(shift.attrs.size ?? 8) >= 15 ? 2 : 1;
+              ottava[st] = shift.attrs.type === 'down' ? -size : shift.attrs.type === 'up' ? size : 0;
+            }
+            const wedge = kid(dt, 'wedge');
+            if (wedge && partIdx === 0) {
+              const n = wedge.attrs.number ?? '1';
+              const type = wedge.attrs.type;
+              if (type === 'crescendo' || type === 'diminuendo') openWedges.set(n, { type: type === 'crescendo' ? 'cresc' : 'dim', start: at });
+              else if (type === 'stop' && openWedges.has(n)) {
+                const w = openWedges.get(n);
+                openWedges.delete(n);
+                if (at > w.start) score.hairpins.push({ ...w, end: at });
+              }
+            }
             const ped = kid(dt, 'pedal');
             if (ped) {
               const type = ped.attrs.type;
@@ -223,6 +252,11 @@ export function parseMusicXML(text, { id = 'imported' } = {}) {
             grace: grace || undefined,
             finger: deep(node, 'fingering')[0]?.text.trim() || undefined,
             slurStart: notations.some((nt) => kids(nt, 'slur').some((s) => s.attrs.type === 'start')) || undefined,
+            // What's printed: note type and dots (so triplets and compound time draw right).
+            display: txt(node, 'type') ? { type: txt(node, 'type'), dots: kids(node, 'dot').length } : undefined,
+            tuplet: kid(node, 'time-modification') ? num(kid(node, 'time-modification'), 'actual-notes', 3) : undefined,
+            tupletStart: notations.some((nt) => kids(nt, 'tuplet').some((t) => t.attrs.type === 'start')) || undefined,
+            ottava: ottava[staff] || undefined,
             slurStop: notations.some((nt) => kids(nt, 'slur').some((s) => s.attrs.type === 'stop')) || undefined,
           };
           const tieKey = `${staff}|${voice}|${midi}`;
@@ -230,6 +264,7 @@ export function parseMusicXML(text, { id = 'imported' } = {}) {
             // Fold the tied note into the one it continues.
             const first = openTies.get(tieKey);
             first.beats = beat + beats - first.beat;
+            delete first.display; // the tied total is drawn as its own chain
             if (!tieTypes.includes('start')) openTies.delete(tieKey);
             continue;
           }
@@ -265,9 +300,12 @@ export function parseMusicXML(text, { id = 'imported' } = {}) {
   }
   for (const list of byVoice.values()) {
     let inSlur = false;
+    let from = null;
     for (const n of list) {
+      if (n.slurStart && !inSlur) from = n.beat;
       if (n.slurStart) inSlur = true;
       if (inSlur) n.slur = true;
+      if (n.slurStop && inSlur && from != null && n.beat > from) score.slurs.push({ staff: n.staff, voice: n.voice, start: from, end: n.beat });
       if (n.slurStop) inSlur = false;
       delete n.slurStart;
       delete n.slurStop;
@@ -278,6 +316,9 @@ export function parseMusicXML(text, { id = 'imported' } = {}) {
     const shift = score.beatsPerBar - score.pickupBeats;
     for (const list of [score.notes, score.rests, score.dynamics]) for (const x of list) x.beat += shift;
     for (const p of score.pedal) { p.start += shift; p.end += shift; }
+    for (const h of [...score.hairpins, ...score.slurs]) { h.start += shift; h.end += shift; }
+    for (const c of score.clefChanges) c.beat += shift;
+    for (const m of score.meters ?? []) if (m.beat > 0) m.beat += shift;
     score.barOffset = -1;
   }
   if (score.notes.some((n) => n.staff === 2)) score.staves = 2;
@@ -286,22 +327,66 @@ export function parseMusicXML(text, { id = 'imported' } = {}) {
   return score;
 }
 
-// Measure indices in playing order: |: … :| repeats once, with 1st/2nd endings.
+// Measure indices in playing order: |: … :| repeats once, with 1st/2nd endings, then
+// D.C. / D.S. jumps (al Fine, al Coda). After a jump, repeats aren't taken again and
+// only the last ending is played: the usual convention.
 function unfoldRepeats(measures, warnings) {
+  const jumps = measures.map(jumpMarks);
   const info = measures.map((m) => {
     const bl = kids(m, 'barline');
     const rep = (dir) => bl.some((b) => kid(b, 'repeat')?.attrs.direction === dir);
     const ending = bl.map((b) => kid(b, 'ending')).find((e) => e && e.attrs.type === 'start');
     return { forward: rep('forward'), backward: rep('backward'), ending: ending ? ending.attrs.number.split(/[ ,]+/).map(Number) : null };
   });
-  if (measures.some((m) => deep(m, 'sound').some((s) => s.attrs.dacapo || s.attrs.dalsegno || s.attrs.tocoda))) {
-    warnings.add('D.C. / D.S. / Coda jumps aren\'t followed yet; the piece is checked straight through.');
+  // Which ending each measure belongs to (for skipping all but the last after a jump).
+  const inEnding = [];
+  let current = null;
+  measures.forEach((m, i) => {
+    if (info[i].ending) current = info[i].ending;
+    inEnding[i] = current;
+    const stop = kids(m, 'barline').map((b) => kid(b, 'ending')).find((e) => e && (e.attrs.type === 'stop' || e.attrs.type === 'discontinue'));
+    if (stop || info[i].backward) current = null;
+  });
+  const lastEnding = Math.max(0, ...inEnding.filter(Boolean).flat());
+
+  const jumpAt = jumps.findIndex((j) => j.dc || j.ds);
+  const order = withRepeats(info, 0, jumpAt >= 0 ? jumpAt : measures.length - 1);
+  if (jumpAt < 0) return order;
+
+  let from = 0;
+  if (jumps[jumpAt].ds) {
+    from = jumps.findIndex((j) => j.segno);
+    if (from < 0) {
+      warnings.add('There is a D.S. but no segno sign, so it jumps back to the start.');
+      from = 0;
+    }
   }
+  const coda = jumps.findIndex((j, i) => j.coda && i > jumpAt);
+  const anyCoda = coda >= 0 ? coda : jumps.findIndex((j) => j.coda && !j.tocoda);
+  for (let i = from; i < measures.length; i++) {
+    if (inEnding[i] && !inEnding[i].includes(lastEnding)) continue;
+    order.push(i);
+    if (jumps[i].fine) return order;
+    if (jumps[i].tocoda && anyCoda > i) {
+      for (let k = anyCoda; k < measures.length; k++) if (!inEnding[k] || inEnding[k].includes(lastEnding)) order.push(k);
+      return order;
+    }
+    if (i === jumpAt) {
+      // Played the jump bar again without a Fine or Coda: nowhere else to go.
+      if (!jumps.some((j) => j.fine || j.tocoda)) warnings.add('The D.C. / D.S. has no Fine or Coda, so the piece ends at the jump.');
+      return order;
+    }
+  }
+  return order;
+}
+
+// |: … :| with endings over measures [from, to].
+function withRepeats(info, from, to) {
   const order = [];
-  let start = 0;
+  let start = from;
   let pass = 1;
   let activeEnding = null;
-  for (let i = 0; i < measures.length; i++) {
+  for (let i = from; i <= to; i++) {
     if (info[i].forward && pass === 1) start = i;
     if (info[i].ending) activeEnding = info[i].ending;
     if (activeEnding && !activeEnding.includes(pass)) {
@@ -324,6 +409,31 @@ function unfoldRepeats(measures, warnings) {
     if (pass === 2 && !activeEnding && info[i + 1]?.forward) pass = 1;
   }
   return order;
+}
+
+// Jump instructions in a measure, from <sound> attributes (what notation programs
+// write for playback) or, failing that, the printed words and signs.
+function jumpMarks(m) {
+  const out = { dc: false, ds: false, segno: false, coda: false, tocoda: false, fine: false };
+  for (const snd of deep(m, 'sound')) {
+    if (snd.attrs.dacapo === 'yes') out.dc = true;
+    if (snd.attrs.dalsegno) out.ds = true;
+    if (snd.attrs.segno) out.segno = true;
+    if (snd.attrs.coda) out.coda = true;
+    if (snd.attrs.tocoda) out.tocoda = true;
+    if (snd.attrs.fine) out.fine = true;
+  }
+  for (const dir of deep(m, 'direction-type')) {
+    if (kid(dir, 'segno')) out.segno = true;
+    const words = kids(dir, 'words').map((w) => w.text.trim()).join(' ');
+    if (/\bd\.\s?c\.|da\s+capo/i.test(words)) out.dc = true;
+    else if (/\bd\.\s?s\.|dal\s+segno/i.test(words)) out.ds = true;
+    if (/to\s+coda/i.test(words)) out.tocoda = true;
+    else if (kid(dir, 'coda')) out.coda = true;
+    if (/^fine$/i.test(words)) out.fine = true;
+  }
+  if (out.tocoda) out.coda = false;
+  return out;
 }
 
 export async function readScoreFile(file) {

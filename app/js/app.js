@@ -9,6 +9,7 @@ import { mountExam, renderExam, examWithReadiness, onExamChange } from './examvi
 import { daysUntil, phaseFor } from './exam.js';
 import { qualityStreak, qualityWeek, qualityOn, onQualityChange, CARDS_TARGET } from './quality.js';
 import { initMidi, renderKeyboard } from './input.js';
+import { loadPiano } from './audio.js';
 import { mountBackground, pulseBackground } from './background.js';
 import { mountWelcome, profile } from './welcome.js';
 import { ICONS } from './icons.js';
@@ -229,7 +230,7 @@ function renderToday() {
     </div>
     <button class="btn" id="today-report" type="button">${ICONS.trophy} This week's report card</button>
     <button class="btn ghost link" id="today-setup" type="button">Change your setup</button>
-    <p class="credit">Background photo: <a href="https://unsplash.com/photos/a-grand-piano-in-front-of-a-large-window-Iu2pgfqkK2g" target="_blank" rel="noopener">Oswald on Unsplash</a></p>`;
+    <p class="credit">Background photo: <a href="https://unsplash.com/photos/a-grand-piano-in-front-of-a-large-window-Iu2pgfqkK2g" target="_blank" rel="noopener">Oswald on Unsplash</a> · Piano sound: Salamander Grand Piano by Alexander Holm (<a href="https://creativecommons.org/licenses/by/3.0/" target="_blank" rel="noopener">CC BY 3.0</a>)</p>`;
 
   root.querySelectorAll('.plan button').forEach((b) => b.addEventListener('click', () => {
     const item = plan[b.dataset.i];
@@ -364,6 +365,9 @@ const booted = new MutationObserver(() => {
 });
 booted.observe(document.body, { attributes: true, attributeFilter: ['class'] });
 initMidi();
+// Browsers only allow audio after a tap; fetch the piano samples on the first one.
+addEventListener('pointerdown', () => loadPiano(), { once: true });
+addEventListener('keydown', () => loadPiano(), { once: true });
 
 if ('serviceWorker' in navigator && location.protocol !== 'file:') {
   navigator.serviceWorker.register('sw.js').catch(() => {});

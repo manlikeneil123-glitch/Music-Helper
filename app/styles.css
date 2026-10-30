@@ -693,3 +693,26 @@ a.btn { text-decoration: none; }
 #sec-share { margin-top: 10px; }
 
 input[type='date'] { font: inherit; color: var(--ink); background: var(--raised); border: 1px solid var(--edge); border-radius: var(--radius-sm); padding: 8px 12px; min-height: 44px; color-scheme: dark; }
+
+/* Notation extras */
+.beam { fill: var(--stave); }
+.note-good .beam { fill: var(--good); } .note-bad .beam { fill: var(--bad); }
+.slur, .hairpin, .ottava-line { fill: none; stroke: var(--stave); stroke-width: 1.2; }
+.ottava-line { stroke-dasharray: 4 3; }
+.tuplet, .ottava { fill: var(--stave); font-style: italic; font-weight: 600; }
+.clef.change { fill: var(--stave); }
+
+/* Performance Grade recorder */
+.pg-dialog { width: min(720px, calc(100vw - 24px)); max-height: calc(100dvh - 24px); overflow: auto; padding: 16px; border: 1px solid var(--edge); color: var(--ink); background: var(--surface-strong); }
+.pg-dialog::backdrop { background: rgba(0, 0, 0, 0.7); }
+.pg-list { padding-left: 18px; margin: 8px 0; font-size: 0.92rem; }
+.pg-list li { margin: 6px 0; }
+.pg-frame { position: relative; border-radius: 14px; overflow: hidden; background: #000; aspect-ratio: 16 / 9; margin: 8px 0; }
+.pg-frame video, .pg-review { width: 100%; height: 100%; object-fit: cover; display: block; border-radius: 14px; }
+.pg-review { height: auto; aspect-ratio: 16 / 9; background: #000; margin: 8px 0; }
+.pg-guide { position: absolute; inset: 0; pointer-events: none; }
+.pg-guide span { position: absolute; left: 50%; transform: translateX(-50%); border: 2px dashed rgba(255, 255, 255, 0.7); border-radius: 12px; color: rgba(255, 255, 255, 0.85); font-size: 0.75rem; display: grid; place-items: start center; padding-top: 4px; }
+.pg-guide .face { top: 6%; width: 22%; height: 34%; }
+.pg-guide .keys { bottom: 6%; width: 84%; height: 44%; }
+.pg-timer { position: absolute; top: 10px; right: 12px; padding: 4px 10px; border-radius: 99px; background: rgba(220, 40, 40, 0.85); color: #fff; font-weight: 700; font-variant-numeric: tabular-nums; }
+.pg-criteria { list-style: none; padding: 0; margin: 6px 0; display: grid; gap: 6px; }

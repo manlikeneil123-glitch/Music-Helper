@@ -6,6 +6,7 @@ import { renderScore } from './render.js';
 import { load, save, dayKey } from './store.js';
 import { profile } from './welcome.js';
 import { ICONS } from './icons.js';
+import { openPerformanceRecorder } from './pgrade.js';
 
 let root;
 let goTo = () => {};
@@ -154,7 +155,12 @@ function render() {
     ${targets.length ? `<section class="card"><h3>This week</h3><ul class="targets">${targets.map((t) => `<li><b>${esc(t.part)}</b><span>${esc(t.text)}</span></li>`).join('')}</ul></section>` : ''}
     ${piecesCard(e)}
     ${partsCard(e)}
-    ${mockCard(e)}`;
+    ${mockCard(e)}
+    <section class="card">
+      <h3>Performance Grade recorder</h3>
+      <p class="muted small">Doing a Performance Grade or Digital Grade instead? Record your whole programme in one continuous video take, with a framing guide and a checklist. The video stays on your phone.</p>
+      <button class="btn block" type="button" id="pg-open">${ICONS.camera} Record a performance</button>
+    </section>`;
   wire(e);
 }
 
@@ -184,6 +190,7 @@ function update(fn) {
 
 function wire(e) {
   root.querySelector('#ex-edit').addEventListener('click', () => { editing = true; render(); });
+  root.querySelector('#pg-open').addEventListener('click', () => openPerformanceRecorder(e));
   root.querySelectorAll('[data-title]').forEach((inp) => inp.addEventListener('change', () => update((x) => { x.pieces[inp.dataset.title].title = inp.value.trim(); })));
   root.querySelectorAll('[data-link]').forEach((sel) => sel.addEventListener('change', () => {
     update((x) => {

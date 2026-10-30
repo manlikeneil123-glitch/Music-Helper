@@ -57,6 +57,29 @@ export function onChecksChange(fn) {
 export const checkHistory = () => history;
 export const allPieces = () => [...library, ...imported];
 
+// The exam page runs single takes here (mock exam, sight-reading) and wants the result.
+let pendingTake = null;
+/** Select a piece and start one Perform take; onDone(result, entry) when it's analysed. */
+export function performPiece(pieceId, { exam = true, bpm: tempo = null, onDone = null } = {}) {
+  if (rec || learn) return false;
+  if (drill) endDrill(false);
+  selectPiece(pieceId);
+  practice = 'perform';
+  syncPracticeButtons();
+  examMode = exam;
+  $('#check-exam').checked = exam;
+  if (tempo) {
+    // A mock exam is at the real tempo: there's no tempo lock in the exam room.
+    tempoUnlocked = true;
+    updateTempoLock();
+    $('#check-bpm').value = tempo;
+    updateBpmLabel();
+  }
+  pendingTake = onDone;
+  setTimeout(() => !rec && start(), 700);
+  return true;
+}
+
 const bpm = () => Number(root.querySelector('#check-bpm').value);
 const $ = (sel) => root.querySelector(sel);
 const tone = (score) => (score >= 85 ? 'good' : score >= 60 ? 'warn' : 'bad');
@@ -221,6 +244,7 @@ function stop() {
 
   if (performance.now() < r.t0) {
     r.recorder?.stop();
+    pendingTake = null;
     setStatus('Cancelled.', '');
     if (drill) endDrill(false);
     return;
@@ -272,6 +296,7 @@ function finish({ played, source, msPerBeat, unclear = [], spread = [], pedalEve
     history.push({
       pieceId: base.id, hands, at: Date.now(), score: result.score, ready: result.ready && hands === 'both', bpm: bpm(), playedBpm: Math.round(result.playedBpm),
       worstBar: result.worstBar, input: source, barErrors: result.barErrors, keptGoing: result.continuity?.score ?? null, pulse: result.pulse?.score ?? null,
+      pitch: +result.pitchAccuracy.toFixed(3), rhythm: +result.rhythmAccuracy.toFixed(3), targetBpm: base.targetBpm,
       exam: examMode || undefined,
     });
     if (result.score >= 85) logWin('clean');
@@ -281,6 +306,11 @@ function finish({ played, source, msPerBeat, unclear = [], spread = [], pedalEve
   drawScore(result);
   if (drill) return drillRunDone(result);
   showResult(result, source);
+  if (pendingTake) {
+    const done = pendingTake;
+    pendingTake = null;
+    done(result, history[history.length - 1]);
+  }
   updateTempoLock();
   setStatus('Done. See your feedback below.', '');
 }

@@ -4,6 +4,7 @@
 import { onSave, exportSynced, importSynced, dayKey } from './store.js';
 import { cloudReady, currentUser, rest } from './cloud.js';
 import { qualityStreak } from './quality.js';
+import { pieceReadiness, daysUntil } from './exam.js';
 
 const PUSH_DELAY = 4000;
 let timer = null;
@@ -45,6 +46,13 @@ export function summarise(data, titleOf = {}, now = new Date()) {
     p.ready ||= Boolean(c.ready);
   }
   const profile = data.profile?.v ?? {};
+  const ex = data.exam?.v;
+  const exam = ex?.date ? {
+    board: ex.board, grade: ex.grade, date: ex.date, days: daysUntil(ex.date, now),
+    pieces: ex.pieces.map((p) => ({ title: p.title || titleOf[p.pieceId] || '', band: p.pieceId ? pieceReadiness(checks.filter((c) => c.pieceId === p.pieceId), ex.board, now.getTime()).band : null })),
+    ratings: ex.ratings ?? {},
+  } : null;
+  const mocks = (data.mocks?.v ?? []).slice(-1).map((m) => ({ at: m.at, results: m.results.map((r) => r.summary) }));
   return {
     level: profile.level ?? '',
     board: profile.board ?? '',
@@ -54,6 +62,8 @@ export function summarise(data, titleOf = {}, now = new Date()) {
     notesKnown: Object.values(cards).filter((c) => (c.box ?? 0) >= 3).length,
     recent: checks.slice(-10).reverse().map((c) => ({ title: titleOf[c.pieceId] ?? 'Imported piece', score: c.score, at: c.at, worstBar: c.worstBar ?? null, hands: c.hands ?? 'both', input: c.input ?? '' })),
     pieces: Object.values(pieces),
+    exam,
+    lastMock: mocks[0] ?? null,
   };
 }
 

@@ -31,6 +31,7 @@ jobs:
       - run: node tests/sync.test.mjs
       - run: node tests/continuity.test.mjs
       - run: node tests/plan.test.mjs
+      - run: node tests/exam.test.mjs
       # Account security rules on a throwaway Postgres (preinstalled on GitHub's Ubuntu runners).
       - run: sh tests/db/run.sh
 

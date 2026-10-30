@@ -2,6 +2,8 @@ import { mountFlashcards, cardStats } from './flashcards.js';
 import { mountTimer, onSessionsChange, minutesOn, goalMinutes, lastDays } from './timer.js';
 import { mountCheck, onChecksChange, checkHistory, suggestedBpm, allPieces, troubleBars } from './check.js';
 import { buildPlan } from './plan.js';
+import { mountExam, renderExam, examWithReadiness, onExamChange } from './examview.js';
+import { daysUntil, phaseFor } from './exam.js';
 import { qualityStreak, qualityWeek, qualityOn, onQualityChange, CARDS_TARGET } from './quality.js';
 import { initMidi, renderKeyboard } from './input.js';
 import { mountBackground, pulseBackground } from './background.js';
@@ -13,7 +15,7 @@ import { mountAccount, renderAccount, resumeAccount } from './account.js';
 import { startSync, setPieceTitles } from './sync.js';
 import { cloudReady, currentUser } from './cloud.js';
 
-const TABS = ['welcome', 'today', 'cards', 'practice', 'play', 'account'];
+const TABS = ['welcome', 'today', 'cards', 'practice', 'play', 'exam', 'account'];
 const WITH_KEYBOARD = new Set(['cards', 'play']);
 
 const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -35,6 +37,7 @@ function activate(tab) {
   const view = document.getElementById(`view-${tab}`);
   if (tab === 'today') renderToday();
   if (tab === 'account') renderAccount();
+  if (tab === 'exam') renderExam();
   if (tab === 'welcome') offerSignIn(view);
   stagger(view);
   view.classList.add('active');
@@ -160,6 +163,7 @@ function renderToday() {
       <div>
         <h2>${greeting()}</h2>
         <p class="lede">${p?.teacher ? 'Your plan for between lessons.' : 'Your plan for today.'} <span class="muted">${p?.level ?? ''}${p?.board && p.board !== 'Not doing exams' ? ` · ${p.board}` : ''}</span></p>
+        ${examChip()}
       </div>
       <button class="btn primary" id="today-timer" type="button">${ICONS.play} Start practice</button>
     </div>
@@ -236,11 +240,25 @@ function renderToday() {
     show(item.tab);
   }));
   root.querySelector('#today-setup').addEventListener('click', openSetup);
+  root.querySelector('[data-go=exam]')?.addEventListener('click', () => show('exam'));
   root.querySelector('#today-timer').addEventListener('click', () => {
     show('practice');
     const btn = document.getElementById('timer-start');
     if (btn.textContent !== 'Pause') btn.click();
   });
+}
+
+// "ABRSM Grade 3 in 23 days · Polish": the exam leads the day once there is one.
+function examChip() {
+  const e = examWithReadiness();
+  const days = e ? daysUntil(e.date) : null;
+  if (days == null || days < 0) return p_noExam();
+  const bands = e.pieces.filter((x) => x.readiness?.band).map((x) => x.readiness.band);
+  return `<button class="exam-chip" type="button" data-go="exam">${ICONS.trophy}<span><b>${e.board} ${e.grade === 'Initial' ? 'Initial' : `Grade ${e.grade}`} in ${days} day${days === 1 ? '' : 's'}</b><small>${phaseFor(days).title}${bands.length ? ` · ${bands.filter((b) => b === 'below').length ? `${bands.filter((b) => b === 'below').length} piece${bands.filter((b) => b === 'below').length > 1 ? 's' : ''} below pass` : 'all pieces at pass or above'}` : ''}</small></span></button>`;
+}
+function p_noExam() {
+  const p = profile();
+  return p?.board && p.board !== 'Not doing exams' ? `<button class="exam-chip quiet" type="button" data-go="exam">${ICONS.trophy}<span><b>Got an exam date?</b><small>Plan backwards from it</small></span></button>` : '';
 }
 
 function openSetup() {
@@ -298,6 +316,8 @@ onSessionsChange(refreshToday);
 onChecksChange(refreshToday);
 onQualityChange(() => { refreshToday(); updateTopbar(); });
 mountAccount(document.getElementById('view-account'), { openSetup });
+mountExam(document.getElementById('view-exam'), { show });
+onExamChange(refreshToday);
 setPieceTitles(() => Object.fromEntries(allPieces().map((x) => [x.id, x.title])));
 startSync();
 document.getElementById('top-avatar').addEventListener('click', () => show('account'));

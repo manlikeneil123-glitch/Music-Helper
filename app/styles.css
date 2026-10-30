@@ -473,7 +473,7 @@ fieldset.field legend { padding: 0; margin-bottom: 6px; }
 
 /* ---- Navigation: floating glass tab bar on phones, a dock on wide screens ---- */
 .tabbar {
-  position: fixed; z-index: 7; display: grid; grid-template-columns: repeat(4, 1fr);
+  position: fixed; z-index: 7; display: grid; grid-template-columns: repeat(5, 1fr);
   left: max(12px, env(safe-area-inset-left, 0px)); right: max(12px, env(safe-area-inset-right, 0px));
   bottom: calc(10px + env(safe-area-inset-bottom)); height: var(--tabbar-h);
   max-width: 460px; margin: 0 auto; padding: 6px; border-radius: 26px;
@@ -622,3 +622,46 @@ input::placeholder { color: var(--muted); opacity: 0.8; }
 .pw-change summary::-webkit-details-marker { display: none; }
 .pw-change form { padding: 0 4px 10px; }
 a.btn { text-decoration: none; }
+
+/* Exam */
+.exam-chip { display: inline-flex; align-items: center; gap: 10px; margin-top: 10px; padding: 8px 14px 8px 10px; border-radius: 16px; border: 1px solid var(--edge); background: rgba(77, 141, 255, 0.16); color: var(--ink); font: inherit; text-align: left; cursor: pointer; }
+.exam-chip.quiet { background: var(--raised); }
+.exam-chip svg { width: 22px; height: 22px; color: var(--warn); flex: none; }
+.exam-chip span { display: grid; }
+.exam-chip small { color: var(--muted); }
+.exam-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 16px; align-items: start; }
+.exam-head .phase { grid-column: 1 / -1; }
+.exam-head .phase p { margin: 6px 0 0; color: var(--muted); }
+.countdown { display: flex; align-items: baseline; gap: 8px; margin-top: 4px; }
+.countdown b { font-size: 3rem; line-height: 1; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.countdown span { color: var(--muted); }
+.targets { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+.targets li { display: grid; gap: 2px; padding-left: 12px; border-left: 3px solid var(--accent); }
+.targets li span { color: var(--muted); font-size: 0.92rem; }
+.exam-pieces { list-style: none; padding: 0; margin: 0; display: grid; gap: 14px; }
+.exam-pieces li { display: grid; gap: 6px; padding-top: 12px; border-top: 1px solid var(--line); }
+.exam-pieces li:first-child { border-top: 0; padding-top: 0; }
+.exam-pieces p { margin: 0; }
+.band { font-size: 0.78rem; font-weight: 700; padding: 3px 10px; border-radius: 99px; white-space: nowrap; }
+.band.distinction { background: rgba(95, 214, 143, 0.22); color: #c8f7da; }
+.band.merit { background: rgba(77, 141, 255, 0.24); color: #cfe0ff; }
+.band.pass { background: rgba(242, 180, 90, 0.24); color: #ffe1b0; }
+.band.below { background: rgba(255, 122, 122, 0.24); color: #ffd0d0; }
+.band.none { background: var(--raised); color: var(--muted); font-weight: 600; }
+.exam-part { padding: 10px 0; border-top: 1px solid var(--line); }
+.exam-part:first-of-type { border-top: 0; }
+.exam-part select { min-height: 36px; padding: 4px 10px; }
+.rating { margin-top: 8px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.rating button { min-width: 0; padding: 6px 4px; font-size: 0.76rem; white-space: normal; line-height: 1.15; }
+.mock .rating { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.mock-steps { padding-left: 20px; margin: 8px 0 12px; }
+.mock-steps li { margin: 4px 0; color: var(--muted); }
+.mock-steps li.now { color: var(--ink); font-weight: 700; }
+.mock-steps li.done { color: var(--good); }
+.mock h4 { margin: 16px 0 4px; font-size: 0.9rem; }
+#prep-score { margin-top: 8px; }
+
+.exam-pieces input, .exam-pieces select, .exam-part select { width: 100%; max-width: 100%; min-width: 0; box-sizing: border-box; }
+.exam-part select { width: auto; }
+.exam-head #ex-edit { justify-self: end; align-self: start; }
+.exam-head .pill { display: inline-block; }

@@ -109,11 +109,14 @@ function studentRow(st) {
           <span class="nums">
             <span title="Practice this week">${ICONS.clock}${s.week}′</span>
             <span title="Day streak">${ICONS.flame}${s.streak}</span>
+            ${s.exam?.days >= 0 ? `<span title="Days to exam">${ICONS.trophy}${s.exam.days}d</span>` : ''}
             ${last ? `<span class="mini-badge ${tone(last.score)}" title="Last check">${last.score}</span>` : ''}
           </span>
         </summary>
         <div class="student-detail">
           <p class="muted small">Last active ${ago(st.updated_at)} · ${s.notesKnown} notes known</p>
+          ${s.exam ? `<p class="small"><b>${esc(s.exam.board)} ${s.exam.grade === 'Initial' ? 'Initial' : `Grade ${esc(s.exam.grade)}`}</b> ${s.exam.days >= 0 ? `in ${s.exam.days} days` : 'done'} · ${s.exam.pieces.map((p) => `${esc(p.title || '?')}: ${p.band ? `<span class="band ${p.band}">${{ distinction: 'Distinction', merit: 'Merit', pass: 'Pass', below: 'Below pass' }[p.band]}</span>` : '<span class="muted">no reading</span>'}`).join(' · ')}</p>` : ''}
+          ${s.lastMock ? `<p class="muted small">Last mock exam (${ago(s.lastMock.at)}): ${s.lastMock.results.map(esc).join(' · ')}</p>` : ''}
           <div class="mini-chart" role="img" aria-label="Minutes per day, last 14 days: ${s.days.map((d) => d.minutes).join(', ')}">
             ${s.days.map((d) => `<i style="height:${Math.max(2, (d.minutes / max) * 44)}px" title="${d.day}: ${d.minutes} min"></i>`).join('')}
           </div>

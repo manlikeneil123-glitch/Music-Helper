@@ -30,6 +30,37 @@ export const BOARDS = {
   },
 };
 
+// Pieces-only exams: filmed at home and sent in. ABRSM Performance Grades are four
+// pieces (30 each) plus 30 for the performance as a whole; Trinity's repertoire-only
+// pathway is four pieces and nothing else (100). No scales, arpeggios, sight-reading
+// or aural in either.
+export const PERFORMANCE = {
+  ABRSM: {
+    name: 'Performance Grade', total: 150, pass: 100, merit: 120, distinction: 130,
+    piece: { count: 4, marks: 30, labels: ['List A', 'List B', 'List C', 'Own choice'], bands: BOARDS.ABRSM.piece.bands },
+    parts: () => [{ id: 'whole', label: 'Performance as a whole', marks: 30 }],
+  },
+  Trinity: {
+    name: 'Repertoire-only', total: 100, pass: 60, merit: 75, distinction: 87,
+    // 25 a piece; bands scaled from the 100-mark thresholds (60/75/87).
+    piece: { count: 4, marks: 25, labels: ['Piece 1', 'Piece 2', 'Piece 3', 'Piece 4'], bands: { distinction: [22, 25], merit: [19, 21], pass: [15, 18], below: [11, 14] } },
+    parts: () => [],
+  },
+};
+export const EXAM_TYPES = { practical: 'Practical exam', performance: 'Pieces only' };
+export const isPerformance = (type) => type === 'performance';
+/** What a board marks for this kind of exam. */
+export const examSpec = (board, type) => (isPerformance(type) ? PERFORMANCE[board] ?? PERFORMANCE.ABRSM : BOARDS[board] ?? BOARDS.ABRSM);
+/** "Performance Grade" / "Repertoire-only" / "" for a practical. */
+export const typeName = (board, type) => (isPerformance(type) ? examSpec(board, type).name : '');
+
+/** "ABRSM Grade 3", "ABRSM Performance Grade 3", "Trinity Grade 3 (repertoire-only)". */
+export function examTitle(e) {
+  const g = e.grade === 'Initial' ? 'Initial' : `Grade ${e.grade}`;
+  if (!isPerformance(e.type)) return `${e.board} ${g}`;
+  return e.board === 'ABRSM' ? `ABRSM Performance ${g}` : `${e.board} ${g} (repertoire-only)`;
+}
+
 export const GRADES = ['Initial', '1', '2', '3', '4', '5', '6', '7', '8'];
 export const gradeNumber = (g) => (g === 'Initial' ? 0 : Number(g));
 
@@ -45,9 +76,9 @@ export const bandLabel = (b) => BAND_LABEL[b] ?? '';
  * Uses the last 3 runs from the last 21 days, so one lucky run doesn't count and an
  * old one doesn't linger.
  */
-export function pieceReadiness(runs, board = 'ABRSM', now = Date.now(), minRuns = 2) {
+export function pieceReadiness(runs, board = 'ABRSM', now = Date.now(), minRuns = 2, type = 'practical') {
   const recent = runs.filter((r) => (r.hands ?? 'both') === 'both' && now - r.at < 21 * 86400000).slice(-3);
-  const spec = (BOARDS[board] ?? BOARDS.ABRSM).piece;
+  const spec = examSpec(board, type).piece;
   if (recent.length < minRuns) return { band: null, runs: recent.length, of: spec.marks, note: recent.length ? 'One more full run to get a reading.' : 'No full runs yet.' };
   const avg = (f) => recent.reduce((a, r) => a + f(r), 0) / recent.length;
   // Older runs (before these were recorded) fall back to the overall score.
@@ -76,7 +107,8 @@ export function daysUntil(date, now = new Date()) {
 }
 
 // Phases a teacher would use counting back from the exam.
-export function phaseFor(days) {
+export function phaseFor(days, type = 'practical') {
+  if (isPerformance(type)) return performancePhase(days);
   if (days == null) return null;
   if (days < 0) return { id: 'after', title: 'Exam done', text: 'Results usually arrive within a few weeks. Time to choose what comes next.' };
   if (days === 0) return { id: 'today', title: 'Exam day', text: 'Warm up gently, play each piece through once slowly, then stop. Trust your practice.' };
@@ -86,16 +118,28 @@ export function phaseFor(days) {
   return { id: 'learn', title: 'Learn', text: 'Learn the notes and rhythm securely, hands separately first, in sections. Speed comes later.' };
 }
 
+// The same countdown for a pieces-only exam: the programme, played as one performance.
+function performancePhase(days) {
+  if (days == null) return null;
+  if (days < 0) return { id: 'after', title: 'Sent in', text: 'Results usually arrive within a few weeks. Time to choose what comes next.' };
+  if (days === 0) return { id: 'today', title: 'Filming day', text: 'Warm up, then record the whole programme in one take. If it goes wrong, rest and try again: you can film as many times as you like.' };
+  if (days <= 7) return { id: 'final', title: 'Final week', text: 'Film two practice takes of the whole programme and watch them back. No new fixes in the last two days.' };
+  if (days <= 28) return { id: 'polish', title: 'Polish', text: 'Full runs in Exam conditions, and the whole programme in order once a week: walk on, pause between pieces, no restarts.' };
+  if (days <= 56) return { id: 'build', title: 'Build', text: 'Bring pieces up to tempo, fix trouble bars, and start playing two pieces back to back.' };
+  return { id: 'learn', title: 'Learn', text: 'Learn the notes and rhythm securely, hands separately first, in sections. Choose your fourth piece now.' };
+}
+
 /**
  * This week's targets for each part, from the phase and how ready each part is.
  * exam: { board, grade, date, pieces: [{ title, pieceId, readiness }], ratings: { partId: 0..3 } }
  */
 export function weekTargets(exam, now = new Date()) {
   const days = daysUntil(exam.date, now);
-  const phase = phaseFor(days);
+  const phase = phaseFor(days, exam.type);
   if (!phase || phase.id === 'after') return [];
   const out = [];
-  exam.pieces.forEach((p, i) => {
+  const spec = examSpec(exam.board, exam.type);
+  exam.pieces.slice(0, spec.piece.count).forEach((p, i) => {
     const name = p.title || `Piece ${i + 1}`;
     const r = p.readiness;
     if (!p.pieceId) out.push({ part: name, text: 'Import or link the score so the app can check it, or ask your teacher to.' });
@@ -105,7 +149,11 @@ export function weekTargets(exam, now = new Date()) {
     else if (r.band === 'merit') out.push({ part: name, text: ['polish', 'final'].includes(phase.id) ? 'Two runs in Exam conditions this week, no stopping.' : `Merit level. Push ${r.weakest} for Distinction.` });
     else out.push({ part: name, text: 'Distinction level for pitch and time. Keep it fresh with one run every few days, and work on the music: dynamics, shape, character.' });
   });
-  for (const part of BOARDS[exam.board]?.parts(gradeNumber(exam.grade)) ?? []) {
+  for (const part of spec.parts(gradeNumber(exam.grade))) {
+    if (part.id === 'whole') {
+      out.push({ part: part.label, text: days <= 28 ? 'Play all four pieces in order as one performance, filmed, and watch it back like an examiner.' : 'Once this week, play two pieces back to back as if someone were watching: start, pause, start again.' });
+      continue;
+    }
     const rating = exam.ratings?.[part.id] ?? 0;
     const what = exam.choices?.[part.id] ?? part.label;
     if (rating >= 3 && !['polish', 'final'].includes(phase.id)) continue;
@@ -126,8 +174,9 @@ export function weekTargets(exam, now = new Date()) {
 
 /** Where the mock exam goes, in the order the exam runs. */
 export function mockSteps(exam) {
-  const steps = exam.pieces.map((p, i) => ({ kind: 'piece', index: i, title: p.title || `Piece ${i + 1}`, pieceId: p.pieceId }));
-  for (const part of BOARDS[exam.board]?.parts(gradeNumber(exam.grade)) ?? []) {
+  const spec = examSpec(exam.board, exam.type);
+  const steps = exam.pieces.slice(0, spec.piece.count).map((p, i) => ({ kind: 'piece', index: i, title: p.title || `Piece ${i + 1}`, pieceId: p.pieceId }));
+  for (const part of spec.parts(gradeNumber(exam.grade))) {
     const what = exam.choices?.[part.id] ?? part.label;
     steps.push({ kind: /sight/i.test(what) ? 'sight' : /scale|technical/i.test(what) ? 'scales' : 'self', part: part.id, title: what });
   }

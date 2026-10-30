@@ -7,7 +7,7 @@ import { openAssignDialog } from './assignlink.js';
 import { openKit } from './kit.js';
 import { buildPlan } from './plan.js';
 import { mountExam, renderExam, examWithReadiness, onExamChange } from './examview.js';
-import { daysUntil, phaseFor } from './exam.js';
+import { daysUntil, phaseFor, typeName, examTitle } from './exam.js';
 import { qualityStreak, qualityWeek, qualityOn, onQualityChange, CARDS_TARGET } from './quality.js';
 import { initMidi, renderKeyboard } from './input.js';
 import { loadPiano } from './audio.js';
@@ -103,6 +103,7 @@ function lessonPlan() {
     profile: profile(), goal: goalMinutes(), history: checkHistory(), cards: cardStats(), pieces: allPieces(),
     bpmFor: suggestedBpm, trouble: troubleBars,
     assignments: openAssignments(), lessonIn: daysToLesson(profile()?.lessonDay), teacher: teacherName(),
+    examType: load('exam', null)?.type,
   });
 }
 
@@ -168,7 +169,7 @@ function renderToday() {
     <div class="dash-head">
       <div>
         <h2>${greeting()}</h2>
-        <p class="lede">${p?.teacher ? 'Your plan for between lessons.' : 'Your plan for today.'} <span class="muted">${p?.level ?? ''}${p?.board && p.board !== 'Not doing exams' ? ` · ${p.board}` : ''}</span></p>
+        <p class="lede">${p?.teacher ? 'Your plan for between lessons.' : 'Your plan for today.'} <span class="muted">${p?.level ?? ''}${p?.board && p.board !== 'Not doing exams' ? ` · ${p.board}${p.examType === 'performance' ? ` ${typeName(p.board, 'performance')}` : ''}` : ''}</span></p>
         ${examChip()}
       </div>
       <button class="btn primary" id="today-timer" type="button">${ICONS.play} Start practice</button>
@@ -268,7 +269,7 @@ function examChip() {
   const days = e ? daysUntil(e.date) : null;
   if (days == null || days < 0) return p_noExam();
   const bands = e.pieces.filter((x) => x.readiness?.band).map((x) => x.readiness.band);
-  return `<button class="exam-chip" type="button" data-go="exam">${ICONS.trophy}<span><b>${e.board} ${e.grade === 'Initial' ? 'Initial' : `Grade ${e.grade}`} in ${days} day${days === 1 ? '' : 's'}</b><small>${phaseFor(days).title}${bands.length ? ` · ${bands.filter((b) => b === 'below').length ? `${bands.filter((b) => b === 'below').length} piece${bands.filter((b) => b === 'below').length > 1 ? 's' : ''} below pass` : 'all pieces at pass or above'}` : ''}</small></span></button>`;
+  return `<button class="exam-chip" type="button" data-go="exam">${ICONS.trophy}<span><b>${examTitle(e)} in ${days} day${days === 1 ? '' : 's'}</b><small>${phaseFor(days, e.type).title}${bands.length ? ` · ${bands.filter((b) => b === 'below').length ? `${bands.filter((b) => b === 'below').length} piece${bands.filter((b) => b === 'below').length > 1 ? 's' : ''} below pass` : 'all pieces at pass or above'}` : ''}</small></span></button>`;
 }
 function p_noExam() {
   const p = profile();

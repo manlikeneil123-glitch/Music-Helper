@@ -1,5 +1,5 @@
 // Offline-first app shell. Bump VERSION when shipping changes.
-const VERSION = 'mh-v14';
+const VERSION = 'mh-v15';
 const SHELL = [
   './',
   'index.html',

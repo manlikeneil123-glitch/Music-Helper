@@ -4,7 +4,13 @@ import { ICONS } from './icons.js';
 import { load, save } from './store.js';
 
 const LEVELS = ['Just starting', 'Initial – Grade 1', 'Grade 2 – 3', 'Grade 4 and above'];
-const BOARDS = ['ABRSM', 'Trinity', 'Not doing exams'];
+// Board and kind of exam in one choice, so setup stays short. Pieces-only exams have no
+// scales or sight-reading, and the plan follows that.
+const BOARDS = [
+  ['ABRSM', 'ABRSM'], ['ABRSM|performance', 'ABRSM Performance Grade (4 pieces, filmed)'],
+  ['Trinity', 'Trinity'], ['Trinity|performance', 'Trinity repertoire-only (4 pieces)'],
+  ['Not doing exams', 'Not doing exams'],
+];
 const GOALS = [10, 20, 30, 45];
 
 export const profile = () => load('profile', null);
@@ -13,7 +19,7 @@ export const profile = () => load('profile', null);
 export const MARK = `<svg viewBox="0 0 48 48"><g stroke="currentColor" stroke-opacity="0.5" stroke-width="2" stroke-linecap="round">${[12, 18, 24, 30, 36].map((y) => `<line x1="6" x2="42" y1="${y}" y2="${y}"/>`).join('')}</g><rect x="29.2" y="6" width="3.4" height="24" rx="1.7" fill="url(#mark-g)"/><ellipse cx="24.6" cy="30" rx="7.6" ry="5.6" transform="rotate(-22 24.6 30)" fill="url(#mark-g)"/></svg>`;
 
 export function mountWelcome(el, onDone) {
-  const p = profile() ?? { teacher: true, level: LEVELS[0], board: BOARDS[0], goal: load('goal', 20), strictness: 'standard' };
+  const p = profile() ?? { teacher: true, level: LEVELS[0], board: 'ABRSM', goal: load('goal', 20), strictness: 'standard' };
 
   // Two steps: a splash that says what Stave is, then the setup. "Change your setup"
   // (a profile already exists) goes straight to the second.
@@ -49,7 +55,7 @@ export function mountWelcome(el, onDone) {
         <select id="w-level">${LEVELS.map((l) => `<option>${l}</option>`).join('')}</select>
       </label>
       <label class="field">Exam board
-        <select id="w-board">${BOARDS.map((b) => `<option>${b}</option>`).join('')}</select>
+        <select id="w-board">${BOARDS.map(([v, label]) => `<option value="${v}">${label}</option>`).join('')}</select>
       </label>
       <label class="field" id="w-lesson-field">Lesson day
         <select id="w-lesson"><option value="">No regular lesson</option>${['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map((d, i) => `<option value="${i}">${d}</option>`).join('')}</select>
@@ -66,6 +72,7 @@ export function mountWelcome(el, onDone) {
         <div class="choice-row">${GOALS.map((g) => `<button type="button" class="choice" data-goal="${g}">${g} min</button>`).join('')}</div>
       </fieldset>
       <button class="btn primary block" type="submit">Get started</button>
+      ${profile() ? '' : '<button class="btn ghost link" type="button" id="w-skip">Skip for now (uses the usual settings)</button>'}
       <p class="fine">Your progress stays on this device unless you make an account. <a href="privacy.html">Privacy</a></p>
     </form>
     </div>`;
@@ -91,16 +98,22 @@ export function mountWelcome(el, onDone) {
   form.querySelectorAll('[data-teacher]').forEach((b) => b.addEventListener('click', () => setTeacher(b.dataset.teacher === 'yes')));
   form.querySelectorAll('[data-goal]').forEach((b) => b.addEventListener('click', () => setGoal(Number(b.dataset.goal))));
   form.querySelector('#w-level').value = p.level;
-  form.querySelector('#w-board').value = p.board;
+  form.querySelector('#w-board').value = p.examType === 'performance' && p.board !== 'Not doing exams' ? `${p.board}|performance` : p.board;
   form.querySelector('#w-strict').value = p.strictness ?? 'standard';
   form.querySelector('#w-lesson').value = p.lessonDay ?? '';
   setTeacher(p.teacher);
   setGoal(GOALS.includes(p.goal) ? p.goal : 20);
 
+  // Skip: the defaults above (teacher, just starting, ABRSM, standard, 20 minutes).
+  form.querySelector('#w-skip')?.addEventListener('click', () => {
+    save('profile', { ...p, examType: 'practical', lessonDay: null, at: Date.now(), skipped: true });
+    save('goal', p.goal);
+    onDone(profile());
+  });
   form.addEventListener('submit', (e) => {
     e.preventDefault();
     p.level = form.querySelector('#w-level').value;
-    p.board = form.querySelector('#w-board').value;
+    [p.board, p.examType = 'practical'] = form.querySelector('#w-board').value.split('|');
     p.strictness = form.querySelector('#w-strict').value;
     p.lessonDay = p.teacher && form.querySelector('#w-lesson').value !== '' ? Number(form.querySelector('#w-lesson').value) : null;
     p.at = Date.now();

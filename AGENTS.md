@@ -1,0 +1,38 @@
+# Notes for agents working on Stave
+
+Stave (repo: Music-Helper) is a piano practice PWA for UK teens doing ABRSM and Trinity
+exams. Vanilla JS ES modules in `app/`, no build step, deployed to GitHub Pages by
+`.github/workflows/pages.yml` after the tests pass. Accounts are optional (Supabase,
+off until `app/js/config.js` has a URL and key). See README.md and PLAN.md.
+
+Develop on the branch named in the session; never open a pull request unless asked.
+Don't put model names in commits. Follow `docs/APP-PLAYBOOK.md`, minus the decisions below.
+
+## Owner decisions (don't re-ask, don't undo)
+
+| Date | Decision |
+|---|---|
+| 2026-10 | Name is **Stave**. Glass look on a dark piano-room photo; the owner likes it, so don't restyle it without asking. |
+| 2026-10 | First run: a splash, then the setup questions (teacher, level, board/exam type, lesson day, strictness, goal) **with a Skip link**. Not cut down to one question. |
+| 2026-10 | Day and Night themes. **Night is the default**; Day is a light frosted-glass look. |
+| 2026-10 | Pieces-only exams (ABRSM Performance Grade, Trinity repertoire-only) are an **exam type** on the Exam tab (and in setup): 4 pieces, no scales, arpeggios, sight-reading or aural anywhere (plan, targets, mock, phases). |
+| 2026-10 | **No captcha for now.** Revisit before accounts are opened to the public. |
+| 2026-10 | Supabase over Firebase (50k MAU is per project). Usernames, no email verification yet. Roles: student and teacher. |
+| 2026-10 | Recordings sent to a teacher auto-delete after 20 days. Performance Grade videos stay on the phone, never uploaded. |
+| 2026-10 | Parent view: a private link the student can turn off, no parent account. |
+| 2026-10 | Exam pieces: the student or teacher types their own 3 (or 4) pieces; no syllabus database. |
+| 2026-10 | Deferred: F1 sight-reading generator ("later"). Not now: G5 photo-to-score. E5 camera hand hints: an experiment only, never a score. |
+| 2026-10 | Agent autonomy: fix bugs and small polish without asking; ask for anything with product or design choices. Ship in batches, push each. |
+
+## Facts that took research
+
+- ABRSM Performance Grade: 4 pieces × 30 + 30 for the performance as a whole = 150 (pass 100, merit 120, distinction 130). Sources are secondary; check ABRSM's own syllabus.
+- Trinity digital repertoire-only pathway: 4 pieces, no technical work, total 100 (pass 60, merit 75, distinction 87). Per-piece bands out of 25 are scaled by us.
+- The microphone checking is tuned on synthetic audio only. Real-piano accuracy is unproven until the owner records kits (Perform → Test lab → Recording kit) and they're run through `tools/evaluate-kit.mjs --tune`.
+
+## Habits
+
+- Run every `tests/*.test.mjs` (and `tests/db/run.sh` when SQL changes) before committing.
+- Bump `VERSION` in `app/version.js` and add a `CHANGELOG.md` entry for each release; `tools/ship.sh` checks the rest.
+- After pushing, confirm the live site serves the new version.
+- Never vendor outside code without asking (an earlier attempt was blocked); write it or ask.

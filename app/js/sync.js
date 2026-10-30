@@ -4,7 +4,7 @@
 import { onSave, exportSynced, importSynced, dayKey } from './store.js';
 import { cloudReady, currentUser, rest } from './cloud.js';
 import { qualityStreak } from './quality.js';
-import { pieceReadiness, daysUntil } from './exam.js';
+import { pieceReadiness, daysUntil, examSpec } from './exam.js';
 
 const PUSH_DELAY = 4000;
 let timer = null;
@@ -48,8 +48,8 @@ export function summarise(data, titleOf = {}, now = new Date()) {
   const profile = data.profile?.v ?? {};
   const ex = data.exam?.v;
   const exam = ex?.date ? {
-    board: ex.board, grade: ex.grade, date: ex.date, days: daysUntil(ex.date, now),
-    pieces: ex.pieces.map((p) => ({ title: p.title || titleOf[p.pieceId] || '', band: p.pieceId ? pieceReadiness(checks.filter((c) => c.pieceId === p.pieceId), ex.board, now.getTime()).band : null })),
+    board: ex.board, type: ex.type ?? 'practical', grade: ex.grade, date: ex.date, days: daysUntil(ex.date, now),
+    pieces: ex.pieces.slice(0, examSpec(ex.board, ex.type).piece.count).map((p) => ({ title: p.title || titleOf[p.pieceId] || '', band: p.pieceId ? pieceReadiness(checks.filter((c) => c.pieceId === p.pieceId), ex.board, now.getTime(), 2, ex.type).band : null })),
     ratings: ex.ratings ?? {},
   } : null;
   const mocks = (data.mocks?.v ?? []).slice(-1).map((m) => ({ at: m.at, results: m.results.map((r) => r.summary) }));

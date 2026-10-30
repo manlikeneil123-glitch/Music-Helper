@@ -35,4 +35,14 @@ const d = (o) => { const x = new Date('2026-10-30T12:00'); x.setDate(x.getDate()
 ok(!isQualityDay({ clean: 0, bars: 0, cards: 19 }) && isQualityDay({ cards: 20 }) && isQualityDay({ bars: 1 }), 'what makes a quality day');
 ok(qualityStreak({ [d(1)]: { clean: 1 }, [d(2)]: { bars: 1 } }, new Date('2026-10-30T12:00')) === 2, 'streak survives until today is done');
 ok(qualityStreak({ [d(0)]: { clean: 1 }, [d(2)]: { bars: 1 } }, new Date('2026-10-30T12:00')) === 1, 'a gap breaks the streak');
+
+// Pieces-only exam: no scales or sight-reading anywhere in the day.
+for (const [goal, board] of [[20, 'ABRSM'], [45, 'ABRSM'], [30, 'Trinity']]) {
+  const pg = buildPlan({ ...base, profile: { level: 'Grade 4 and above', board, examType: 'performance' }, goal });
+  ok(!pg.some((x) => /scale|arpeggio|sight|technical/i.test(`${x.title} ${x.detail}`)), `${board} pieces-only, ${goal} min: no scales or sight-reading`);
+  ok(pg.reduce((a, x) => a + x.mins, 0) >= goal - 2, `${board} pieces-only, ${goal} min: the minutes still add up`);
+  ok(pg[0].piece !== 'c-scale', 'warm-up is on a piece, not a scale');
+}
+ok(buildPlan({ ...base, profile: { level: 'Grade 4 and above', board: 'ABRSM', examType: 'performance' }, goal: 45 }).some((x) => x.title === 'Programme run-through'), 'longer days include a programme run-through');
+ok(buildPlan({ ...base, profile: { level: 'Grade 4 and above', board: 'ABRSM' }, goal: 45, examType: 'performance' }).every((x) => !/scale/i.test(x.title)), 'the exam plan\'s type wins over the profile');
 console.log(`plan: ${n} checks passed`);

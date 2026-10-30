@@ -1,6 +1,6 @@
 // The Exam page: countdown, the three pieces and how ready they are, the other parts
 // of the exam, this week's targets, and a mock exam in the order the day runs.
-import { BOARDS, GRADES, RATINGS, gradeNumber, pieceReadiness, daysUntil, phaseFor, weekTargets, mockSteps, bandLabel } from './exam.js';
+import { BOARDS, GRADES, RATINGS, EXAM_TYPES, examSpec, isPerformance, examTitle, gradeNumber, pieceReadiness, daysUntil, phaseFor, weekTargets, mockSteps, bandLabel } from './exam.js';
 import { checkHistory, allPieces, performPiece } from './check.js';
 import { renderScore } from './render.js';
 import { load, save, dayKey } from './store.js';
@@ -20,15 +20,22 @@ function defaults() {
   const p = profile();
   const board = p?.board === 'Trinity' ? 'Trinity' : 'ABRSM';
   const grade = /Grade (\d)/.exec(p?.level ?? '')?.[1] ?? '1';
-  return { board, grade, date: '', pieces: [{ title: '', pieceId: '' }, { title: '', pieceId: '' }, { title: '', pieceId: '' }], ratings: {}, choices: {} };
+  const type = p?.examType === 'performance' ? 'performance' : 'practical';
+  return { board, type, grade, date: '', pieces: blankPieces(examSpec(board, type).piece.count), ratings: {}, choices: {} };
+}
+const blankPieces = (n) => Array.from({ length: n }, () => ({ title: '', pieceId: '' }));
+// Switching type keeps every title typed so far: a 4th piece is only hidden, not lost.
+function fitPieces(pieces, n) {
+  return pieces.length >= n ? pieces : [...pieces, ...blankPieces(n - pieces.length)];
 }
 
 /** The exam with each piece's readiness worked out from its runs. */
 export function examWithReadiness(exam = examPlan(), history = checkHistory()) {
   if (!exam) return null;
+  const n = examSpec(exam.board, exam.type).piece.count;
   return {
     ...exam,
-    pieces: exam.pieces.map((p) => ({ ...p, readiness: p.pieceId ? pieceReadiness(history.filter((h) => h.pieceId === p.pieceId), exam.board) : null })),
+    pieces: fitPieces(exam.pieces, n).slice(0, n).map((p) => ({ ...p, readiness: p.pieceId ? pieceReadiness(history.filter((h) => h.pieceId === p.pieceId), exam.board, Date.now(), 2, exam.type) : null })),
   };
 }
 
@@ -40,10 +47,15 @@ function setupForm(e) {
         <label class="field">Board <select id="ex-board">${Object.keys(BOARDS).map((b) => `<option ${b === e.board ? 'selected' : ''}>${b}</option>`).join('')}</select></label>
         <label class="field">Grade <select id="ex-grade">${GRADES.map((g) => `<option value="${g}" ${g === e.grade ? 'selected' : ''}>${g === 'Initial' ? 'Initial' : `Grade ${g}`}</option>`).join('')}</select></label>
       </div>
+      <fieldset class="field">
+        <legend>Exam type</legend>
+        <div class="segmented" role="group" aria-label="Exam type">${Object.entries(EXAM_TYPES).map(([k, v]) => `<button type="button" data-type="${k}" aria-pressed="${(e.type ?? 'practical') === k}">${v}</button>`).join('')}</div>
+        <small class="muted" id="ex-type-note"></small>
+      </fieldset>
       <label class="field">Exam date (a rough date is fine) <input id="ex-date" type="date" value="${e.date}" min="${dayKey()}"></label>
       <button class="btn primary block" type="submit">Save</button>
       ${e.date ? '<button class="btn ghost link" type="button" id="ex-cancel">Cancel</button>' : ''}
-      <p class="fine">The app follows the published ${'ABRSM and Trinity'} structure. It isn't connected to either board.</p>
+      <p class="fine">The app follows the published ABRSM and Trinity structure. It isn't connected to either board.</p>
     </form>`;
 }
 
@@ -54,7 +66,7 @@ function readinessChip(r) {
 }
 
 function piecesCard(e) {
-  const spec = BOARDS[e.board].piece;
+  const spec = examSpec(e.board, e.type).piece;
   const options = allPieces().filter((p) => p.id !== 'c-scale');
   return `
     <section class="card">
@@ -75,11 +87,13 @@ function piecesCard(e) {
 }
 
 function partsCard(e) {
-  const parts = BOARDS[e.board].parts(gradeNumber(e.grade));
+  const parts = examSpec(e.board, e.type).parts(gradeNumber(e.grade));
+  if (!parts.length) return '';
+  const whole = parts.length === 1 && parts[0].id === 'whole';
   return `
     <section class="card">
-      <h3>The rest of the exam</h3>
-      <p class="muted small">The app can't check these yet, so rate them yourself (or with your teacher).</p>
+      <h3>${whole ? 'The performance as a whole' : 'The rest of the exam'}</h3>
+      <p class="muted small">${whole ? 'Marked on how the four pieces come across together: delivery, communication, interpretation and your choice of programme. Watch a filmed run and rate it.' : "The app can't check these yet, so rate them yourself (or with your teacher)."}</p>
       ${parts.map((part) => `
         <div class="exam-part">
           <div class="row between wrap"><b class="small">${part.choose ? `<select data-choice="${part.id}" aria-label="${part.label}">${part.choose.map((c) => `<option ${c === (e.choices?.[part.id] ?? part.choose[0]) ? 'selected' : ''}>${c}</option>`).join('')}</select>` : part.label}</b><span class="muted small">${part.marks} marks</span></div>
@@ -106,7 +120,9 @@ function mockCard(e) {
   return `
     <section class="card mock" id="mock">
       <h3>Mock exam</h3>
-      <p class="muted small">Everything in the order of the real exam: your pieces in Exam conditions (one take, no metronome, no stopping), then ${steps.slice(e.pieces.length).map((s) => s.title.toLowerCase()).join(', ')}. About ${10 + e.pieces.length * 3} minutes.</p>
+      <p class="muted small">${isPerformance(e.type)
+        ? `Your ${e.pieces.length} pieces back to back in Exam conditions (one take each, no metronome, no stopping), as on the video${steps.length > e.pieces.length ? ', then rate the performance as a whole' : ''}. About ${e.pieces.length * 4} minutes.`
+        : `Everything in the order of the real exam: your pieces in Exam conditions (one take, no metronome, no stopping), then ${steps.slice(e.pieces.length).map((s) => s.title.toLowerCase()).join(', ')}. About ${10 + e.pieces.length * 3} minutes.`}</p>
       <button class="btn primary block" type="button" id="mock-start">${ICONS.play} Start mock exam</button>
       ${past.length ? `<h4>Past mocks</h4><ul class="log">${past.map((m) => `<li><span>${new Date(m.at).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}</span><span class="muted small">${m.results.map((r) => esc(r.summary)).join(' · ')}</span></li>`).join('')}</ul>` : ''}
     </section>`;
@@ -140,13 +156,20 @@ function render() {
     return wireSetup(raw ?? defaults());
   }
   const days = daysUntil(e.date);
-  const phase = phaseFor(days);
+  const phase = phaseFor(days, e.type);
   const targets = weekTargets(e);
+  const perf = isPerformance(e.type);
+  const recorder = `
+    <section class="card${perf ? ' pg-lead' : ''}">
+      <h3>${perf ? 'Film your exam' : 'Performance Grade recorder'}</h3>
+      <p class="muted small">${perf ? 'Record the whole programme in one continuous take, with a framing guide and the checklist. Practise filming before the real one.' : 'Doing a Performance Grade or Digital Grade instead? Record your whole programme in one continuous video take, with a framing guide and a checklist.'} The video stays on your phone.</p>
+      <button class="btn ${perf ? 'primary' : ''} block" type="button" id="pg-open">${ICONS.camera} Record a performance</button>
+    </section>`;
   root.innerHTML = `
     <h2>Exam</h2>
     <section class="card exam-head">
       <div>
-        <span class="muted small">${e.board} ${e.grade === 'Initial' ? 'Initial' : `Grade ${e.grade}`} · ${new Date(e.date).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'long' })}</span>
+        <span class="muted small">${examTitle(e)} · ${new Date(e.date).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'long' })}</span>
         <div class="countdown"><b>${days < 0 ? '✓' : days}</b><span>${days < 0 ? 'done' : days === 1 ? 'day to go' : 'days to go'}</span></div>
       </div>
       <div class="phase"><span class="pill">${phase.title}</span><p class="small">${phase.text}</p></div>
@@ -154,23 +177,37 @@ function render() {
     </section>
     ${targets.length ? `<section class="card"><h3>This week</h3><ul class="targets">${targets.map((t) => `<li><b>${esc(t.part)}</b><span>${esc(t.text)}</span></li>`).join('')}</ul></section>` : ''}
     ${piecesCard(e)}
+    ${perf ? recorder : ''}
     ${partsCard(e)}
     ${mockCard(e)}
-    <section class="card">
-      <h3>Performance Grade recorder</h3>
-      <p class="muted small">Doing a Performance Grade or Digital Grade instead? Record your whole programme in one continuous video take, with a framing guide and a checklist. The video stays on your phone.</p>
-      <button class="btn block" type="button" id="pg-open">${ICONS.camera} Record a performance</button>
-    </section>`;
+    ${perf ? '' : recorder}`;
   wire(e);
 }
 
+const TYPE_NOTE = {
+  practical: 'Pieces, scales and arpeggios, sight-reading and aural (or Trinity\'s technical work and supporting tests).',
+  performance: { ABRSM: 'ABRSM Performance Grade: four pieces filmed in one take, plus a mark for the performance as a whole. No scales, sight-reading or aural.', Trinity: 'Trinity digital, repertoire-only pathway: four pieces, nothing else. No technical work or supporting tests.' },
+};
 function wireSetup(e) {
+  let type = e.type ?? 'practical';
+  const note = () => {
+    const board = root.querySelector('#ex-board').value;
+    root.querySelector('#ex-type-note').textContent = type === 'performance' ? TYPE_NOTE.performance[board] : TYPE_NOTE.practical;
+  };
+  root.querySelectorAll('[data-type]').forEach((b) => b.addEventListener('click', () => {
+    type = b.dataset.type;
+    root.querySelectorAll('[data-type]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+    note();
+  }));
+  root.querySelector('#ex-board').addEventListener('change', note);
+  note();
   root.querySelector('#ex-cancel')?.addEventListener('click', () => { editing = false; render(); });
   root.querySelector('#exam-setup').addEventListener('submit', (ev) => {
     ev.preventDefault();
     const date = root.querySelector('#ex-date').value;
     if (!date) return alert('Pick a date, even a rough one: the plan counts back from it.');
-    save('exam', { ...e, board: root.querySelector('#ex-board').value, grade: root.querySelector('#ex-grade').value, date });
+    const board = root.querySelector('#ex-board').value;
+    save('exam', { ...e, board, type, grade: root.querySelector('#ex-grade').value, date, pieces: fitPieces(e.pieces ?? [], examSpec(board, type).piece.count) });
     editing = false;
     render();
     changed();
@@ -229,7 +266,7 @@ function runStep(e) {
 }
 
 function pieceDone(e, r, entry) {
-  const band = entry ? pieceReadiness([entry], e.board, Date.now(), 1) : null;
+  const band = entry ? pieceReadiness([entry], e.board, Date.now(), 1, e.type) : null;
   const slow = entry?.targetBpm && entry.playedBpm < entry.targetBpm * 0.95 ? `, ${entry.playedBpm} of ${entry.targetBpm} bpm` : '';
   record({ score: r.score, band: band?.band ?? null, summary: band?.band ? `${bandLabel(band.band)} (${r.score}${slow})` : `${r.score}/100${slow}` });
   goTo('exam');
@@ -269,9 +306,9 @@ function record(result) {
   if (!mock) return;
   mock.results.push(result);
   if (mock.results.length >= mockSteps(e).length) {
-    save('mocks', [...load('mocks', []), { at: mock.at, board: e.board, grade: e.grade, results: mock.results }].slice(-10));
+    save('mocks', [...load('mocks', []), { at: mock.at, board: e.board, type: e.type ?? 'practical', grade: e.grade, results: mock.results }].slice(-10));
     save('mockRun', null);
-    setTimeout(() => alert('Mock exam finished. Your results are under "Past mocks". The weakest part is where this week\'s practice should go.'), 300);
+    setTimeout(() => alert(isPerformance(e.type) ? 'Mock exam finished. Your results are under "Past mocks". Next step: film the whole programme in one take with "Record a performance".' : 'Mock exam finished. Your results are under "Past mocks". The weakest part is where this week\'s practice should go.'), 300);
   } else {
     save('mockRun', mock);
   }

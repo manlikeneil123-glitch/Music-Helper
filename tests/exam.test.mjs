@@ -1,6 +1,6 @@
 // Exam readiness, countdown phases, weekly targets and mock order: node tests/exam.test.mjs
 import assert from 'node:assert/strict';
-import { BOARDS, pieceReadiness, daysUntil, phaseFor, weekTargets, mockSteps } from '../app/js/exam.js';
+import { BOARDS, PERFORMANCE, examSpec, pieceReadiness, daysUntil, phaseFor, weekTargets, mockSteps } from '../app/js/exam.js';
 
 let n = 0;
 const ok = (cond, what) => { assert.ok(cond, what); n++; };
@@ -47,4 +47,18 @@ const steps = mockSteps(exam);
 ok(steps.map((s) => s.kind).join() === 'piece,piece,piece,scales,sight,self', 'ABRSM mock: pieces, scales, sight-reading, aural');
 const tr = mockSteps({ ...exam, board: 'Trinity', grade: '4', choices: { test1: 'Musical knowledge', test2: 'Sight reading' } });
 ok(tr.slice(3).map((s) => s.kind).join() === 'scales,self,sight', 'Trinity mock follows the chosen supporting tests');
+
+// Pieces-only exams: four pieces, no scales, arpeggios, sight-reading or aural.
+const pgA = PERFORMANCE.ABRSM, pgT = PERFORMANCE.Trinity;
+ok(pgA.piece.count === 4 && pgA.piece.count * pgA.piece.marks + pgA.parts().reduce((a, p) => a + p.marks, 0) === 150, 'ABRSM Performance Grade: 4 × 30 + 30 = 150');
+ok(pgT.piece.count === 4 && pgT.piece.count * pgT.piece.marks === 100 && !pgT.parts().length, 'Trinity repertoire-only: 4 × 25 = 100, nothing else');
+ok(examSpec('ABRSM', 'performance') === pgA && examSpec('ABRSM') === BOARDS.ABRSM, 'type picks the spec');
+const perf = { ...exam, type: 'performance', pieces: [...exam.pieces, { title: 'Own choice', pieceId: 'd', readiness: { band: 'pass', weakest: 'tempo' } }] };
+const pt = weekTargets(perf, today);
+ok(!pt.some((x) => /scale|sight|aural|arpeggio|technical/i.test(`${x.part} ${x.text}`)), 'no scales, arpeggios, sight-reading or aural targets');
+ok(pt.filter((x) => !/whole/i.test(x.part)).length === 4 && pt.some((x) => /whole/i.test(x.part) && /in order/.test(x.text)), 'four piece targets plus the programme as a whole');
+ok(mockSteps(perf).map((s) => s.kind).join() === 'piece,piece,piece,piece,self', 'Performance Grade mock: four pieces, then the performance as a whole');
+ok(mockSteps({ ...perf, board: 'Trinity' }).map((s) => s.kind).join() === 'piece,piece,piece,piece', 'Trinity repertoire-only mock: four pieces only');
+ok(!/scale|sight/i.test(['learn', 'build', 'polish', 'final'].map((_, i) => phaseFor([90, 40, 20, 5][i], 'performance').text).join(' ')), 'phases never mention scales or sight-reading');
+ok(pieceReadiness([run({ pitch: 0.6, rhythm: 0.6 }), run({ pitch: 0.65, rhythm: 0.6 })], 'Trinity', now, 2, 'performance').range === 'under 15', 'Trinity repertoire bands are out of 25');
 console.log(`exam: ${n} checks passed`);

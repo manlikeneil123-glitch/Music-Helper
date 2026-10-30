@@ -5,7 +5,7 @@ import { load, dayKey } from './store.js';
 import { checkHistory, allPieces } from './check.js';
 import { qualityWeek } from './quality.js';
 import { examWithReadiness } from './examview.js';
-import { daysUntil } from './exam.js';
+import { daysUntil, examTitle } from './exam.js';
 import { currentUser } from './cloud.js';
 import { lastDays } from './timer.js';
 
@@ -125,7 +125,7 @@ function draw(r) {
   const days = r.exam ? daysUntil(r.exam.date) : null;
   if (days != null && days >= 0) {
     panel(60, H - 230, W - 120, 120);
-    text(`${r.exam.board} ${r.exam.grade === 'Initial' ? 'Initial' : `Grade ${r.exam.grade}`}`, 96, H - 160, 36, '#f3f5f8', 800);
+    text(examTitle(r.exam), 96, H - 160, 36, '#f3f5f8', 800);
     text(`${days} day${days === 1 ? '' : 's'} to go`, W - 96, H - 160, 36, '#f2b45a', 800, 'right');
     text('Readiness is for pitch and time only. Not an official mark.', 96, H - 124, 24, '#a9b0bb', 500);
   }

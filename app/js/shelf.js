@@ -3,6 +3,25 @@
 import { allPieces, checkHistory, troubleBars } from './check.js';
 import { ICONS } from './icons.js';
 import { still } from './settings.js';
+import { renderScore } from './render.js';
+import { excerpt, normalize } from './score.js';
+
+// The cover: the piece's own first bars, drawn like a printed first page.
+const covers = new Map();
+function cover(p, i) {
+  if (!covers.has(p.id)) {
+    try {
+      const s = normalize(p);
+      const first = 1 + (s.barOffset ?? 0);
+      const view = renderScore(excerpt(s, first, first + 3), { mode: 'page', width: 340 });
+      covers.set(p.id, view.systems.slice(0, 2).map((x) => x.svg.outerHTML).join(''));
+    } catch {
+      covers.set(p.id, null); // an odd score still gets the plain page
+    }
+  }
+  const art = covers.get(p.id);
+  return art ? `<div class="sheet cover paper" aria-hidden="true" style="--tint:${TINTS[i % TINTS.length]}"><span class="cover-title">${esc(p.title)}</span>${art}</div>` : page(i);
+}
 
 const TINTS = ['#ff8a5c', '#ff4f8b', '#c06bff', '#ffb35c', '#ff6b8b'];
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -27,7 +46,7 @@ export function shelfHtml() {
   const pieces = allPieces();
   const niches = pieces.map((p, i) => `
     <li><button type="button" class="niche" data-piece="${esc(p.id)}" style="--tint:${TINTS[i % TINTS.length]}" aria-label="${esc(p.title)}: open">
-      ${page(i)}<span class="ledge" aria-hidden="true"></span><span class="niche-name">${esc(p.title)}</span>
+      ${cover(p, i)}<span class="ledge" aria-hidden="true"></span><span class="niche-name">${esc(p.title)}</span>
     </button></li>`);
   if (!pieces.length) niches.push(`<li><button type="button" class="niche add" data-add><span class="plus" aria-hidden="true">+</span><span class="ledge" aria-hidden="true"></span><span class="niche-name">Add your first piece</span></button></li>`);
   while (niches.length < MIN_NICHES) niches.push('<li aria-hidden="true"><span class="niche empty"><span class="ledge"></span></span></li>');
@@ -45,7 +64,7 @@ function detail(p, i, count) {
   const cut = words.length > 1 ? p.title.trim().length - words[words.length - 1].length : Math.min(2, p.title.length - 1);
   return `
     <div class="pz-stage">
-      <div class="pz-niche" style="--tint:${TINTS[i % TINTS.length]}">${page(i)}<span class="ledge" aria-hidden="true"></span></div>
+      <div class="pz-niche" style="--tint:${TINTS[i % TINTS.length]}">${cover(p, i)}<span class="ledge" aria-hidden="true"></span></div>
       <div class="pz-info">
         <p class="kicker">${p.id.startsWith('teacher:') ? 'From your teacher' : 'Your piece'} · ${i + 1} of ${count}</p>
         <h2 id="pz-title">${esc(p.title.trim().slice(0, cut))}<em>${esc(p.title.trim().slice(cut))}</em></h2>

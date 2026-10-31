@@ -2,6 +2,10 @@
 
 What changed in each version of Stave, in plain words. Written from `app/js/changelog.js`.
 
+## 0.13.0: Covers (2026-10-31)
+
+- Each piece on your shelf now shows its own first bars, like the first page of the music.
+
 ## 0.12.0: Your pieces, on a shelf (2026-10-31)
 
 - Today has a shelf: each of your pieces stands in its own lit niche.

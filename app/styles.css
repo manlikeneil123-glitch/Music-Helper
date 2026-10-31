@@ -1204,3 +1204,10 @@ dialog.piece-zoom::backdrop { background: rgba(5, 6, 9, 0.35); }
 @keyframes pz-from-left { from { opacity: 0; transform: translateX(-40px) scale(0.96); } }
 :root.still .piece-zoom *, :root.still .niche, :root.still .niche .sheet { animation: none !important; transition: none !important; }
 @media (prefers-reduced-motion: reduce) { .piece-zoom *, .piece-zoom, .niche .sheet, .niche.add .plus { animation: none !important; transition: none !important; } }
+/* Covers: the piece's first bars on a small printed page. */
+.sheet.cover { display: flex; flex-direction: column; gap: 2px; box-sizing: border-box; width: 80px; height: 108px; padding: 9px 5px 5px; border-radius: 4px; overflow: hidden; background: #f6f1ea; border-top: 3px solid var(--tint); }
+.cover svg { display: block; width: 100%; height: auto; flex: none; }
+.cover-title { flex: none; font-family: Georgia, 'Times New Roman', serif; font-style: italic; font-size: 7px; line-height: 1.1; text-align: center; color: #2a1d24; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 2px; }
+.niche { height: 196px; }
+.pz-niche .sheet.cover { width: 70%; height: auto; aspect-ratio: 3 / 4; padding: 14% 7% 6%; border-top-width: 6px; }
+.pz-niche .cover-title { font-size: clamp(11px, 3.4vw, 15px); margin-bottom: 6px; }

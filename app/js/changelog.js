@@ -3,6 +3,12 @@
 // and the service worker, and writes CHANGELOG.md from this list.
 export const CHANGES = [
   {
+    version: '0.13.0', date: '2026-10-31', title: 'Covers',
+    items: [
+      'Each piece on your shelf now shows its own first bars, like the first page of the music.',
+    ],
+  },
+  {
     version: '0.12.0', date: '2026-10-31', title: 'Your pieces, on a shelf',
     items: [
       'Today has a shelf: each of your pieces stands in its own lit niche.',

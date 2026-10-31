@@ -5,6 +5,7 @@ import { save } from './store.js';
 import { still } from './settings.js';
 
 const STEPS = [
+  { tab: 'today', at: '.shelf', title: 'Your pieces', text: 'Every piece you add stands on this shelf. Tap one to see how it\'s going, then Perform to play it through or Learn to go slowly.' },
   { tab: 'today', at: '.today-plan', title: 'Your plan for today', text: 'Each day Stave builds a short plan from your grade, your exam and the bars you keep getting wrong. Tap any line to go straight to it.' },
   { tab: 'today', at: '#today-timer', title: 'Start practice', text: 'Starts the practice timer. Your minutes count towards the daily goal at the top of the plan.' },
   { tab: 'today', at: '.stat-strip', title: 'Your progress', text: 'The streak counts days with real progress: a clean run, a bar fixed, or 20 notes read. One rest day a week won\'t break it. Tap here for your full stats.' },

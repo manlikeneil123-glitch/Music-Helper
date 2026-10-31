@@ -31,6 +31,7 @@ Don't put model names in commits. Follow `docs/APP-PLAYBOOK.md`, minus the decis
 | 2026-10 | **Under 13s:** neutral birth month + year at sign-up (nothing pre-selected, remembered on the device so it can't be retried). Under 13 = account saves nothing until a parent approves by emailed link, or their studio teacher approves; unapproved accounts deleted after 14 days. |
 | 2026-10 | Sign-up has an **unticked** "I agree to the Terms and Privacy Policy" box; the server stores the terms version and time. Links are blue and underlined. Deleting an account is a button in Account, never "email us". |
 | 2026-10 | **Stats page** behind Today's three numbers (Today stays minimal). Tab bar: stretchy pill plus a rising bead in each tab's own Sunset colour. Glassy sign-in card that folds to the mark when switching forms. |
+| 2026-10 | **Today's shelf** (after a perfume-shop reel): pieces in lit niches at the top of Today, plan and checklist below. Tap = zoom into the piece with Perform / Learn. Empty shelf = an add-a-piece niche; the warm-up scale stays hidden. |
 | 2026-10 | Agent autonomy: fix bugs and small polish without asking; ask for anything with product or design choices. Ship in batches, push each. |
 
 ## Facts that took research

@@ -4,6 +4,7 @@ import { mountCheck, onChecksChange, checkHistory, suggestedBpm, allPieces, find
 import { openAssignments, onTeachChange, teacherName, daysToLesson, refreshTeacherWork, restoreTeacherScores, acceptAssignmentLink, sendTake } from './teach.js';
 import { openReportCard } from './reportcard.js';
 import { renderStats, countUp } from './stats.js';
+import { shelfHtml, wireShelf } from './shelf.js';
 import { openAssignDialog } from './assignlink.js';
 import { openKit } from './kit.js';
 import { buildPlan } from './plan.js';
@@ -182,6 +183,7 @@ function renderToday() {
       </div>
       <button class="btn primary" id="today-timer" type="button">${ICONS.play} Start practice</button>
     </div>
+    ${shelfHtml()}
     ${gettingStartedCard()}
     <section class="card today-plan">
       <div class="chart-head"><h3>Today's plan</h3><span class="pill">${Math.floor(today)} / ${goal} min</span></div>
@@ -223,6 +225,10 @@ function renderToday() {
   wireGettingStarted(root, { tour: runTour, mic: () => { show('play'); openMicSetup({ onDone: () => show('today') }); }, show, redraw: refreshToday });
   root.querySelector('[data-go=exam]')?.addEventListener('click', () => show('exam'));
   root.querySelector('#today-stats').addEventListener('click', () => show('stats'));
+  wireShelf(root, {
+    go: (id, how) => { choosePiece(id); show('play'); document.querySelector(`[data-practice="${how}"]`)?.click(); },
+    add: () => { show('play'); document.getElementById('import-file')?.click(); },
+  });
   countUp(root);
   root.querySelector('#today-timer').addEventListener('click', () => {
     show('practice');

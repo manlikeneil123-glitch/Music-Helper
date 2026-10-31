@@ -3,6 +3,14 @@
 // and the service worker, and writes CHANGELOG.md from this list.
 export const CHANGES = [
   {
+    version: '0.12.0', date: '2026-10-31', title: 'Your pieces, on a shelf',
+    items: [
+      'Today has a shelf: each of your pieces stands in its own lit niche.',
+      'Tap a piece to zoom in and see how it\'s going, then Perform to play it through or Learn to go slowly. Arrows move between pieces.',
+      'No pieces yet? The first niche adds one.',
+    ],
+  },
+  {
     version: '0.11.0', date: '2026-10-31', title: 'Stats, and fairer sign-up',
     items: [
       'Tap your three numbers on Today for a new Stats page: minutes by what you practised, your check scores over time, and this week\'s goal.',

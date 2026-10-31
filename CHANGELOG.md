@@ -2,6 +2,12 @@
 
 What changed in each version of Stave, in plain words. Written from `app/js/changelog.js`.
 
+## 0.12.0: Your pieces, on a shelf (2026-10-31)
+
+- Today has a shelf: each of your pieces stands in its own lit niche.
+- Tap a piece to zoom in and see how it's going, then Perform to play it through or Learn to go slowly. Arrows move between pieces.
+- No pieces yet? The first niche adds one.
+
 ## 0.11.0: Stats, and fairer sign-up (2026-10-31)
 
 - Tap your three numbers on Today for a new Stats page: minutes by what you practised, your check scores over time, and this week's goal.

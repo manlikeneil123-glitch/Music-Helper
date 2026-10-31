@@ -12,7 +12,7 @@ const { chromium } = await import(process.env.PLAYWRIGHT ?? 'playwright');
 const BASE = process.argv[2] ?? 'http://localhost:8765/';
 const WIDTHS = [320, 375, 390, 1280];
 const TABS = ['today', 'cards', 'practice', 'play', 'exam', 'account'];
-const PAGES = ['privacy.html', 'terms.html', 'help.html', 'accessibility.html'];
+const PAGES = ['privacy.html', 'terms.html', 'copyright.html', 'help.html', 'accessibility.html', 'consent.html'];
 
 function audit() {
   const out = [];

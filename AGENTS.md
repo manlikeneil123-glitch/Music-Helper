@@ -28,6 +28,9 @@ Don't put model names in commits. Follow `docs/APP-PLAYBOOK.md`, minus the decis
 | 2026-10 | **No preset songs.** Pieces come from importing MusicXML or a teacher's shared scores. A C major scale stays hidden, only for the warm-up check and the mic test kit. |
 | 2026-10 | Tutorial: an optional guided tour (offered after setup, replayable from Settings, never auto-started) plus a self-ticking Getting started checklist on Today. |
 | 2026-10 | Flashcards swipe away (right = got it, left = missed it). Calibration is a guided wizard in plain words. |
+| 2026-10 | **Under 13s:** neutral birth month + year at sign-up (nothing pre-selected, remembered on the device so it can't be retried). Under 13 = account saves nothing until a parent approves by emailed link, or their studio teacher approves; unapproved accounts deleted after 14 days. |
+| 2026-10 | Sign-up has an **unticked** "I agree to the Terms and Privacy Policy" box; the server stores the terms version and time. Links are blue and underlined. Deleting an account is a button in Account, never "email us". |
+| 2026-10 | **Stats page** behind Today's three numbers (Today stays minimal). Tab bar: stretchy pill plus a rising bead in each tab's own Sunset colour. Glassy sign-in card that folds to the mark when switching forms. |
 | 2026-10 | Agent autonomy: fix bugs and small polish without asking; ask for anything with product or design choices. Ship in batches, push each. |
 
 ## Facts that took research
@@ -41,6 +44,7 @@ Don't put model names in commits. Follow `docs/APP-PLAYBOOK.md`, minus the decis
 - Run every `tests/*.test.mjs` (and `tests/db/run.sh` when SQL changes) before committing.
 - Releases: add an entry at the top of `app/js/changelog.js` (plain words, for students), run `node tools/bump.mjs` (writes `app/js/version.js`, the service worker cache name and `CHANGELOG.md`), commit, then `sh tools/ship.sh --push`: it runs the checks, pushes, waits for the live site to serve the new version and compares file hashes. `tests/copy.test.mjs` fails if the version numbers disagree.
 - Database: new numbered file in `supabase/migrations/`, safe to re-run; the owner runs it in Supabase **before** code that needs it is pushed; `supabase/audit.sql` after. `tests/db/run.sh` must run as a non-root user (in this container: copy to /tmp and `su postgres`).
+- Accessibility: no overlay widgets, ever. Run axe (WCAG 2.2 AA) on every tab and page after UI changes; it was clean at 0.11.0.
 - UI changes: `node tools/ui-audit.mjs` (needs the app served on :8765) and `tests/contrast.test.mjs`. If the background photo, `--photo-filter` or `--shade` change, re-measure the backdrop colours in the contrast test.
 - Mark any temporary test code `TEMP-DEV`; the copy test refuses to ship it.
 - GitHub project pages can't serve a domain-root robots.txt; use `noindex` meta tags instead.

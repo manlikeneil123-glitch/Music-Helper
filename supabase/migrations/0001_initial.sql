@@ -189,7 +189,9 @@ $$;
 
 -- The teacher's class list: each student's username and the summary their phone
 -- computed (minutes, streak, recent checks) — never their full history.
-create or replace function public.studio_students() returns table (id uuid, username text, joined_at timestamptz, updated_at timestamptz, summary jsonb)
+-- Dropped first: 0003 adds a column, and a re-run can't change a return type in place.
+drop function if exists public.studio_students();
+create function public.studio_students() returns table (id uuid, username text, joined_at timestamptz, updated_at timestamptz, summary jsonb)
 language sql stable security definer set search_path = '' as $$
   select p.id, p.username, p.joined_at, g.updated_at, g.data -> 'summary' -> 'v'
   from public.profiles p

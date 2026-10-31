@@ -1,7 +1,7 @@
 -- Security audit: run in the Supabase SQL editor after every migration. Every result
 -- set should match the expected list in the comment above it.
 
--- 1. Functions a signed-out visitor (anon) can call. Expected: parent_view only.
+-- 1. Functions a signed-out visitor (anon) can call. Expected: parent_consent, parent_view.
 select p.proname
 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
 where n.nspname = 'public' and has_function_privilege('anon', p.oid, 'execute')

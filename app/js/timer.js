@@ -31,6 +31,8 @@ export function goalMinutes() {
   return load('goal', 20);
 }
 
+export const allSessions = () => sessions;
+
 export function minutesOn(day) {
   return sessions.filter((s) => s.day === day).reduce((a, s) => a + s.ms, 0) / 60000;
 }

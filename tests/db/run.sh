@@ -14,8 +14,8 @@ psql -f tests/db/auth-stub.sql
 for pass in 1 2; do for f in supabase/migrations/*.sql; do psql -f "$f" 2>/dev/null; done; done
 out=$(psql -f tests/db/rls-test.sql 2>&1) || { echo "$out" | grep -v 'NOTICE:  ok'; exit 1; }
 echo "$out" | grep -c 'NOTICE:  ok' | xargs printf '%s checks passed\n'
-# The audit: anon may call parent_view only; nothing else should come back. (The
+# The audit: anon may call parent_consent and parent_view only; nothing else should come back. (The
 # storage query needs Supabase itself, so it's skipped here.)
 audit=$(grep -v 'storage.buckets' supabase/audit.sql | psql -At -f - 2>&1)
-[ "$audit" = "parent_view" ] || { echo "audit.sql found problems:"; echo "$audit"; exit 1; }
+[ "$audit" = "$(printf 'parent_consent\nparent_view')" ] || { echo "audit.sql found problems:"; echo "$audit"; exit 1; }
 echo "audit.sql: clean"

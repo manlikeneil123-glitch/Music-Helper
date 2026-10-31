@@ -7,7 +7,7 @@ import { still } from './settings.js';
 const STEPS = [
   { tab: 'today', at: '.today-plan', title: 'Your plan for today', text: 'Each day Stave builds a short plan from your grade, your exam and the bars you keep getting wrong. Tap any line to go straight to it.' },
   { tab: 'today', at: '#today-timer', title: 'Start practice', text: 'Starts the practice timer. Your minutes count towards the daily goal at the top of the plan.' },
-  { tab: 'today', at: '.stat-strip', title: 'Your progress', text: 'The streak counts days with real progress: a clean run, a bar fixed, or 20 notes read. One rest day a week won\'t break it.' },
+  { tab: 'today', at: '.stat-strip', title: 'Your progress', text: 'The streak counts days with real progress: a clean run, a bar fixed, or 20 notes read. One rest day a week won\'t break it. Tap here for your full stats.' },
   { tab: 'cards', at: '.flashcard', title: 'Read: note flashcards', text: 'Name the note. Tap the card to check, then swipe right if you knew it and left if you didn\'t. Notes you miss come back more often.' },
   { tab: 'cards', at: '#card-deck', title: 'Choose what to practise', text: 'Notes, key signatures, intervals or chords, in treble or bass clef. You can also answer by playing the note on the keys.' },
   { tab: 'practice', at: '.timer-ring', title: 'Practise: the timer', text: 'Time a practice session and see your week. Pick what you\'re working on first, so your teacher can see where the time went.' },

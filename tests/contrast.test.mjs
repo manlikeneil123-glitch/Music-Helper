@@ -57,8 +57,8 @@ for (const [theme, vars] of [['night', night], ['day', day]]) {
   const surface = over(parse(vars['--surface'], vars), backdrop);
   const strong = over(parse(vars['--surface-strong'], vars), backdrop);
   // Straight on the photo: headings, ledes, fine print, links under the cards.
-  // (Links there use --text-2 and an underline; full --link colour is for panels and pages.)
-  for (const t of ['--ink', '--text-2']) checkOn(`var(${t})`, backdrops, `${t} on the background`);
+  // Links are blue and underlined everywhere, so --link must pass here too.
+  for (const t of ['--ink', '--text-2', '--link-photo']) checkOn(`var(${t})`, backdrops, `${t} on the background`);
   // Help, privacy and other pages: plain --bg, no photo.
   for (const t of ['--ink', '--muted', '--link']) check(theme, vars, `var(${t})`, parse(vars['--bg'], vars), `${t} on a page`);
   // Inside glass panels (both strengths).

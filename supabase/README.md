@@ -19,7 +19,15 @@ fully on-device and the Account page says accounts aren't switched on yet.
    *publishable* key (or the *anon* key on older projects) into
    [`app/js/config.js`](../app/js/config.js). Both are safe to publish; the
    row-level security in the migrations is what protects each account.
-6. Commit and push. GitHub Pages redeploys in about a minute.
+6. **Parent emails for under-13s.** Children under 13 get an account that saves
+   nothing until a parent approves it from an emailed link (or their teacher approves
+   it). The email is sent by the edge function in
+   [`functions/parent-consent`](functions/parent-consent/index.ts). Make a free
+   [Resend](https://resend.com) account, verify a sending domain, then:
+   `supabase functions deploy parent-consent` and
+   `supabase secrets set RESEND_API_KEY=... MAIL_FROM="Stave <hello@your-domain>" SITE_URL=https://manlikeneil123-glitch.github.io/Music-Helper/`.
+   Without it, under-13s can still be approved by their teacher.
+7. Commit and push. GitHub Pages redeploys in about a minute.
 
 **Never use the `service_role` / secret key in the app.** It bypasses all security.
 
@@ -94,6 +102,14 @@ be downloaded by other GitHub users. Test a restore once: download a backup from
 workflow run, then `gpg -d stave-*.sql.gz.gpg | gunzip | psql <a scratch database>`.
 
 ## Not done yet
+
+- **DMCA designated agent** (only matters for US users, but cheap): register at
+  [copyright.gov/dmca-directory](https://www.copyright.gov/dmca-directory/) ($6), put
+  the agent's name and contact address on `app/copyright.html` (generated from the page
+  script; replace the "being completed" line), and set a calendar reminder: the
+  registration **expires every 3 years**.
+- **A private contact address.** The legal pages point to public GitHub issues and
+  promise a private reply; a real address (even a forwarding one) is better.
 
 - **Captcha on sign-up and sign-in** (owner decision: later). Before accounts are
   opened to the public, turn on Authentication → Bot and Abuse Protection with

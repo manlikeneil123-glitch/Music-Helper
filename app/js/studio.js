@@ -102,7 +102,7 @@ export function studioTeaching(extras) {
   return `
     <section class="card">
       <h3>Shared scores</h3>
-      <p class="muted small">MusicXML or .mxl files you're allowed to share (your own arrangements, public-domain editions). Only your students see them, in Perform.</p>
+      <p class="muted small">MusicXML or .mxl files you're allowed to share (your own arrangements, public-domain editions; see <a href="copyright.html">Copyright</a>). Only your students see them, in Perform.</p>
       ${extras.scores.length ? `<ul class="log">${extras.scores.map((s) => `<li><span>${esc(s.title)}</span><button class="btn small-btn" type="button" data-unshare="${s.id}" aria-label="Remove ${esc(s.title)}">✕</button></li>`).join('')}</ul>` : ''}
       <label class="btn small-btn" for="share-file">Share a score</label>
       <input id="share-file" type="file" accept=".musicxml,.xml,.mxl" hidden>

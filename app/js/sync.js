@@ -93,7 +93,7 @@ async function push() {
   clearTimeout(timer);
   timer = null;
   const user = currentUser();
-  if (!cloudReady() || !user) return;
+  if (!cloudReady() || !user || user.pending) return;
   setStatus({ state: 'saving', error: '' });
   try {
     const data = exportSynced();
@@ -110,7 +110,7 @@ async function push() {
 }
 
 export function pushSoon() {
-  if (!cloudReady() || !currentUser()) return;
+  if (!cloudReady() || !currentUser() || currentUser().pending) return;
   clearTimeout(timer);
   timer = setTimeout(push, PUSH_DELAY);
   setStatus({ state: 'pending' });
@@ -121,7 +121,7 @@ export const pushNow = push;
 /** Merge the account's copy into this device. Returns the names that changed. */
 export async function pull() {
   const user = currentUser();
-  if (!cloudReady() || !user) return [];
+  if (!cloudReady() || !user || user.pending) return [];
   setStatus({ state: 'loading', error: '' });
   try {
     const rows = await rest(`progress?user_id=eq.${user.id}&select=data`);

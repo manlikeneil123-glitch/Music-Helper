@@ -14,7 +14,7 @@
     <p><a href="./">← Back to Stave</a></p>
 
     <h1>Privacy</h1>
-    <p class="lede">For students, parents, carers and teachers. Last updated 30 October 2026.</p>
+    <p class="lede">For students, parents, carers and teachers. Last updated 31 October 2026.</p>
 
     <h2>Our promises</h2>
     <ul>
@@ -29,10 +29,13 @@
 
     <h2>2. What we collect</h2>
     <p><b>Without an account</b>, nothing you do leaves your device. Your practice log, check results, flashcard progress, exam plan and settings are kept in your browser's storage.</p>
-    <p><b>With an account</b> (a username and password; we never ask for your name, email, age, school or phone number):</p>
+    <p><b>With an account</b> (a username and password; we never ask for your name, email, school or phone number):</p>
     <table>
       <tr><th>What</th><th>Why</th><th>Who can see it</th></tr>
       <tr><td>Your username, and whether you're a student or teacher</td><td>To sign you in</td><td>You, and your teacher if you join their studio</td></tr>
+      <tr><td>The month and year you were born</td><td>To know whether a parent or carer needs to approve the account (under 13s)</td><td>Only you; not your teacher</td></tr>
+      <tr><td>Which version of the Terms you agreed to, and when</td><td>A record of what you agreed to</td><td>Only you</td></tr>
+      <tr><td>For under 13s: a parent or carer's email, until they answer</td><td>To send them the approval link. Deleted as soon as they say yes or no</td><td>Nobody; only our email service, to deliver it</td></tr>
       <tr><td>Your practice progress: sessions, check scores, which bars went wrong, flashcard progress, your level, exam board and exam plan, and pieces you imported</td><td>So it's backed up and works on a new phone</td><td>You. Your teacher sees a summary (minutes, streak, recent scores, exam readiness, trouble bars), never the full history</td></tr>
       <tr><td>Which teacher's studio you joined</td><td>So your teacher can follow your practice</td><td>You and that teacher</td></tr>
       <tr><td>Work your teacher sets you, and scores they share</td><td>So it appears in your plan</td><td>That teacher and their students</td></tr>
@@ -75,7 +78,8 @@
 
     <h2>11. How long we keep it</h2>
     <ul>
-      <li>Account data: until you delete your account. Deleting removes it straight away; we keep no backup copies of deleted accounts.</li>
+      <li>Account data: until you delete your account. Deleting removes it straight away. Encrypted weekly backups (for recovering from a server fault) are kept for up to 60 days and then destroyed, so a deleted account fully disappears within 60 days.</li>
+      <li>Accounts made by under 13s that no parent, carer or teacher approves: deleted after 14 days.</li>
       <li>Recordings sent to a teacher: 20 days at most.</li>
       <li>Parent links: until you turn them off or make a new one.</li>
       <li>Data on your device: until you clear it, sign out, or uninstall the app.</li>
@@ -90,14 +94,14 @@
     </ul>
 
     <h2>13. Young people</h2>
-    <p>Most people using Stave are under 18, so we follow the UK Age Appropriate Design Code: the most private settings are the default, nothing is shared unless you choose, there are no adverts or nudges to share more, and no tricks to keep you in the app. You need to be 13 or over to make an account yourself; if you're younger, a parent or carer should set it up. Without an account, the app needs no permission at all. Parents, carers and teachers: see <a href="help.html#adults">Help and support</a>.</p>
+    <p>Most people using Stave are under 18, so we follow the UK Age Appropriate Design Code: the most private settings are the default, nothing is shared unless you choose, there are no adverts or nudges to share more, and no tricks to keep you in the app. When you make an account we ask the month and year you were born. If you're under 13, the account can't save anything until a parent or carer approves it from a link we email them, or your piano teacher approves it from their studio; if nobody does within 14 days, the account is deleted. A parent or carer can ask us to delete a child's account at any time. Without an account, the app needs no permission at all, because nothing leaves the device. Parents, carers and teachers: see <a href="help.html#adults">Help and support</a>.</p>
 
     <h2>14. Security</h2>
     <p>Everything travels over HTTPS. Passwords are stored hashed by Supabase and never seen by us. Each account can read only its own data (and a teacher their own students' summaries), enforced by row-level security in the database.</p>
 
     <h2>15. Changes to this policy</h2>
     <p>When something changes we update the date at the top and mention it in the app's What's new note. We won't start using your data in a new way without asking.</p>
-    <nav class="doc-nav" aria-label="Stave pages"><a href="privacy.html" aria-current="page">Privacy</a><a href="terms.html">Terms</a><a href="help.html">Help and support</a><a href="accessibility.html">Accessibility</a></nav>
+    <nav class="doc-nav" aria-label="Stave pages"><a href="privacy.html" aria-current="page">Privacy</a><a href="terms.html">Terms</a><a href="copyright.html">Copyright</a><a href="help.html">Help and support</a><a href="accessibility.html">Accessibility</a></nav>
   </main>
 </body>
 </html>

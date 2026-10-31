@@ -261,6 +261,8 @@ function next() {
   flipped = false;
   pressed = [];
   const f = face(current);
+  // Names the question, not the answer.
+  f.svg.setAttribute('aria-label', `Flashcard: ${DECKS[kind] ?? 'a question'} on a stave. Flip the card to read the answer.`);
   root.querySelector('.card-front .stave-wrap').replaceChildren(f.svg);
   const answer = root.querySelector('.card-back .answer');
   answer.textContent = f.answer;

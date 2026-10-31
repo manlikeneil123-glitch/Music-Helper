@@ -1,11 +1,11 @@
 -- Row-level security checks for supabase/migrations. Each block acts as one user.
 \set ON_ERROR_STOP 1
 insert into auth.users (id, email, raw_user_meta_data) values
-  ('00000000-0000-0000-0000-00000000000a', 'miss_t@x', '{"username":"Miss_T","role":"teacher"}'),
-  ('00000000-0000-0000-0000-00000000000b', 'ana@x', '{"username":"ana","role":"student"}'),
-  ('00000000-0000-0000-0000-00000000000c', 'ben@x', '{"username":"ben","role":"student"}'),
-  ('00000000-0000-0000-0000-00000000000d', 'mr_x@x', '{"username":"mr_x","role":"teacher"}'),
-  ('00000000-0000-0000-0000-00000000000e', 'eve@x', '{"username":"eve","role":"admin"}');
+  ('00000000-0000-0000-0000-00000000000a', 'miss_t@x', '{"username":"Miss_T","role":"teacher","born":"1990-05","terms":"2026-10-31"}'),
+  ('00000000-0000-0000-0000-00000000000b', 'ana@x', '{"username":"ana","role":"student","born":"1990-05","terms":"2026-10-31"}'),
+  ('00000000-0000-0000-0000-00000000000c', 'ben@x', '{"username":"ben","role":"student","born":"1990-05","terms":"2026-10-31"}'),
+  ('00000000-0000-0000-0000-00000000000d', 'mr_x@x', '{"username":"mr_x","role":"teacher","born":"1990-05","terms":"2026-10-31"}'),
+  ('00000000-0000-0000-0000-00000000000e', 'eve@x', '{"username":"eve","role":"admin","born":"1990-05","terms":"2026-10-31"}');
 
 create function pg_temp.act(who text) returns void language plpgsql as $$
 begin
@@ -20,12 +20,12 @@ end $$;
 select pg_temp.ok((select username from public.profiles where id = '00000000-0000-0000-0000-00000000000a') = 'miss_t', 'username lower-cased');
 select pg_temp.ok((select role from public.profiles where id = '00000000-0000-0000-0000-00000000000e') = 'student', 'unknown role becomes student');
 do $$ begin
-  insert into auth.users (email, raw_user_meta_data) values ('dup@x', '{"username":"ana"}');
+  insert into auth.users (email, raw_user_meta_data) values ('dup@x', '{"username":"ana","born":"1990-05","terms":"t"}');
   raise exception 'FAIL: duplicate username allowed';
 exception when unique_violation then raise notice 'ok: duplicate username rejected';
 end $$;
 do $$ begin
-  insert into auth.users (email, raw_user_meta_data) values ('bad@x', '{"username":"no spaces!"}');
+  insert into auth.users (email, raw_user_meta_data) values ('bad@x', '{"username":"no spaces!","born":"1990-05","terms":"t"}');
   raise exception 'FAIL: bad username allowed';
 exception when check_violation then raise notice 'ok: malformed username rejected';
 end $$;
@@ -222,4 +222,68 @@ select pg_temp.ok((select count(*) from public.progress where user_id = '0000000
 select pg_temp.ok((select count(*) from public.profiles where username = 'ben') = 0, 'deleted account''s profile is gone');
 delete from auth.users where id = '00000000-0000-0000-0000-00000000000d';
 select pg_temp.ok((select studio_id from public.profiles where username = 'ana') is null, 'teacher deletion frees the student');
+
+-- Age screen and consent (migration 0003).
+reset role;
+do $$ begin insert into auth.users (email, raw_user_meta_data) values ('nb@x', '{"username":"no_born","terms":"t"}'); raise exception 'FAIL: sign-up without birth date';
+exception when raise_exception then if sqlerrm like 'FAIL%' then raise; end if; raise notice 'ok: birth month and year required'; end $$;
+do $$ begin insert into auth.users (email, raw_user_meta_data) values ('nt@x', '{"username":"no_terms","born":"1990-01"}'); raise exception 'FAIL: sign-up without terms';
+exception when raise_exception then if sqlerrm like 'FAIL%' then raise; end if; raise notice 'ok: terms box required'; end $$;
+insert into auth.users (id, email, raw_user_meta_data) values
+  ('00000000-0000-0000-0000-0000000000f1', 'kid@x', json_build_object('username', 'kid', 'role', 'teacher', 'born', to_char(current_date - interval '9 years', 'YYYY-MM'), 'terms', '2026-10-31')),
+  ('00000000-0000-0000-0000-0000000000f2', 'kid2@x', json_build_object('username', 'kid2', 'role', 'student', 'born', to_char(current_date - interval '10 years', 'YYYY-MM'), 'terms', '2026-10-31')),
+  ('00000000-0000-0000-0000-0000000000f3', 'kid3@x', json_build_object('username', 'kid3', 'role', 'student', 'born', to_char(current_date - interval '12 years', 'YYYY-MM'), 'terms', '2026-10-31')),
+  ('00000000-0000-0000-0000-0000000000f4', 'teen@x', json_build_object('username', 'teen', 'role', 'student', 'born', to_char(current_date - interval '14 years', 'YYYY-MM'), 'terms', '2026-10-31'));
+select pg_temp.ok((select consent = 'pending' and role = 'student' and terms_version = '2026-10-31' and terms_at is not null from public.profiles where username = 'kid'), 'under 13: pending, student, terms recorded');
+select pg_temp.ok((select consent = 'ok' from public.profiles where username = 'teen'), '13 and over: no approval needed');
+select pg_temp.ok(public.under_13(to_char(current_date - interval '13 years' + interval '1 month', 'YYYY-MM')) and not public.under_13(to_char(current_date - interval '13 years' - interval '1 month', 'YYYY-MM')), 'turns 13 at the end of the birth month');
+set role authenticated;
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000f1', false);
+select pg_temp.ok((public.me() ->> 'consent') = 'pending', 'child sees they are waiting');
+do $$ begin insert into public.progress (user_id, data) values (auth.uid(), '{}'); raise exception 'FAIL: pending child stored progress';
+exception when insufficient_privilege then raise notice 'ok: pending child stores nothing'; end $$;
+do $$ begin perform public.create_parent_link(); raise exception 'FAIL: pending child made a parent link';
+exception when raise_exception then if sqlerrm like 'FAIL%' then raise; end if; raise notice 'ok: pending child cannot make a parent link'; end $$;
+do $$ begin perform public.issue_parent_consent(auth.uid(), 'mum@x.com'); raise exception 'FAIL: child issued own token';
+exception when insufficient_privilege then raise notice 'ok: only the server issues consent tokens'; end $$;
+reset role;
+set role service_role;
+create temp table tok as select public.issue_parent_consent('00000000-0000-0000-0000-0000000000f1', 'Mum@X.com') as t;
+do $$ begin perform public.issue_parent_consent('00000000-0000-0000-0000-0000000000f1', 'mum@x.com'); raise exception 'FAIL: email spam';
+exception when raise_exception then if sqlerrm like 'FAIL%' then raise; end if; raise notice 'ok: one consent email per 10 minutes'; end $$;
+reset role;
+grant select on tok to anon;
+set role anon;
+select pg_temp.ok(public.parent_consent((select t from tok), true) = 'kid', 'parent approves from the link');
+do $$ begin perform public.parent_consent((select t from tok), true); raise exception 'FAIL: link reused';
+exception when raise_exception then if sqlerrm like 'FAIL%' then raise; end if; raise notice 'ok: consent link works once'; end $$;
+reset role;
+select pg_temp.ok((select consent = 'ok' and consent_by = 'parent' and parent_email is null from public.profiles where username = 'kid'), 'approved and parent email wiped');
+set role service_role;
+create temp table tok2 as select public.issue_parent_consent('00000000-0000-0000-0000-0000000000f3', 'dad@x.com') as t;
+reset role;
+grant select on tok2 to anon;
+set role anon;
+select public.parent_consent((select t from tok2), false);
+reset role;
+select pg_temp.ok((select count(*) from public.profiles where username = 'kid3') = 0, 'parent says no: account deleted');
+-- Teacher approval.
+set role authenticated;
+select pg_temp.act('teacher');
+create temp table tcode as select public.me() -> 'studio' ->> 'code' as c;
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000f2', false);
+select public.join_studio((select c from tcode));
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000f4', false);
+do $$ begin perform public.approve_student('00000000-0000-0000-0000-0000000000f2'); raise exception 'FAIL: non-teacher approved';
+exception when raise_exception then if sqlerrm like 'FAIL%' then raise; end if; raise notice 'ok: only their teacher can approve'; end $$;
+select pg_temp.act('teacher');
+select pg_temp.ok((select pending from public.studio_students() where username = 'kid2'), 'teacher sees kid2 waiting');
+select public.approve_student('00000000-0000-0000-0000-0000000000f2');
+reset role;
+select pg_temp.ok((select consent = 'ok' and consent_by = 'teacher' from public.profiles where username = 'kid2'), 'teacher approved kid2');
+-- Unapproved for 14 days: gone at the next sign-up.
+insert into auth.users (id, email, raw_user_meta_data) values ('00000000-0000-0000-0000-0000000000f5', 'old@x', json_build_object('username', 'oldkid', 'born', to_char(current_date - interval '8 years', 'YYYY-MM'), 'terms', 't'));
+update public.profiles set created_at = now() - interval '15 days' where username = 'oldkid';
+insert into auth.users (email, raw_user_meta_data) values ('new@x', '{"username":"newbie","born":"1990-01","terms":"t"}');
+select pg_temp.ok((select count(*) from public.profiles where username = 'oldkid') = 0, 'unapproved accounts deleted after 14 days');
 \echo ALL RLS CHECKS PASSED

@@ -3,6 +3,16 @@
 // and the service worker, and writes CHANGELOG.md from this list.
 export const CHANGES = [
   {
+    version: '0.11.0', date: '2026-10-31', title: 'Stats, and fairer sign-up',
+    items: [
+      'Tap your three numbers on Today for a new Stats page: minutes by what you practised, your check scores over time, and this week\'s goal.',
+      'The tab bar has a new look: your tab rises in its own colour.',
+      'A new sign-in card.',
+      'Making an account now asks the month and year you were born, and has a box to agree to the Terms and Privacy Policy. If you\'re under 13, a parent, carer or your teacher says OK first.',
+      'A new Copyright page, links are blue and underlined, and the app passed a full accessibility check.',
+    ],
+  },
+  {
     version: '0.10.0', date: '2026-10-31', title: 'Simpler, and Sunset',
     items: [
       'A new Sunset look: coral, pink and purple through the glass.',

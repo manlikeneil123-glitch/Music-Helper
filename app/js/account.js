@@ -2,13 +2,14 @@
 // with a code; teachers see each student's practice and checks. Progress still lives
 // on the phone first — the account is a backup and the teacher's window onto it.
 import { ICONS } from './icons.js';
-import { cloudReady, currentUser, usernameError, signUp, signIn, signOut, rpc, changePassword, CloudError } from './cloud.js';
+import { cloudReady, currentUser, usernameError, signUp, signIn, signOut, rpc, changePassword, askParent, setPending, CloudError } from './cloud.js';
 import { pull, pushNow, syncStatus, onSyncStatus } from './sync.js';
 import { clearSynced, dataOwner, setDataOwner } from './store.js';
 import { loadTeacherExtras, studentTeaching, studioTeaching, wireTeacher, loadStudentExtras, studentCards, wireStudent } from './studio.js';
 import { refreshTeacherWork } from './teach.js';
 import { examTitle } from './exam.js';
 import { settingsCard, wireSettings } from './settings.js';
+import { MARK } from './welcome.js';
 
 let root;
 let mode = 'create'; // signed-out form: 'create' | 'signin'
@@ -51,21 +52,52 @@ function notReady() {
     </section>`;
 }
 
+// Bump when terms.html or privacy.html change in a way people must agree to again.
+export const TERMS_VERSION = '2026-10-31';
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+// The birth month and year are asked once per device: a second visit shows the first
+// answer, so the question can't be retried with a different year.
+function savedBorn() {
+  try {
+    return localStorage.getItem('stave:born') || document.cookie.match(/(?:^|; )stave_born=(\d{4}-\d{2})/)?.[1] || '';
+  } catch {
+    return '';
+  }
+}
+function saveBorn(born) {
+  try { localStorage.setItem('stave:born', born); } catch { /* cookie below still holds it */ }
+  document.cookie = `stave_born=${born}; max-age=${60 * 60 * 24 * 400}; path=/; SameSite=Lax`;
+}
+/** Same rule as the server: under 13 until the end of the birth month 13 years on. */
+export function under13(born, now = new Date()) {
+  const [y, m] = born.split('-').map(Number);
+  return new Date(y + 13, m, 0, 23, 59, 59) > now;
+}
+
 function signedOut() {
   const creating = mode === 'create';
+  const born = savedBorn();
+  const [by, bm] = born ? born.split('-').map(Number) : [];
+  const thisYear = new Date().getFullYear();
+  const field = (icon, label, input) => `<label class="field">${label}<span class="with-icon">${icon}${input}</span></label>`;
   return `
-    <form class="card account-form" id="acct-form" novalidate>
-      <div class="segmented" role="group" aria-label="Account">
-        <button type="button" data-mode="create" aria-pressed="${creating}">Create account</button>
-        <button type="button" data-mode="signin" aria-pressed="${!creating}">Sign in</button>
-      </div>
-      <label class="field">Username
-        <input id="acct-user" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="20" placeholder="e.g. ana_plays" required>
-      </label>
+    <form class="card account-form glass-login" id="acct-form" novalidate>
+      <span class="login-mark" aria-hidden="true">${MARK}</span>
+      <h3 class="login-title">${creating ? 'Create <span class="grad-text">account</span>' : 'Welcome <span class="grad-text">back</span>'}</h3>
+      <p class="muted small">${creating ? 'Back up your practice and connect with your teacher.' : 'Sign in to pick up where you left off.'}</p>
+      ${field(ICONS.user, 'Username', '<input id="acct-user" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="20" placeholder="e.g. ana_plays" required>')}
       <label class="field">Password
-        <span class="pw"><input id="acct-pass" type="password" autocomplete="${creating ? 'new-password' : 'current-password'}" minlength="8" required><button type="button" class="btn small-btn" id="acct-show">Show</button></span>
+        <span class="pw with-icon">${ICONS.lock}<input id="acct-pass" type="password" autocomplete="${creating ? 'new-password' : 'current-password'}" minlength="8" required><button type="button" class="btn small-btn" id="acct-show" aria-controls="acct-pass">Show</button></span>
       </label>
       ${creating ? `
+      <fieldset class="field born">
+        <legend>When were you born?</legend>
+        <div class="row gap">
+          <select id="acct-month" aria-label="Birth month" ${born ? 'disabled' : ''}><option value="">Month</option>${MONTHS.map((m, i) => `<option value="${i + 1}" ${bm === i + 1 ? 'selected' : ''}>${m}</option>`).join('')}</select>
+          <select id="acct-year" aria-label="Birth year" ${born ? 'disabled' : ''}><option value="">Year</option>${Array.from({ length: 100 }, (_, i) => thisYear - i).map((y) => `<option ${by === y ? 'selected' : ''}>${y}</option>`).join('')}</select>
+        </div>
+      </fieldset>
       <fieldset class="field">
         <legend>I'm a</legend>
         <div class="segmented" role="group" aria-label="Role">
@@ -73,13 +105,29 @@ function signedOut() {
           <button type="button" data-role="teacher" aria-pressed="false">Teacher</button>
         </div>
       </fieldset>
-      <label class="field inline"><input type="checkbox" id="acct-age"> I'm 13 or over, or a parent or carer is setting this up.</label>
-      <p class="warn-note">No email needed, so there's no way to reset a forgotten password. Write it down or save it in your phone's password manager.</p>` : ''}
+      <p class="warn-note">No email needed, so there's no way to reset a forgotten password. Write it down or save it in your phone's password manager. A teacher can reset a student's password.</p>
+      <label class="field inline agree"><input type="checkbox" id="acct-agree"> <span>I agree to the <a href="terms.html" target="_blank" rel="noopener">Terms</a> and the <a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a>.</span></label>` : ''}
       <p class="error" id="acct-error" role="alert" hidden></p>
-      <button class="btn primary block" type="submit" id="acct-go">${creating ? 'Create account' : 'Sign in'}</button>
-      <p class="fine">${creating ? 'What you\'ve done on this device so far moves into your new account.' : 'Your progress on this device merges with your account.'} We store your username, your practice and your check results, never your name or email. ${creating ? 'By creating an account you agree to the <a href="terms.html">Terms</a>.' : ''}</p>
-      <nav class="legal-links" aria-label="About Stave"><a href="privacy.html">Privacy</a><a href="terms.html">Terms</a><a href="help.html">Help</a></nav>
+      <button class="btn primary block" type="submit" id="acct-go">${creating ? 'Create account' : 'Sign in'} ${ICONS.arrow}</button>
+      <p class="fine center">${creating ? 'Already have an account?' : 'New to Stave?'} <button type="button" class="linkish" data-mode="${creating ? 'signin' : 'create'}">${creating ? 'Sign in' : 'Create an account'}</button></p>
+      <p class="fine">${creating ? 'What you\'ve done on this device so far moves into your new account.' : 'Your progress on this device merges with your account.'} We store your username, your birth month and year, your practice and your check results, never your name or email.</p>
     </form>`;
+}
+
+function waitingCard() {
+  return `
+    <section class="card" id="acct-wait">
+      <h3>One more step</h3>
+      <p>A parent or carer, or your piano teacher, needs to say OK before Stave can save anything to your account. Until then, everything stays on this phone and works as normal.</p>
+      <form id="acct-parent" novalidate>
+        <label class="field">Parent or carer's email
+          <span class="row gap"><input id="acct-parent-email" type="email" autocomplete="off" inputmode="email" maxlength="254"><button class="btn accent" type="submit">Send</button></span>
+        </label>
+        ${me?.parentAsked ? '<p class="small good">Email sent. Ask them to check their inbox, and their spam folder. The link works for 7 days.</p>' : '<p class="fine">We use this address once, to send the approval link, and delete it when they answer.</p>'}
+      </form>
+      <p class="muted small">${me?.studio ? `Or ask your teacher, @${esc(me.studio.teacher)}, to approve you from their Account page.` : 'Or join your teacher\'s studio below, and they can approve you from their Account page.'}</p>
+      <p class="fine">Accounts nobody approves are deleted after 14 days.</p>
+    </section>`;
 }
 
 function studioForStudent() {
@@ -102,6 +150,9 @@ function studioForStudent() {
 }
 
 function studentRow(st) {
+  if (st.pending) {
+    return `<li class="student"><div class="row between"><span class="who"><b>@${esc(st.username)}</b><small class="muted">under 13: waiting for your OK before anything is saved</small></span><button class="btn small-btn accent" type="button" data-approve="${st.id}" data-name="${esc(st.username)}">Approve</button></div></li>`;
+  }
   const s = st.summary;
   if (!s) {
     return `<li class="student"><div class="row between"><b>@${esc(st.username)}</b><small class="muted">joined ${ago(st.joined_at)}, nothing synced yet</small></div></li>`;
@@ -178,7 +229,8 @@ function signedIn() {
       <p class="small" id="acct-sync-line">${syncLine()}</p>
       <p class="error" id="acct-error" role="alert" hidden></p>
     </section>
-    ${me ? (role === 'teacher' ? studioForTeacher() : studioForStudent() + (sExtras ? studentCards(sExtras, Boolean(me.studio)) : '')) : '<section class="card"><div class="skeleton" role="status" aria-label="Loading"><i></i><i></i><i class="short"></i></div></section>'}
+    ${me?.consent === 'pending' ? waitingCard() + (me.studio ? '' : studioForStudent()) : ''}
+    ${me?.consent === 'pending' ? '' : me ? (role === 'teacher' ? studioForTeacher() : studioForStudent() + (sExtras ? studentCards(sExtras, Boolean(me.studio)) : '')) : '<section class="card"><div class="skeleton" role="status" aria-label="Loading"><i></i><i></i><i class="short"></i></div></section>'}
     <section class="card">
       <button class="btn ghost" type="button" id="acct-setup">${ICONS.arrow} Change your setup (level, board, goal)</button>
       <details class="pw-change">
@@ -211,6 +263,21 @@ function render() {
   wire();
 }
 
+// The glass card folds to the Stave mark and opens on the other form.
+function switchMode(next, form) {
+  if (next === mode) return;
+  mode = next;
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return render();
+  form.scrollIntoView({ block: 'start', behavior: 'smooth' });
+  form.classList.add('morph-out');
+  setTimeout(() => {
+    render();
+    const card = root.querySelector('#acct-form');
+    card?.classList.add('morph-in');
+    card?.querySelector('#acct-user')?.focus({ preventScroll: true });
+  }, 380);
+}
+
 function showError(msg) {
   const el = root.querySelector('#acct-error');
   if (!el) return alert(msg);
@@ -238,6 +305,7 @@ async function act(fn) {
 
 async function refreshMe() {
   me = await rpc('me');
+  setPending(me?.consent === 'pending');
   if (me?.role === 'teacher' && me.studio) [students, extras] = await Promise.all([rpc('studio_students'), loadTeacherExtras()]);
   if (me?.role === 'student') [sExtras] = await Promise.all([loadStudentExtras(), refreshTeacherWork().catch(() => {})]);
 }
@@ -246,10 +314,10 @@ async function refreshMe() {
 async function afterSignIn(user) {
   if (dataOwner() && dataOwner() !== user.id) clearSynced();
   setDataOwner(user.id);
+  await refreshMe();
   const changed = await pull();
   await pushNow();
   if (changed.length) return location.reload();
-  await refreshMe();
   render();
 }
 
@@ -262,7 +330,7 @@ function wire() {
   const form = root.querySelector('#acct-form');
   if (form) {
     let role = 'student';
-    form.querySelectorAll('[data-mode]').forEach((b) => b.addEventListener('click', () => { mode = b.dataset.mode; render(); }));
+    form.querySelectorAll('[data-mode]').forEach((b) => b.addEventListener('click', () => switchMode(b.dataset.mode, form)));
     form.querySelectorAll('[data-role]').forEach((b) => b.addEventListener('click', () => {
       role = b.dataset.role;
       form.querySelectorAll('[data-role]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
@@ -276,11 +344,17 @@ function wire() {
       e.preventDefault();
       const username = form.querySelector('#acct-user').value.trim().toLowerCase();
       const password = form.querySelector('#acct-pass').value;
+      const month = form.querySelector('#acct-month')?.value;
+      const year = form.querySelector('#acct-year')?.value;
+      const born = mode === 'create' && month && year ? `${year}-${String(month).padStart(2, '0')}` : '';
       const bad = usernameError(username) || (password.length < 8 ? 'Passwords need at least 8 characters.' : '')
-        || (mode === 'create' && !form.querySelector('#acct-age').checked ? 'Tick the box to confirm you\'re 13 or over, or ask a parent or carer to set this up.' : '');
+        || (mode === 'create' && !born ? 'Choose the month and year you were born.' : '')
+        || (mode === 'create' && !form.querySelector('#acct-agree').checked ? 'Tick the box to agree to the Terms and Privacy Policy.' : '');
       if (bad) return showError(bad);
+      if (born) saveBorn(born);
       act(async () => {
-        const user = mode === 'create' ? await signUp(username, password, role) : await signIn(username, password);
+        const user = mode === 'create' ? await signUp(username, password, role, born, TERMS_VERSION) : await signIn(username, password);
+        if (born) setPending(under13(born));
         await afterSignIn(user);
       });
     });
@@ -313,6 +387,16 @@ function wire() {
       location.reload();
     });
   });
+  root.querySelector('#acct-parent')?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const email = root.querySelector('#acct-parent-email').value.trim();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return showError('That email address doesn\'t look right.');
+    act(async () => { await askParent(email); await refreshMe(); render(); });
+  });
+  root.querySelectorAll('[data-approve]').forEach((b) => b.addEventListener('click', () => {
+    if (!confirm(`Approve @${b.dataset.name}'s account? Only do this if you teach them and have their parent or carer's permission, as you would for lessons.`)) return;
+    act(async () => { await rpc('approve_student', { p_student: b.dataset.approve }); await refreshMe(); render(); });
+  }));
   root.querySelector('#acct-join')?.addEventListener('submit', (e) => {
     e.preventDefault();
     const code = root.querySelector('#acct-code').value;

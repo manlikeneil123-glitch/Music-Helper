@@ -3,6 +3,7 @@ import { mountTimer, onSessionsChange, minutesOn, goalMinutes, lastDays } from '
 import { mountCheck, onChecksChange, checkHistory, suggestedBpm, allPieces, findPiece, everyPiece, choosePiece, troubleBars, practiseAssignment, setSendTake, setShareSection, setOpenKit } from './check.js';
 import { openAssignments, onTeachChange, teacherName, daysToLesson, refreshTeacherWork, restoreTeacherScores, acceptAssignmentLink, sendTake } from './teach.js';
 import { openReportCard } from './reportcard.js';
+import { renderStats, countUp } from './stats.js';
 import { openAssignDialog } from './assignlink.js';
 import { openKit } from './kit.js';
 import { buildPlan } from './plan.js';
@@ -26,7 +27,7 @@ import { startTour } from './tour.js';
 import { gettingStartedCard, wireGettingStarted } from './getstarted.js';
 import { openMicSetup } from './micsetup.js';
 
-const TABS = ['welcome', 'today', 'cards', 'practice', 'play', 'exam', 'account'];
+const TABS = ['welcome', 'today', 'cards', 'practice', 'play', 'exam', 'account', 'stats'];
 // The on-screen piano is for answering flashcards; Perform listens to a real piano.
 const WITH_KEYBOARD = new Set(['cards']);
 
@@ -50,11 +51,36 @@ function activate(tab) {
   if (tab === 'today') renderToday();
   if (tab === 'account') renderAccount();
   if (tab === 'exam') renderExam();
+  if (tab === 'stats') renderStats(view, { back: () => show('today'), report: openReportCard });
   if (tab === 'welcome') offerSignIn(view);
   stagger(view);
   view.classList.add('active');
   scrollTo(0, 0);
 }
+
+// The tab bar's highlight: a pill that stretches to the new tab (its leading edge gets
+// there first, the trailing edge catches up) while the tab's icon rises in a bead.
+let blobAt = null;
+function moveBlob(tab, animate = true) {
+  const bar = document.querySelector('.tabbar');
+  const btn = bar?.querySelector(`[data-tab="${tab}"]`);
+  let blob = bar?.querySelector('.tab-blob');
+  if (!btn) { if (blob) blob.hidden = true; return; }
+  if (!blob) { blob = document.createElement('i'); blob.className = 'tab-blob'; blob.setAttribute('aria-hidden', 'true'); bar.prepend(blob); }
+  blob.hidden = false;
+  const to = { left: btn.offsetLeft, top: btn.offsetTop, width: btn.offsetWidth, height: btn.offsetHeight };
+  Object.assign(blob.style, { left: `${to.left}px`, top: `${to.top}px`, width: `${to.width}px`, height: `${to.height}px` });
+  const from = blobAt;
+  blobAt = to;
+  if (!animate || !from || reducedMotion() || (from.left === to.left && from.top === to.top)) return;
+  const px = (r) => ({ left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, height: `${r.height}px` });
+  const span = { left: Math.min(from.left, to.left), top: Math.min(from.top, to.top) };
+  span.width = Math.max(from.left + from.width, to.left + to.width) - span.left;
+  span.height = Math.max(from.top + from.height, to.top + to.height) - span.top;
+  blob.animate([px(from), { ...px(span), offset: 0.45 }, px(to)], { duration: 520, easing: 'cubic-bezier(0.3, 0.7, 0.2, 1)' });
+}
+
+addEventListener('resize', () => moveBlob(document.body.dataset.tab, false));
 
 function show(tab) {
   if (!TABS.includes(tab)) tab = 'today';
@@ -63,6 +89,7 @@ function show(tab) {
   const prev = document.querySelector('.view.active');
   document.querySelectorAll('.tabbar button').forEach((b) => b.setAttribute('aria-current', b.dataset.tab === tab ? 'page' : 'false'));
   document.body.dataset.tab = tab;
+  moveBlob(tab);
   const keyboard = document.getElementById('keyboard');
   const wasHidden = keyboard.hidden;
   keyboard.hidden = !WITH_KEYBOARD.has(tab);
@@ -70,7 +97,7 @@ function show(tab) {
     const c4 = keyboard.querySelector('[data-midi="60"]');
     if (c4) keyboard.scrollLeft = c4.offsetLeft - 8;
   }
-  if (tab !== 'welcome' && tab !== 'account') save('tab', tab);
+  if (!['welcome', 'account', 'stats'].includes(tab)) save('tab', tab);
   updateTopbar();
   const token = ++switchToken;
   // The old page blurs out, the photo refocuses, then the new page rises in.
@@ -119,17 +146,6 @@ function greeting() {
   return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
 }
 
-function ago(t) {
-  const m = Math.round((Date.now() - t) / 60000);
-  if (m < 1) return 'just now';
-  if (m < 60) return `${m} min ago`;
-  const h = Math.round(m / 60);
-  if (h < 24) return `${h} h ago`;
-  const d = Math.round(h / 24);
-  return d === 1 ? 'yesterday' : `${d} days ago`;
-}
-
-const tone = (score) => (score >= 85 ? 'good' : score >= 60 ? 'warn' : 'bad');
 
 // Today = the dashboard. Every number here is the student's own data; nothing is
 // padded out with sample figures.
@@ -142,8 +158,6 @@ function renderToday() {
   const prevWeek = Array.from({ length: 7 }, (_, i) => { const d = new Date(); d.setDate(d.getDate() - 13 + i); return minutesOn(dayKey(d)); }).reduce((a, b) => a + b, 0);
   const history = checkHistory();
   const plan = lessonPlan();
-  const pieces = allPieces();
-  const titleOf = (id) => findPiece(id)?.title ?? 'A removed piece';
   const last = history[history.length - 1];
   const prevScore = history[history.length - 2]?.score;
   const s = qualityStreak();
@@ -151,8 +165,6 @@ function renderToday() {
   const qToday = qualityOn(dayKey());
 
   const p = profile();
-  const max = Math.max(goal, ...week.map((d) => d.minutes), 1);
-  const pct = (v) => Math.min(100, (v / max) * 100);
   const goalDone = Math.min(1, today / goal);
   const deltaChip = (cur, before, unit = '') => {
     if (before == null || (cur === 0 && before === 0)) return '';
@@ -182,37 +194,12 @@ function renderToday() {
         </button></li>`).join('')}
       </ol>
     </section>
-    <section class="card stat-strip" aria-label="Your progress">
-      <div title="A day counts when you get a clean run (85+), fix a bar in a drill, or read ${CARDS_TARGET} notes right. One rest day a week won't break it."><b>${s}</b><span>day streak</span><span class="week-dots" aria-hidden="true">${qWeek.map((on, k) => `<i class="${on ? 'on' : ''}" style="--k:${k}"></i>`).join('')}</span></div>
-      <div><b>${Math.round(weekMins)}</b><span>min this week</span>${deltaChip(weekMins, prevWeek || null, ' min')}</div>
-      <div><b>${last ? last.score : '–'}</b><span>last check</span>${last ? deltaChip(last.score, prevScore) : ''}</div>
-    </section>
-    <details class="more">
-      <summary>More: practice chart, recent checks, pieces</summary>
-      <section class="card">
-        <div class="chart-head"><div><h3>Practice</h3><span class="muted small">Minutes per day, last 7 days</span></div></div>
-        <div class="chart" role="img" aria-label="Practice minutes for the last 7 days: ${week.map((d) => `${d.label} ${Math.round(d.minutes)}`).join(', ')}">
-          <div class="goal-line" style="bottom:${22 + pct(goal) * 1.3}px"><span>goal ${goal}′</span></div>
-          ${week.map((d, i) => `<div class="col${i === 6 ? ' today' : ''}"><span class="val">${d.minutes >= 1 ? Math.round(d.minutes) : ''}</span><div class="bar" style="height:${Math.max(4, pct(d.minutes) * 1.3)}px"></div><span>${i === 6 ? 'Today' : d.label}</span></div>`).join('')}
-        </div>
-      </section>
-      <section class="card">
-        <h3>Recent checks</h3>
-        ${history.length ? `<ul class="log recent">${history.slice(-4).reverse().map((h) => `
-          <li><span class="who"><span class="mini-badge ${tone(h.score)}">${h.score}</span><span>${titleOf(h.pieceId)}${h.hands && h.hands !== 'both' ? ` <small class="muted">(${h.hands === 'rh' ? 'right hand' : 'left hand'})</small>` : ''}</span></span><small class="muted">${ago(h.at)}</small></li>`).join('')}</ul>`
-          : '<p class="empty">No checks yet. Play a piece in Perform and your results show up here.</p>'}
-      </section>
-      ${pieces.length ? `<section class="card">
-        <h3>Pieces</h3>
-        <ul class="log">${pieces.map((x) => {
-          const runs = history.filter((h) => h.pieceId === x.id);
-          const best = runs.length ? Math.max(...runs.map((r) => r.score)) : null;
-          const ready = runs.some((r) => r.ready);
-          return `<li><span>${x.title}<small class="muted"> · ${runs.length} run${runs.length === 1 ? '' : 's'}</small></span><b>${best == null ? '–' : ready ? '✓ ready' : `best ${best}`}</b></li>`;
-        }).join('')}</ul>
-      </section>` : ''}
-      <button class="btn block" id="today-report" type="button">${ICONS.trophy} This week's report card</button>
-    </details>
+    <button class="card stat-strip" type="button" id="today-stats" aria-label="Your stats: ${s} day streak, ${Math.round(weekMins)} minutes this week, last check ${last ? last.score : 'none yet'}. Open the stats page">
+      <span title="A day counts when you get a clean run (85+), fix a bar in a drill, or read ${CARDS_TARGET} notes right. One rest day a week won't break it."><b data-count="${s}">${s}</b><span>day streak</span><span class="week-dots" aria-hidden="true">${qWeek.map((on, k) => `<i class="${on ? 'on' : ''}" style="--k:${k}"></i>`).join('')}</span></span>
+      <span><b data-count="${Math.round(weekMins)}">${Math.round(weekMins)}</b><span>min this week</span>${deltaChip(weekMins, prevWeek || null, ' min')}</span>
+      <span><b ${last ? `data-count="${last.score}"` : ''}>${last ? last.score : '–'}</b><span>last check</span>${last ? deltaChip(last.score, prevScore) : ''}</span>
+      <span class="stat-more" aria-hidden="true">${ICONS.chart} Stats ${ICONS.arrow}</span>
+    </button>
     ${installCard()}
     <p class="credit"><a href="help.html#credits">Credits</a></p>`;
 
@@ -235,7 +222,8 @@ function renderToday() {
   wireInstall(root, refreshToday);
   wireGettingStarted(root, { tour: runTour, mic: () => { show('play'); openMicSetup({ onDone: () => show('today') }); }, show, redraw: refreshToday });
   root.querySelector('[data-go=exam]')?.addEventListener('click', () => show('exam'));
-  root.querySelector('#today-report').addEventListener('click', openReportCard);
+  root.querySelector('#today-stats').addEventListener('click', () => show('stats'));
+  countUp(root);
   root.querySelector('#today-timer').addEventListener('click', () => {
     show('practice');
     const btn = document.getElementById('timer-start');

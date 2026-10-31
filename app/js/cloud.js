@@ -31,8 +31,15 @@ function keepSession(s) {
 
 export const currentUser = () => readSession()?.user ?? null;
 
+/** Under-13 accounts wait for a parent or teacher; until then nothing syncs. The server
+ * enforces it; this just stops the phone trying. */
+export function setPending(pending) {
+  const s = readSession();
+  if (s && s.user.pending !== pending) keepSession({ ...s, user: { ...s.user, pending } });
+}
+
 // Messages raised by supabase/migrations, already in plain English.
-const OUR_ERRORS = ['No studio has that code', 'Only student accounts', 'Only teacher accounts', 'Passwords need at least', 'Sign in first', 'You can only reset passwords'];
+const OUR_ERRORS = ['Choose the month and year', 'Tick the box to agree', 'Your account needs', 'You can only approve', 'Wait a few minutes', 'That email address', 'This link has expired', 'The email couldn', 'No studio has that code', 'Only student accounts', 'Only teacher accounts', 'Passwords need at least', 'Sign in first', 'You can only reset passwords'];
 
 // Supabase's messages are written for developers; students get plain English.
 function friendly(status, body) {
@@ -89,14 +96,15 @@ function adopt(data) {
     access_token: data.access_token,
     refresh_token: data.refresh_token,
     expires_at: Date.now() + (data.expires_in ?? 3600) * 1000,
-    user: { id: data.user.id, username: data.user.user_metadata?.username, role: data.user.user_metadata?.role ?? 'student' },
+    user: { id: data.user.id, username: data.user.user_metadata?.username, role: data.user.user_metadata?.role ?? 'student', pending: readSession()?.user?.id === data.user.id ? readSession().user.pending : undefined },
   };
   keepSession(s);
   return s.user;
 }
 
-export async function signUp(username, password, role) {
-  return adopt(await call('/auth/v1/signup', { method: 'POST', body: { email: emailOf(username), password, data: { username, role } } }));
+/** born is 'YYYY-MM'; terms is the Terms version the person ticked. */
+export async function signUp(username, password, role, born, terms) {
+  return adopt(await call('/auth/v1/signup', { method: 'POST', body: { email: emailOf(username), password, data: { username, role, born, terms } } }));
 }
 
 export async function signIn(username, password) {
@@ -147,6 +155,11 @@ export async function rest(path, opts = {}) {
 /** A function anyone may call without signing in (the parent view). */
 export async function publicRpc(name, args = {}) {
   return call(`/rest/v1/rpc/${name}`, { method: 'POST', body: args });
+}
+
+/** Emails a parent the approval link (supabase/functions/parent-consent). */
+export async function askParent(email) {
+  return call('/functions/v1/parent-consent', { method: 'POST', body: { email }, token: await token() });
 }
 
 export async function rpc(name, args = {}) {

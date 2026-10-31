@@ -98,6 +98,8 @@ export function buildPlan({ profile, goal = 20, history = [], cards = { weak: 0,
   }
   pieceMins = Math.max(3, pieceMins);
   const rest = order.filter((s) => !workIds.has(s.p.id));
+  // Nothing to play yet: the most useful step is getting a piece in.
+  if (!states.length && !work.length) plan.push({ tab: 'play', mins: pieceMins, title: 'Add your first piece', detail: 'In Perform, add your piece as a MusicXML file (from MuseScore, or your teacher), and Stave checks every note you play.' });
   const two = goal >= 30 && tier >= 2 && rest.length >= 2;
   rest.slice(0, two ? 2 : 1).forEach((s, i) => {
     const bpm = bpmFor(s.p);

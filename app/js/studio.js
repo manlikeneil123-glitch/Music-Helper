@@ -39,8 +39,8 @@ export function assignmentText(a) {
 }
 
 function pieceOptions(scores) {
-  return `<optgroup label="Library">${PIECES.map((p) => `<option value="${p.id}">${esc(p.title)}</option>`).join('')}</optgroup>
-    ${scores.length ? `<optgroup label="Your shared scores">${scores.map((s) => `<option value="teacher:${s.id}">${esc(s.title)}</option>`).join('')}</optgroup>` : ''}`;
+  // Work is set on scores the teacher has shared (there's no built-in library).
+  return scores.length ? scores.map((s) => `<option value="teacher:${s.id}">${esc(s.title)}</option>`).join('') : '<option value="" disabled selected>Share a score first (below)</option>';
 }
 
 function workForm(id, scores) {

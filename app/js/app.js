@@ -1,6 +1,6 @@
 import { mountFlashcards, cardStats } from './flashcards.js';
 import { mountTimer, onSessionsChange, minutesOn, goalMinutes, lastDays } from './timer.js';
-import { mountCheck, onChecksChange, checkHistory, suggestedBpm, allPieces, troubleBars, practiseAssignment, setSendTake, setShareSection, setOpenKit } from './check.js';
+import { mountCheck, onChecksChange, checkHistory, suggestedBpm, allPieces, findPiece, everyPiece, choosePiece, troubleBars, practiseAssignment, setSendTake, setShareSection, setOpenKit } from './check.js';
 import { openAssignments, onTeachChange, teacherName, daysToLesson, refreshTeacherWork, restoreTeacherScores, acceptAssignmentLink, sendTake } from './teach.js';
 import { openReportCard } from './reportcard.js';
 import { openAssignDialog } from './assignlink.js';
@@ -14,7 +14,6 @@ import { loadPiano } from './audio.js';
 import { mountBackground, pulseBackground } from './background.js';
 import { mountWelcome, profile, MARK } from './welcome.js';
 import { ICONS } from './icons.js';
-import { PIECES } from './pieces.js';
 import { load, save, dayKey } from './store.js';
 import { mountAccount, renderAccount, resumeAccount } from './account.js';
 import { startSync, setPieceTitles } from './sync.js';
@@ -25,7 +24,8 @@ import { newsLine, openWhatsNew } from './whatsnew.js';
 import { mountOffline, installCard, wireInstall } from './pwa.js';
 
 const TABS = ['welcome', 'today', 'cards', 'practice', 'play', 'exam', 'account'];
-const WITH_KEYBOARD = new Set(['cards', 'play']);
+// The on-screen piano is for answering flashcards; Perform listens to a real piano.
+const WITH_KEYBOARD = new Set(['cards']);
 
 const reducedMotion = still;
 let switchToken = 0;
@@ -104,7 +104,7 @@ function updateTopbar() {
 // what today's practice should be — the part a self-learner never gets.
 function lessonPlan() {
   return buildPlan({
-    profile: profile(), goal: goalMinutes(), history: checkHistory(), cards: cardStats(), pieces: allPieces(),
+    profile: profile(), goal: goalMinutes(), history: checkHistory(), cards: cardStats(), pieces: [findPiece('c-scale'), ...allPieces()],
     bpmFor: suggestedBpm, trouble: troubleBars,
     assignments: openAssignments(), lessonIn: daysToLesson(profile()?.lessonDay), teacher: teacherName(),
     examType: load('exam', null)?.type,
@@ -140,7 +140,7 @@ function renderToday() {
   const history = checkHistory();
   const plan = lessonPlan();
   const pieces = allPieces();
-  const titleOf = (id) => pieces.find((x) => x.id === id)?.title ?? id;
+  const titleOf = (id) => findPiece(id)?.title ?? 'A removed piece';
   const last = history[history.length - 1];
   const prevScore = history[history.length - 2]?.score;
   const s = qualityStreak();
@@ -224,11 +224,7 @@ function renderToday() {
       if (!practiseAssignment(item.assignment)) alert("That piece isn't on this device yet. Ask your teacher to share the score, or import it in Perform.");
       return;
     }
-    if (item.piece) {
-      const sel = document.getElementById('check-piece');
-      sel.value = item.piece;
-      sel.dispatchEvent(new Event('change'));
-    }
+    if (item.piece) choosePiece(item.piece);
     show(item.tab);
   }));
   root.querySelector('#news-open')?.addEventListener('click', () => openWhatsNew(refreshToday));
@@ -323,7 +319,7 @@ setOpenKit(openKit);
 const canSend = () => setSendTake(currentUser() && teacherName() ? sendTake : null);
 canSend();
 onTeachChange(() => { refreshToday(); canSend(); });
-setPieceTitles(() => Object.fromEntries(allPieces().map((x) => [x.id, x.title])));
+setPieceTitles(() => Object.fromEntries(everyPiece().map((x) => [x.id, x.title])));
 startSync();
 document.getElementById('top-avatar').addEventListener('click', () => show('account'));
 addEventListener('mh:account', updateTopbar);

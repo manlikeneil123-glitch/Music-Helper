@@ -13,7 +13,8 @@ import { analyseAudio, firstOnsetSec, encodeWav, liveCheck } from './micanalysis
 import { audio, click, scheduleNote, ctxToPerf } from './audio.js';
 import { onNote, onStatus } from './input.js';
 import { micThresholds, reportVerdict, resetTuning, describeTuning } from './tuning.js';
-import { micSupported, openMic, startRecording, calibrate, calibration, describeCalibration } from './mic.js';
+import { micSupported, openMic, startRecording, calibration } from './mic.js';
+import { openMicSetup, micSummary, micVerdict } from './micsetup.js';
 import { midiName } from './music.js';
 import { load, save } from './store.js';
 import { setBackgroundPaused } from './background.js';
@@ -30,7 +31,11 @@ const MAX_IMPORTS = 6;
 const STATUS_COLOR = { correct: 'good', wrong: 'bad', missed: 'miss', early: 'warn', late: 'warn', unclear: 'unclear' };
 
 let root;
+// Built-in music isn't offered to students (owner decision): the C major scale is kept
+// for the warm-up check, the rest only for the microphone test kit and the tests.
+const WARMUP = 'c-scale';
 let library = PIECES.map(normalize);
+let emptyMode = false; // no pieces of the student's own yet
 let imported = load('imports', []).map(normalize);
 let base = library[0]; // the piece as chosen
 let piece = base; // what's being played now (hand filter / drill excerpt applied)
@@ -44,7 +49,7 @@ let lastNotes = null; // last keys/MIDI take: { events, seconds }, for sending t
 let sendHook = null; // set by app.js: (take) => Promise, when a teacher can receive takes
 let lastMic = null; // { args, evidence, record, reported } of the last mic analysis, to re-run after a correction
 let scoreView = null; // renderScore() output
-let mode = load('inputMode', 'keys'); // 'keys' | 'mic'
+let mode = load('inputMode', 'mic'); // 'mic' | 'keys' (a MIDI keyboard, or computer keys A–K)
 let practice = load('practiceMode', 'perform'); // 'perform' | 'learn'
 let layout = load('scoreLayout', 'scroll'); // 'scroll' | 'page'
 let hands = 'both';
@@ -60,7 +65,13 @@ export function onChecksChange(fn) {
 }
 export const checkHistory = () => history;
 let fromTeacher = []; // scores the teacher shared with their studio
-export const allPieces = () => [...library, ...fromTeacher, ...imported];
+/** The student's pieces: their imports and their teacher's shared scores. */
+export const allPieces = () => [...fromTeacher, ...imported];
+/** Any piece by id, including the hidden built-ins (warm-up, test kit, old history). */
+export const findPiece = (id) => allPieces().find((p) => p.id === id) ?? library.find((p) => p.id === id);
+export const pieceTitle = (id) => findPiece(id)?.title ?? 'A removed piece';
+/** Everything, hidden built-ins included: for titles of old checks. */
+export const everyPiece = () => [...library, ...allPieces()];
 
 /** Scores shared by the teacher: [{ id, title, musicxml }]. Bad files are skipped. */
 export function setTeacherScores(list) {
@@ -73,6 +84,7 @@ export function setTeacherScores(list) {
   });
   if (!root) return;
   fillPieceSelect();
+  if (emptyMode && fromTeacher.length && !rec && !learn) selectPiece(fromTeacher[0].id);
   if (load('checkPiece', null)?.startsWith('teacher:') && !rec && !learn) selectPiece(load('checkPiece', null));
   changeListeners.forEach((fn) => fn());
 }
@@ -118,7 +130,7 @@ let pendingTake = null;
 export function performPiece(pieceId, { exam = true, bpm: tempo = null, onDone = null } = {}) {
   if (rec || learn) return false;
   if (drill) endDrill(false);
-  selectPiece(pieceId);
+  selectPiece(pieceId, { hidden: true });
   practice = 'perform';
   syncPracticeButtons();
   examMode = exam;
@@ -242,7 +254,7 @@ async function start() {
     try {
       await openMic();
     } catch {
-      setStatus('Microphone access was blocked. Allow the microphone for this page, or switch to Keys / MIDI.', 'bad');
+      setStatus('Microphone access was blocked. Allow the microphone for this site in your browser settings, or use a MIDI keyboard (Options).', 'bad');
       return;
     }
     // Free up the phone's CPU/GPU for audio while recording.
@@ -608,7 +620,7 @@ async function startLearn() {
     } catch {
       learn = null;
       setStartLabel(false);
-      setStatus('Microphone access was blocked. Allow the microphone for this page, or switch to Keys / MIDI.', 'bad');
+      setStatus('Microphone access was blocked. Allow the microphone for this site in your browser settings, or use a MIDI keyboard (Options).', 'bad');
       return;
     }
     setBackgroundPaused(true);
@@ -625,7 +637,8 @@ function showLearnStep() {
   if ($('#learn-hints').checked) for (const n of step.notes) document.querySelectorAll(`.key[data-midi="${n.midi}"]`).forEach((k) => k.classList.add('hint'));
   const names = step.notes.map((n) => midiName(n.midi)).join(' + ');
   const fingers = step.notes.some((n) => n.finger) ? ` (finger ${step.notes.map((n) => n.finger ?? '–').join('-')})` : '';
-  setStatus(`Bar ${step.bar}: play ${names}${fingers}`, '');
+  // Hints off: the student reads the note themselves; the cursor still shows where.
+  setStatus($('#learn-hints').checked ? `Bar ${step.bar}: play ${names}${fingers}` : `Bar ${step.bar}: find the notes under the cursor`, '');
 }
 
 function learnAdvance() {
@@ -715,16 +728,29 @@ function updateTempoLock() {
 function fillPieceSelect() {
   const sel = $('#check-piece');
   const opt = (p) => `<option value="${p.id}">${escapeHtml(p.title)}</option>`;
-  sel.innerHTML = `<optgroup label="Library">${library.map(opt).join('')}</optgroup>${fromTeacher.length ? `<optgroup label="From your teacher">${fromTeacher.map(opt).join('')}</optgroup>` : ''}${imported.length ? `<optgroup label="Your scores">${imported.map(opt).join('')}</optgroup>` : ''}`;
+  const warm = library.some((p) => p.id === base.id) ? `<option value="${base.id}">Warm-up: ${escapeHtml(base.title)}</option>` : '';
+  sel.innerHTML = `${warm}${imported.length ? `<optgroup label="Your pieces">${imported.map(opt).join('')}</optgroup>` : ''}${fromTeacher.length ? `<optgroup label="From your teacher">${fromTeacher.map(opt).join('')}</optgroup>` : ''}`;
   sel.value = base.id;
+}
+
+// No pieces yet: one clear card saying how to add one, instead of an empty player.
+function showEmpty(on) {
+  emptyMode = on;
+  $('#perf-empty').hidden = !on;
+  $('#perf-main').hidden = on;
 }
 
 const escapeHtml = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 
-function selectPiece(id) {
+/** hidden: allow a built-in (the warm-up scale, or a piece the app itself asks for). */
+function selectPiece(id, { hidden = id === WARMUP } = {}) {
   if (rec || learn) return;
-  base = allPieces().find((p) => p.id === id) ?? library[0];
+  const found = allPieces().find((p) => p.id === id) ?? (hidden ? library.find((p) => p.id === id) : null) ?? allPieces()[0];
+  showEmpty(!found);
+  if (!found) return;
+  base = found;
   save('checkPiece', base.id);
+  fillPieceSelect();
   drill = null;
   $('#drill-banner').hidden = true;
   if (base.staves < 2) hands = 'both';
@@ -733,7 +759,7 @@ function selectPiece(id) {
   tempoUnlocked = false;
   $('#check-bpm').value = suggestedBpm(base);
   $('#check-result').hidden = true;
-  $('#check-level').textContent = [base.level, `target ${base.targetBpm} bpm`, `${base.beatsPerBar}/${base.beatUnit}`].filter(Boolean).join(' · ');
+  $('#check-level').textContent = [`${base.beatsPerBar}/${base.beatUnit}`, `target ${base.targetBpm} bpm`, base.level].filter(Boolean).join(' · ');
   $('#check-warnings').hidden = !base.warnings?.length;
   $('#check-warnings').textContent = base.warnings?.join(' ') ?? '';
   $('#remove-import').hidden = !imported.some((p) => p.id === base.id);
@@ -762,8 +788,12 @@ async function importFile(file) {
 function removeImport() {
   imported = imported.filter((p) => p.id !== base.id);
   save('imports', imported);
-  fillPieceSelect();
-  selectPiece(library[0].id);
+  selectPiece(allPieces()[0]?.id);
+}
+
+/** Open a piece from elsewhere in the app (Today's plan, the exam page). */
+export function choosePiece(id) {
+  selectPiece(id, { hidden: true });
 }
 
 // ---- Status, mic, test lab ---------------------------------------------------------------
@@ -786,31 +816,39 @@ function showLevel(level) {
   $('#mic-level > div').style.width = `${Math.max(0, Math.min(100, ((db + 50) / 44) * 100))}%`;
 }
 
-function idleStatus() {
-  if (rec || learn) return;
-  if (mode === 'mic') {
-    setStatus(micSupported() ? 'Microphone mode. Put the device on the music stand, then press Start.' : "This browser can't use the microphone.", '');
-    return;
-  }
+// The pill above Start says how Stave is listening, and is the way to fix it.
+function updateInputPill() {
+  const pill = $('#input-pill');
+  if (!pill) return;
+  const cal = calibration();
   const s = midiStatus;
-  setStatus(
-    s?.midi === 'connected'
-      ? `${s.devices[0]} connected`
-      : s?.midi === 'unsupported'
-        ? 'No MIDI in this browser (e.g. iPhone/iPad Safari). Use the microphone, the on-screen keys or computer keys (A–K, Space = pedal).'
-        : 'No MIDI keyboard found. Plug one in via USB, or use the microphone, on-screen keys or computer keys (A–K, Space = pedal).',
-    '',
-  );
+  let text;
+  let state;
+  if (mode === 'mic') {
+    if (!micSupported()) [text, state] = ["This browser can't use the microphone. Tap to use a MIDI keyboard.", 'fix'];
+    else if (!cal) [text, state] = ['Microphone not set up yet. Tap to set it up (20 seconds).', 'fix'];
+    else [text, state] = [`Listening with the microphone · ${micVerdict(cal).level === 'ready' ? 'ready' : 'tap to improve'}`, micVerdict(cal).level === 'ready' ? 'ok' : 'fix'];
+  } else if (s?.midi === 'connected') [text, state] = [`Listening to ${s.devices[0]}`, 'ok'];
+  else [text, state] = [s?.midi === 'unsupported' ? 'This browser has no MIDI (iPhone, iPad). Tap to use the microphone.' : 'No MIDI keyboard found. Plug one in, or tap to use the microphone.', 'fix'];
+  pill.textContent = text;
+  pill.className = `input-pill ${state}`;
 }
 
-function setMode(m) {
+function idleStatus() {
+  updateInputPill();
+  if (rec || learn) return;
+  setStatus('', '');
+}
+
+function setMode(m, { chosen = false } = {}) {
   mode = m;
   save('inputMode', m);
+  if (chosen) save('inputChosen', true);
   root.querySelectorAll('[data-mode]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.mode === m)));
   $('#mic-panel').hidden = m !== 'mic';
   // In mic mode the click would be "heard" as notes; default to the visual pulse.
   $('#check-metro').checked = m !== 'mic';
-  $('#mic-cal-status').textContent = describeCalibration(calibration());
+  $('#mic-cal-status').textContent = micSummary();
   $('#mic-tune-status').textContent = describeTuning();
   idleStatus();
 }
@@ -822,18 +860,9 @@ function syncPracticeButtons() {
   setStartLabel(false);
 }
 
-async function runCalibration() {
-  const btn = $('#mic-cal');
-  btn.disabled = true;
-  try {
-    const cal = await calibrate((text) => ($('#mic-cal-status').textContent = text), showLevel);
-    $('#mic-cal-status').textContent = describeCalibration(cal);
-  } catch {
-    $('#mic-cal-status').textContent = 'Microphone access was blocked. Allow the microphone for this page and try again.';
-  } finally {
-    btn.disabled = false;
-    showLevel(0);
-  }
+function runCalibration() {
+  $('#perf-options').open && $('#perf-options').close();
+  openMicSetup({ onDone: () => { $('#mic-cal-status').textContent = micSummary(); updateInputPill(); } });
 }
 
 // Test lab: score a recording file, so mic accuracy can be measured on real pianos.
@@ -875,96 +904,109 @@ function updateBpmLabel() {
 export function mountCheck(el) {
   root = el;
   root.innerHTML = `
-    <h2>Perform</h2>
-    <p class="lede">Play a piece and get feedback like a teacher would give.</p>
-    <label class="field">Piece
-      <select id="check-piece"></select>
-    </label>
-    <div class="row gap wrap import-row">
-      <label class="btn small-btn" for="import-file" title="MusicXML (.musicxml, .xml) or compressed .mxl from MuseScore, Sibelius, Dorico or Finale">Import a score</label>
-      <input id="import-file" type="file" accept=".musicxml,.xml,.mxl,application/vnd.recordare.musicxml+xml,application/vnd.recordare.musicxml" hidden>
-      <button class="btn small-btn" id="remove-import" type="button" hidden>Remove this score</button>
-    </div>
-    <p class="muted" id="check-level"></p>
-    <p class="warn-note" id="check-warnings" hidden></p>
-    <div class="segmented" role="group" aria-label="Practice mode">
-      <button type="button" data-practice="perform" aria-pressed="false">${ICONS.play} Perform</button>
-      <button type="button" data-practice="learn" aria-pressed="false">${ICONS.book} Learn</button>
-    </div>
-    <div class="segmented" role="group" aria-label="Input">
-      <button type="button" data-mode="keys" aria-pressed="false">${ICONS.piano} Keys / MIDI</button>
-      <button type="button" data-mode="mic" aria-pressed="false">${ICONS.mic} Microphone</button>
-    </div>
-    <section class="card mic-panel" id="mic-panel" hidden>
-      <div class="row between">
-        <b>Microphone</b>
-        <div class="level" id="mic-level" aria-hidden="true"><div></div></div>
-      </div>
-      <p class="muted small" id="mic-cal-status"></p>
-      <p class="muted small"><span id="mic-tune-status"></span> <button class="btn small-btn" type="button" id="mic-tune-reset">Reset tuning</button></p>
-      <button class="btn" id="mic-cal" type="button">Calibrate (10 s)</button>
+    <div class="perf-head"><h2>Perform</h2><button class="btn small-btn" id="perf-options-open" type="button">${ICONS.sliders} Options</button></div>
+    <input id="import-file" type="file" accept=".musicxml,.xml,.mxl,application/vnd.recordare.musicxml+xml,application/vnd.recordare.musicxml" hidden>
+
+    <section class="card perf-empty" id="perf-empty" hidden>
+      <h3>Add your first piece</h3>
+      <p>Stave checks your playing against the real score, so it needs your piece as a <b>MusicXML</b> file (.musicxml or .mxl).</p>
+      <ol class="steps">
+        <li>Ask your teacher to share it in Stave, or to send you the file.</li>
+        <li>Or find it on <b>MuseScore.com</b>, or type it into the free MuseScore app, then choose Export, MusicXML.</li>
+        <li>Then tap <b>Add a piece</b> and pick the file.</li>
+      </ol>
+      <label class="btn primary block" for="import-file">Add a piece</label>
+      <p class="fine"><a href="help.html#scores">More help getting a score</a></p>
     </section>
-    <div class="row gap wrap score-tools">
-      <label class="field inline" id="hands-field" hidden>Hands
-        <select id="check-hands"><option value="both">Both</option><option value="rh">Right only</option><option value="lh">Left only</option></select>
-      </label>
-      <div class="segmented mini" role="group" aria-label="Score layout">
-        <button type="button" data-layout="scroll" aria-pressed="false">Scroll</button>
-        <button type="button" data-layout="page" aria-pressed="false">Page</button>
+
+    <div id="perf-main">
+      <section class="card piece-bar">
+        <label class="sr-only" for="check-piece">Piece</label>
+        <select id="check-piece"></select>
+        <p class="muted small" id="check-level"></p>
+        <div class="row gap">
+          <label class="btn small-btn" for="import-file" title="MusicXML (.musicxml, .xml) or compressed .mxl from MuseScore, Sibelius, Dorico or Finale">+ Add a piece</label>
+          <button class="btn small-btn" id="remove-import" type="button" hidden>Remove</button>
+        </div>
+      </section>
+      <p class="warn-note" id="check-warnings" hidden></p>
+      <div class="segmented" role="group" aria-label="Practice mode">
+        <button type="button" data-practice="perform" aria-pressed="false">${ICONS.play} Play it through</button>
+        <button type="button" data-practice="learn" aria-pressed="false">${ICONS.book} Learn slowly</button>
       </div>
+      <section class="card heat" id="heat" hidden></section>
+      <div class="score-scroll paper" id="check-score"></div>
+      <section class="card drill" id="drill-banner" hidden></section>
+      <button class="input-pill" id="input-pill" type="button"></button>
+      <div class="row gap perf-actions">
+        <button class="btn" id="check-listen" type="button">${ICONS.play} Listen</button>
+        <button class="btn primary" id="check-start" type="button">Start</button>
+      </div>
+      <p class="status" id="check-status" aria-live="polite"></p>
+      <section class="card result" id="check-result" hidden></section>
+      <details class="card section" id="section">
+        <summary>Practise just some bars</summary>
+        <div class="row gap wrap section-row">
+          <label class="field inline">Bars <input id="sec-from" type="number" inputmode="numeric" step="1"> to <input id="sec-to" type="number" inputmode="numeric" step="1"></label>
+          <select id="sec-kind" aria-label="How to practise it">
+            <option value="loop">Loop until clean ${DRILL_STREAK}× in a row</option>
+            <option value="add">Add a bar at a time</option>
+          </select>
+          <button class="btn accent" id="sec-go" type="button">Start</button>
+        </div>
+        <p class="muted small">"Add a bar at a time" starts with the first bar and adds the next one each time it's clean ${ADD_STREAK}× running, so the joins between bars get practised too.</p>
+        <button class="btn small-btn" id="sec-share" type="button">Teachers: send this as an assignment link</button>
+      </details>
     </div>
-    <section class="card heat" id="heat" hidden></section>
-    <div class="score-scroll paper" id="check-score"></div>
-    <section class="card drill" id="drill-banner" hidden></section>
-    <details class="card section" id="section">
-      <summary>Practise a section</summary>
-      <div class="row gap wrap section-row">
-        <label class="field inline">Bars <input id="sec-from" type="number" inputmode="numeric" step="1"> to <input id="sec-to" type="number" inputmode="numeric" step="1"></label>
-        <select id="sec-kind" aria-label="How to practise it">
-          <option value="loop">Loop until clean ${DRILL_STREAK}× in a row</option>
-          <option value="add">Add a bar at a time</option>
-        </select>
-        <button class="btn accent" id="sec-go" type="button">Start</button>
+
+    <dialog class="card sheet" id="perf-options" aria-labelledby="perf-options-title">
+      <div class="row between"><h3 id="perf-options-title">Options</h3><button class="btn small-btn" type="button" id="perf-options-close">Done</button></div>
+      <h4>Listen with</h4>
+      <div class="segmented" role="group" aria-label="Listen with">
+        <button type="button" data-mode="mic" aria-pressed="false">${ICONS.mic} Microphone</button>
+        <button type="button" data-mode="keys" aria-pressed="false">${ICONS.piano} MIDI keyboard</button>
       </div>
-      <button class="btn small-btn" id="sec-share" type="button">Teachers: send this as an assignment link</button>
-      <p class="muted small">"Add a bar at a time" starts with the first bar and adds the next one each time it's clean ${ADD_STREAK}× running, so the joins between bars get practised too.</p>
-    </details>
-    <div id="perform-options">
-      <div class="row between wrap">
-        <label class="field inline">Tempo <input id="check-bpm" type="range" min="40" max="160" step="2"> <span id="check-bpm-label"></span></label>
-        <label class="field inline"><input id="check-metro" type="checkbox" checked> Metronome sound</label>
-        <label class="field inline" title="No metronome and no beat light: tests your own pulse, like the exam room"><input id="check-exam" type="checkbox"> Exam conditions</label>
-        <label class="field inline" title="Each bar disappears as you reach it, so you have to read ahead"><input id="check-readahead" type="checkbox"> Read ahead</label>
+      <section class="mic-panel" id="mic-panel" hidden>
+        <div class="row between"><b>Microphone</b><div class="level" id="mic-level" aria-hidden="true"><div></div></div></div>
+        <p class="small" id="mic-cal-status"></p>
+        <button class="btn block" id="mic-cal" type="button">${ICONS.mic} Set up the microphone</button>
+        <p class="muted small"><span id="mic-tune-status"></span> <button class="linkish" type="button" id="mic-tune-reset">Reset</button></p>
+      </section>
+      <div id="perform-options">
+        <h4>Playing</h4>
+        <label class="field">Tempo <span class="row gap"><input id="check-bpm" type="range" min="40" max="160" step="2"> <span id="check-bpm-label"></span></span></label>
+        <p class="lock-note" id="tempo-lock" hidden><span id="tempo-lock-text"></span> <button class="linkish" id="tempo-unlock" type="button">Unlock (teacher)</button></p>
+        <label class="set-row"><span>Metronome sound</span><input id="check-metro" type="checkbox" role="switch" checked></label>
+        <label class="set-row"><span>Exam conditions<small>No metronome and no beat light, like the exam room</small></span><input id="check-exam" type="checkbox" role="switch"></label>
+        <label class="set-row"><span>Read ahead<small>Each bar disappears as you reach it</small></span><input id="check-readahead" type="checkbox" role="switch"></label>
+        <label class="field">How strict
+          <select id="check-strict">${Object.entries(STRICTNESS).map(([k, v]) => `<option value="${k}">${v.label}</option>`).join('')}</select>
+        </label>
         <span class="pulse" id="check-pulse" aria-hidden="true"></span>
       </div>
-      <p class="lock-note" id="tempo-lock" hidden><span id="tempo-lock-text"></span> <button class="linkish" id="tempo-unlock" type="button">Unlock (teacher)</button></p>
-      <label class="field inline">Checking
-        <select id="check-strict">${Object.entries(STRICTNESS).map(([k, v]) => `<option value="${k}">${v.label}</option>`).join('')}</select>
-      </label>
-    </div>
-    <div id="learn-options" hidden>
-      <p class="muted small">Learn mode waits on each note or chord until you find it, then moves on. No metronome, no rush.</p>
-      <label class="field inline"><input id="learn-hints" type="checkbox" checked> Show the keys on the keyboard</label>
-    </div>
-    <div class="row gap">
-      <button class="btn" id="check-listen" type="button">${ICONS.play} Listen</button>
-      <button class="btn primary" id="check-start" type="button">Start</button>
-    </div>
-    <p class="status" id="check-status" aria-live="polite"></p>
-    <section class="card result" id="check-result" hidden></section>
-    <details class="card lab">
-      <summary>Test lab: score a recording</summary>
-      <p class="muted small">Upload a recording of the selected piece, starting on beat 1. Use this to check microphone accuracy on real pianos.</p>
-      <label class="field inline">Recorded at <input id="lab-bpm" type="number" min="30" max="240" step="1" inputmode="numeric"> bpm</label>
-      <input id="lab-file" type="file" accept="audio/*" aria-label="Choose a recording to analyse">
-      <button class="btn block" id="lab-download" type="button" hidden>Save last mic take (.wav)</button>
-      <button class="btn block" id="lab-kit" type="button">Recording kit: tune checking to real pianos</button>
-    </details>
-    <section class="card roadmap">
-      <h3>Coming next</h3>
-      <button class="btn ghost" type="button" disabled>${ICONS.camera} Scan sheet music (photo → score)</button>
-      <p class="muted small">Scanning will always show you the recognised score to confirm before checking. A misread score would mark your correct playing as wrong.</p>
-    </section>`;
+      <div id="learn-options" hidden>
+        <p class="muted small">Learn mode waits on each note or chord until you find it, then moves on. No metronome, no rush.</p>
+        <label class="set-row"><span>Name the next notes<small>Turn off to read them yourself</small></span><input id="learn-hints" type="checkbox" role="switch" checked></label>
+      </div>
+      <h4>Score</h4>
+      <div class="row gap wrap score-tools">
+        <label class="field inline" id="hands-field" hidden>Hands
+          <select id="check-hands"><option value="both">Both</option><option value="rh">Right only</option><option value="lh">Left only</option></select>
+        </label>
+        <div class="segmented mini" role="group" aria-label="Score layout">
+          <button type="button" data-layout="scroll" aria-pressed="false">Scroll</button>
+          <button type="button" data-layout="page" aria-pressed="false">Page</button>
+        </div>
+      </div>
+      <details class="lab">
+        <summary>Advanced: test the microphone</summary>
+        <p class="muted small">Score a recording of the selected piece, starting on beat 1, to check how well the microphone works on your piano.</p>
+        <label class="field inline">Recorded at <input id="lab-bpm" type="number" min="30" max="240" step="1" inputmode="numeric"> bpm</label>
+        <input id="lab-file" type="file" accept="audio/*" aria-label="Choose a recording to analyse">
+        <button class="btn block" id="lab-download" type="button" hidden>Save last mic take (.wav)</button>
+        <button class="btn block" id="lab-kit" type="button">Recording kit: tune checking to real pianos</button>
+      </details>
+    </dialog>`;
 
   $('#check-piece').addEventListener('change', (e) => selectPiece(e.target.value));
   $('#import-file').addEventListener('change', (e) => {
@@ -1006,7 +1048,18 @@ export function mountCheck(el) {
     tempoUnlocked = true;
     updateTempoLock();
   });
-  root.querySelectorAll('[data-mode]').forEach((b) => b.addEventListener('click', () => !rec && !learn && setMode(b.dataset.mode)));
+  root.querySelectorAll('[data-mode]').forEach((b) => b.addEventListener('click', () => !rec && !learn && setMode(b.dataset.mode, { chosen: true })));
+  const options = $('#perf-options');
+  $('#perf-options-open').addEventListener('click', () => options.showModal());
+  $('#perf-options-close').addEventListener('click', () => options.close());
+  options.addEventListener('click', (e) => { if (e.target === options) options.close(); }); // tap outside the sheet
+  $('#input-pill').addEventListener('click', () => {
+    if (rec || learn) return;
+    if (mode === 'mic' && micSupported()) return runCalibration();
+    if (mode === 'mic') return setMode('keys', { chosen: true });
+    if (midiStatus?.midi !== 'connected' && micSupported()) return setMode('mic', { chosen: true });
+    options.showModal();
+  });
   root.querySelectorAll('[data-practice]').forEach((b) => b.addEventListener('click', () => {
     if (rec || learn) return;
     practice = b.dataset.practice;
@@ -1038,6 +1091,8 @@ export function mountCheck(el) {
 
   onStatus((s) => {
     midiStatus = s;
+    // A MIDI keyboard is exact: use it when one is plugged in, unless the student chose.
+    if (s?.midi === 'connected' && mode !== 'keys' && !load('inputChosen', false) && !rec && !learn) setMode('keys');
     idleStatus();
   });
 
@@ -1071,20 +1126,17 @@ export function mountCheck(el) {
     }
   });
 
-  // The Grade 6 study ships as a MusicXML file, loaded through the same importer.
+  // The octave study (used by the mic test kit) ships as MusicXML, through the same importer.
   fetch('scores/octave-study.musicxml')
     .then((r) => (r.ok ? r.text() : Promise.reject(new Error(r.statusText))))
     .then((text) => {
       const study = normalize({ ...parseMusicXML(text, { id: 'octave-study' }), level: 'Grade 6 style · Both hands · Original study' });
-      library = [...library, study];
-      fillPieceSelect();
-      if (load('checkPiece', null) === study.id && !rec && !learn) selectPiece(study.id);
-      changeListeners.forEach((fn) => fn());
+      library = [...library, study]; // for the mic test kit only
     })
     .catch(() => {});
 
-  fillPieceSelect();
-  selectPiece(load('checkPiece', PIECES[0].id));
+  selectPiece(load('checkPiece', null));
   setMode(micSupported() ? mode : 'keys');
+  $('#check-strict').value = strictness;
   syncPracticeButtons();
 }

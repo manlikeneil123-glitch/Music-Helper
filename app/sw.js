@@ -30,7 +30,7 @@ const SHELL = [
   'scores/octave-study.musicxml',
   'js/mic.js',
   'js/micanalysis.js',
-  'js/tuning.js', 'js/config.js', 'js/cloud.js', 'js/sync.js', 'js/account.js', 'js/quality.js', 'js/plan.js', 'js/exam.js', 'js/examview.js', 'js/teach.js', 'js/studio.js', 'js/reportcard.js', 'js/assignlink.js', 'js/qr.js', 'js/work.js', 'js/pgrade.js', 'js/kit.js', 'js/kiteval.js', 'js/parent.js', 'js/settings.js', 'js/haptics.js', 'js/theme-boot.js', 'js/version.js', 'js/changelog.js', 'js/whatsnew.js', 'js/pwa.js', 'parent.html', 'privacy.html', 'terms.html', 'help.html', 'accessibility.html',
+  'js/tuning.js', 'js/config.js', 'js/cloud.js', 'js/sync.js', 'js/account.js', 'js/quality.js', 'js/plan.js', 'js/exam.js', 'js/examview.js', 'js/teach.js', 'js/studio.js', 'js/reportcard.js', 'js/assignlink.js', 'js/qr.js', 'js/work.js', 'js/pgrade.js', 'js/kit.js', 'js/kiteval.js', 'js/parent.js', 'js/settings.js', 'js/haptics.js', 'js/theme-boot.js', 'js/version.js', 'js/changelog.js', 'js/whatsnew.js', 'js/pwa.js', 'js/micsetup.js', 'parent.html', 'privacy.html', 'terms.html', 'help.html', 'accessibility.html',
   'img/piano-room-1920.webp',
   'img/piano-room-900.webp',
 ];

@@ -2,7 +2,7 @@
 // Messages). It reports what got better — clean runs, bars fixed, readiness — not
 // minutes, which say nothing about whether practice worked.
 import { load, dayKey } from './store.js';
-import { checkHistory, allPieces } from './check.js';
+import { checkHistory, everyPiece } from './check.js';
 import { qualityWeek } from './quality.js';
 import { examWithReadiness } from './examview.js';
 import { daysUntil, examTitle } from './exam.js';
@@ -16,7 +16,7 @@ export function weekReport(now = Date.now()) {
   const runs = checkHistory().filter((h) => h.at >= since);
   const quality = load('quality', {});
   const days = Array.from({ length: 7 }, (_, i) => { const d = new Date(now); d.setDate(d.getDate() - (6 - i)); return dayKey(d); });
-  const titles = Object.fromEntries(allPieces().map((p) => [p.id, p.title]));
+  const titles = Object.fromEntries(everyPiece().map((p) => [p.id, p.title]));
   const pieces = Object.values(runs.reduce((acc, r) => {
     const p = (acc[r.pieceId] ??= { id: r.pieceId, title: titles[r.pieceId] ?? 'Imported piece', runs: 0, best: 0, first: r.score, last: r.score, bars: {} });
     p.runs++;

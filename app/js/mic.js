@@ -107,19 +107,19 @@ export const calibration = () => load('micCal', null);
 
 /**
  * Three steps, ~10 s: room noise, speaker→mic delay (clicks), piano tuning (held A4).
- * onStep(text) narrates progress for the UI.
+ * onStep(text, step) narrates progress for the UI (step 1 quiet, 2 clicks, 3 the held A).
  */
 export async function calibrate(onStep, onLevel) {
   await openMic();
   const ac = audio();
 
-  onStep('1/3 · Stay quiet for a moment');
+  onStep('1/3 · Stay quiet for a moment', 1);
   let r = startRecording({ onLevel });
   await wait(1500);
   const quiet = r.stop();
   const noise = rms(quiet.samples.subarray(Math.floor(quiet.samples.length * 0.3)));
 
-  onStep('2/3 · Listening to clicks. Keep the volume up and stay quiet.');
+  onStep('2/3 · Listening to clicks. Keep the volume up and stay quiet.', 2);
   r = startRecording({ onLevel });
   await wait(300);
   const t0 = ac.currentTime + 0.3;
@@ -129,7 +129,7 @@ export async function calibrate(onStep, onLevel) {
   const clickRec = r.stop();
   const latencyMs = measureLatency(clickRec.samples, clickRec.sampleRate, clicks.map((t) => t - clickRec.startCtx));
 
-  onStep('3/3 · Play the A above middle C and hold it');
+  onStep('3/3 · Play the A above middle C and hold it', 3);
   r = startRecording({ onLevel });
   await wait(3500);
   const aRec = r.stop();

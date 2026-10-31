@@ -2,7 +2,7 @@
 // mistakes), scored on the spot and downloaded as one .zip for tuning the microphone
 // checking. Nothing is uploaded; the founder shares the file on purpose.
 import { KIT_STEPS, truthFor, scoreTake, summariseTakes } from './kiteval.js';
-import { allPieces } from './check.js';
+import { findPiece } from './check.js';
 import { timeline, totalBeats } from './score.js';
 import { openMic, startRecording, calibration } from './mic.js';
 import { analyseAudio, encodeWav } from './micanalysis.js';
@@ -26,7 +26,7 @@ function halve(samples, rate) {
 
 function stepPiece(step) {
   if (!step.piece) return null;
-  const piece = allPieces().find((p) => p.id === step.piece);
+  const piece = findPiece(step.piece);
   if (!piece) return null;
   const bpm = step.bpm ?? Math.max(40, Math.round(((piece.targetBpm ?? 80) * (step.bpmFactor ?? 1)) / 2) * 2);
   return { piece, bpm, tl: timeline(piece) };

@@ -7,6 +7,7 @@ export const ICONS = {
   clock: svg('<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>'),
   trophy: svg('<path d="M8 4.5h8v4.5a4 4 0 0 1-8 0zM8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v3.5M8.5 20h7M9.5 20l.5-3.5h4l.5 3.5"/>'),
   note: svg('<path d="M9 18V5.5l10-2V16"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="16.5" cy="16" r="2.5"/>'),
+  sliders: svg('<path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/>'),
   home: svg('<path d="M4 10.5 12 4l8 6.5V19a1 1 0 0 1-1 1h-4.5v-5.5h-5V20H5a1 1 0 0 1-1-1z"/>'),
   cards: svg('<rect x="7" y="3.5" width="12" height="15" rx="2.5"/><path d="M5 7v11.5A2.5 2.5 0 0 0 7.5 21H15"/>'),
   timer: svg('<circle cx="12" cy="13.5" r="7"/><path d="M12 13.5V10M10 2.5h4M12 2.5v4M18.5 6.5l1.5-1.5"/>'),

@@ -45,24 +45,36 @@ function check(theme, vars, text, bg, what, min = 4.5) {
 }
 
 for (const [theme, vars] of [['night', night], ['day', day]]) {
-  const backdrop = BACKDROP[theme].concat(1);
+  // The Sunset glow sits on the photo; the wash tints every panel. Check against
+  // whichever of their colour stops is worst, stacked on the worst point of the photo.
+  const stops = (token) => [...(vars[token] ?? '').matchAll(/rgba\([^)]*\)/g)].map((m) => parse(m[0], vars));
+  const worst = (layers, base, text) => layers.map((l) => over(l, base)).concat([base]).sort((a, b) => contrast(parse(text, vars), a) - contrast(parse(text, vars), b))[0];
+  const photo = BACKDROP[theme].concat(1);
+  const panels = (token, base) => stops('--wash').map((w) => over(w, over(parse(vars[token], vars), base)));
+  const checkOn = (text, layers, what, min) => layers.forEach((bg) => check(theme, vars, text, bg, what, min));
+  const backdrops = stops('--glow').map((g) => over(g, photo)).concat([photo]);
+  const backdrop = worst(stops('--glow'), photo, 'var(--ink)');
   const surface = over(parse(vars['--surface'], vars), backdrop);
   const strong = over(parse(vars['--surface-strong'], vars), backdrop);
   // Straight on the photo: headings, ledes, fine print, links under the cards.
   // (Links there use --text-2 and an underline; full --link colour is for panels and pages.)
-  for (const t of ['--ink', '--text-2']) check(theme, vars, `var(${t})`, backdrop, `${t} on the background`);
+  for (const t of ['--ink', '--text-2']) checkOn(`var(${t})`, backdrops, `${t} on the background`);
   // Help, privacy and other pages: plain --bg, no photo.
   for (const t of ['--ink', '--muted', '--link']) check(theme, vars, `var(${t})`, parse(vars['--bg'], vars), `${t} on a page`);
   // Inside glass panels (both strengths).
   for (const [name, bg] of [['panel', surface], ['strong panel', strong]]) {
     for (const t of ['--ink', '--muted', '--text-2', '--link', '--good', '--warn', '--bad', '--unclear']) check(theme, vars, `var(${t})`, bg, `${t} on a ${name}`);
   }
+  // The same, through the gradient wash, over every glow stop.
+  for (const b of backdrops) for (const token of ['--surface', '--surface-strong']) {
+    for (const t of ['--ink', '--muted', '--link', '--good', '--warn', '--bad']) checkOn(`var(${t})`, panels(token, b), `${t} on a washed ${token.slice(2)}`);
+  }
   // Tinted chips and bands: their text on their own tint over a panel.
   const tints = { '--t-green': 'rgba(95, 214, 143, 0.22)', '--t-blue': 'rgba(77, 141, 255, 0.24)', '--t-gold': 'rgba(242, 180, 90, 0.24)', '--t-red': 'rgba(255, 122, 122, 0.24)', '--t-violet': 'rgba(169, 155, 255, 0.22)' };
   for (const [t, tint] of Object.entries(tints)) check(theme, vars, `var(${t})`, over(parse(tint, vars), surface), `${t} on its tint`);
   // Buttons: the primary pill and the blue action button.
   check(theme, vars, `var(--on-brand)`, parse(vars['--pill-on'], vars), 'primary button text');
-  check(theme, vars, '#ffffff', parse(vars['--accent-btn'], vars), 'accent button text');
+  for (const stop of (vars['--grad-btn'] ?? night['--grad-btn']).match(/#[0-9a-f]{6}/gi)) check(theme, vars, '#ffffff', parse(stop, vars), `button text on gradient stop ${stop}`);
   // UI outlines and focus rings need 3:1.
   check(theme, vars, `var(--accent)`, surface, 'focus ring / accent outline', 3);
 }

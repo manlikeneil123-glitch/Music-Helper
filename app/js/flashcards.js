@@ -11,6 +11,7 @@ import { logWin } from './quality.js';
 import { load, save } from './store.js';
 import { onNote } from './input.js';
 import { tap } from './haptics.js';
+import { still } from './settings.js';
 
 
 const RANGES = { treble: [28, 40], bass: [16, 28] }; // C4–A5, E2–C4 incl. ledger lines
@@ -138,8 +139,11 @@ export function cardStats(kind = 'notes') {
   return { total: all.length, mastered, weak };
 }
 
-function grade(correct, message) {
-  if (!current) return;
+let grading = false; // one grade per card, however it was given
+
+function grade(correct, message, { swiped = false } = {}) {
+  if (!current || grading) return;
+  grading = true;
   tap(correct ? 'success' : 'error');
   const rec = boxes[current.id] ?? { box: 0, seen: 0, right: 0 };
   rec.seen++;
@@ -154,13 +158,88 @@ function grade(correct, message) {
   save('cards', boxes);
   session.total++;
   if (correct) session.right++;
-  if (message) {
-    const fb = root.querySelector('#card-feedback');
-    fb.textContent = message;
-    fb.className = 'feedback ' + (correct ? 'good' : 'bad');
-  }
+  const fb = root.querySelector('#card-feedback');
+  // A swipe skips the reveal, so a miss still says what the answer was.
+  const text = message ?? (swiped && !correct ? `It was ${face(current).answer}.` : '');
+  fb.textContent = text;
+  fb.className = 'feedback ' + (correct ? 'good' : 'bad');
+  const dir = correct ? 1 : -1;
+  if (swiped) return flyOut(dir, text, correct);
   flip(true);
-  setTimeout(next, correct ? 900 : 2000);
+  setTimeout(() => flyOut(dir), correct ? 700 : 1700);
+}
+
+// The card leaves to the right (got it) or left (missed it); the next one rises in.
+function flyOut(dir, keep = '', correct = true) {
+  const card = root.querySelector('.flashcard');
+  card.classList.remove('dragging');
+  card.style.setProperty('--dx', `${dir * Math.max(innerWidth, 420)}px`);
+  card.style.setProperty('--rot', `${dir * 18}deg`);
+  card.classList.add('leaving');
+  setTimeout(() => {
+    card.classList.remove('leaving');
+    card.style.setProperty('--dx', '0px');
+    card.style.setProperty('--rot', '0deg');
+    card.style.setProperty('--swipe', '0');
+    next();
+    // After a swipe the answer is shown under the next card, so a miss still teaches.
+    if (keep) {
+      const fb = root.querySelector('#card-feedback');
+      fb.textContent = keep;
+      fb.className = `feedback ${correct ? 'good' : 'bad'}`;
+    }
+    card.classList.remove('entering');
+    void card.offsetWidth; // restart the entrance
+    card.classList.add('entering');
+    grading = false;
+  }, still() ? 0 : 320);
+}
+
+// Drag a card sideways to grade it; a short tap still flips it.
+function wireSwipe(card) {
+  let start = null;
+  let dx = 0;
+  let dragged = false;
+  card.addEventListener('pointerdown', (e) => {
+    if (grading) return;
+    start = { x: e.clientX, y: e.clientY };
+    dx = 0;
+    dragged = false;
+  });
+  card.addEventListener('pointermove', (e) => {
+    if (!start) return;
+    dx = e.clientX - start.x;
+    if (!dragged && Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(e.clientY - start.y)) {
+      dragged = true;
+      card.classList.add('dragging');
+      card.setPointerCapture?.(e.pointerId);
+    }
+    if (!dragged) return;
+    card.style.setProperty('--dx', `${dx}px`);
+    card.style.setProperty('--rot', `${dx * 0.05}deg`);
+    card.style.setProperty('--swipe', String(Math.max(-1, Math.min(1, dx / 110))));
+  });
+  const end = () => {
+    if (!start) return;
+    start = null;
+    if (!dragged) return;
+    if (Math.abs(dx) > 90) return grade(dx > 0, undefined, { swiped: true });
+    card.classList.remove('dragging');
+    card.style.setProperty('--dx', '0px');
+    card.style.setProperty('--rot', '0deg');
+    card.style.setProperty('--swipe', '0');
+  };
+  card.addEventListener('pointerup', end);
+  card.addEventListener('pointercancel', end);
+  // The drag ends with a click on the button underneath: don't flip on it.
+  card.addEventListener('click', (e) => {
+    if (dragged) { e.stopImmediatePropagation(); dragged = false; return; }
+    flip();
+  });
+  card.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight') { e.preventDefault(); grade(true); }
+    if (e.key === 'ArrowLeft') { e.preventDefault(); grade(false); }
+  });
 }
 
 function flip(force) {
@@ -240,9 +319,10 @@ export function mountFlashcards(el) {
         </select>
       </div>
     </div>
-    <button class="flashcard" type="button" aria-label="Flip card">
-      <div class="card-face card-front paper"><div class="stave-wrap"></div><span class="hint">Tap to flip</span></div>
+    <button class="flashcard" type="button" aria-label="Flip card. Swipe right or press the right arrow if you knew it, left if you didn't.">
+      <div class="card-face card-front paper"><div class="stave-wrap"></div><span class="hint">Tap to flip · swipe right if you knew it, left if not</span></div>
       <div class="card-face card-back"><div class="answer"></div><div class="detail"></div></div>
+      <span class="stamp got" aria-hidden="true">Got it</span><span class="stamp miss" aria-hidden="true">Missed</span>
     </button>
     <p id="card-feedback" class="feedback" aria-live="polite"></p>
     <div class="row gap">
@@ -261,7 +341,7 @@ export function mountFlashcards(el) {
     save('cardClef', e.target.value);
     next();
   });
-  root.querySelector('.flashcard').addEventListener('click', () => flip());
+  wireSwipe(root.querySelector('.flashcard'));
   root.querySelector('#card-hit').addEventListener('click', () => grade(true));
   root.querySelector('#card-miss').addEventListener('click', () => grade(false));
 

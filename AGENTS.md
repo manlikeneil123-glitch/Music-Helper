@@ -23,6 +23,11 @@ Don't put model names in commits. Follow `docs/APP-PLAYBOOK.md`, minus the decis
 | 2026-10 | Exam pieces: the student or teacher types their own 3 (or 4) pieces; no syllabus database. |
 | 2026-10 | Deferred: F1 sight-reading generator ("later"). Not now: G5 photo-to-score. E5 camera hand hints: an experiment only, never a score. |
 | 2026-10 | Streak: one rest day in any seven doesn't break it (playbook §17). Two missed days in a row, or two rest days within a week, do. |
+| 2026-10 | **Minimalist** screens. **Sunset** gradient glass (coral, magenta, purple) on both themes; Night still the default. |
+| 2026-10 | Keep **5 tabs** (Today, Read, Practise, Perform, Exam), each simplified. **No on-screen piano on Perform** (microphone or MIDI keyboard only); Read keeps it for answering flashcards. |
+| 2026-10 | **No preset songs.** Pieces come from importing MusicXML or a teacher's shared scores. A C major scale stays hidden, only for the warm-up check and the mic test kit. |
+| 2026-10 | Tutorial: an optional guided tour (offered after setup, replayable from Settings, never auto-started) plus a self-ticking Getting started checklist on Today. |
+| 2026-10 | Flashcards swipe away (right = got it, left = missed it). Calibration is a guided wizard in plain words. |
 | 2026-10 | Agent autonomy: fix bugs and small polish without asking; ask for anything with product or design choices. Ship in batches, push each. |
 
 ## Facts that took research

@@ -3,6 +3,18 @@
 // and the service worker, and writes CHANGELOG.md from this list.
 export const CHANGES = [
   {
+    version: '0.10.0', date: '2026-10-31', title: 'Simpler, and Sunset',
+    items: [
+      'A new Sunset look: coral, pink and purple through the glass.',
+      'Today is simpler: your plan first, three numbers, and the rest under More.',
+      'Flashcards: swipe right if you knew it, left if you didn\'t.',
+      'Perform is simpler: pick your piece, press Start. Everything else is under Options, and the on-screen piano is gone (Stave listens to your real piano).',
+      'Setting up the microphone is now three guided steps in plain words.',
+      'Built-in songs are gone: add your own pieces (MusicXML) or get them from your teacher.',
+      'New here? A 2-minute tour (in Settings, or the Getting started list on Today) shows you around.',
+    ],
+  },
+  {
     version: '0.9.0', date: '2026-10-30', title: 'Day theme and Performance Grades',
     items: [
       'Doing a Performance Grade or Trinity repertoire-only exam? Choose "Pieces only" on the Exam tab: four pieces, and no scales, arpeggios or sight-reading anywhere.',

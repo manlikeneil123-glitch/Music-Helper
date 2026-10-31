@@ -66,6 +66,7 @@ export function settingsCard() {
         <input type="checkbox" role="switch" id="set-still" ${stillChosen() || motionQuery.matches ? 'checked' : ''} ${motionQuery.matches ? 'disabled' : ''}></label>
       <label class="set-row"><span>Vibration<small>${hapticsSupport()}</small></span>
         <input type="checkbox" role="switch" id="set-haptics" ${hapticsOn() ? 'checked' : ''}></label>
+      <button class="btn ghost" type="button" id="set-tour">Show me around (2-minute tour)</button>
       <button class="btn ghost" type="button" id="set-export">Download my data<small class="muted">&nbsp;(JSON)</small></button>
       <nav class="legal-links" aria-label="About Stave"><a href="privacy.html">Privacy</a><a href="terms.html">Terms</a><a href="help.html">Help and support</a><a href="accessibility.html">Accessibility</a></nav>
       <p class="fine">Stave ${VERSION} · <button class="linkish" type="button" id="set-news">What's new</button></p>
@@ -82,4 +83,5 @@ export function wireSettings(root) {
   root.querySelector('#set-haptics')?.addEventListener('change', (e) => setHaptics(e.target.checked));
   root.querySelector('#set-export')?.addEventListener('click', downloadMyData);
   root.querySelector('#set-news')?.addEventListener('click', () => openWhatsNew());
+  root.querySelector('#set-tour')?.addEventListener('click', () => dispatchEvent(new Event('stave:tour')));
 }

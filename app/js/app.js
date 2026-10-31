@@ -22,6 +22,9 @@ import { initSettings, still } from './settings.js';
 import { tap } from './haptics.js';
 import { newsLine, openWhatsNew } from './whatsnew.js';
 import { mountOffline, installCard, wireInstall } from './pwa.js';
+import { startTour } from './tour.js';
+import { gettingStartedCard, wireGettingStarted } from './getstarted.js';
+import { openMicSetup } from './micsetup.js';
 
 const TABS = ['welcome', 'today', 'cards', 'practice', 'play', 'exam', 'account'];
 // The on-screen piano is for answering flashcards; Perform listens to a real piano.
@@ -167,6 +170,7 @@ function renderToday() {
       </div>
       <button class="btn primary" id="today-timer" type="button">${ICONS.play} Start practice</button>
     </div>
+    ${gettingStartedCard()}
     <section class="card today-plan">
       <div class="chart-head"><h3>Today's plan</h3><span class="pill">${Math.floor(today)} / ${goal} min</span></div>
       <div class="goal" aria-hidden="true"><div style="width:${Math.round(goalDone * 100)}%"></div></div>
@@ -229,6 +233,7 @@ function renderToday() {
   }));
   root.querySelector('#news-open')?.addEventListener('click', () => openWhatsNew(refreshToday));
   wireInstall(root, refreshToday);
+  wireGettingStarted(root, { tour: runTour, mic: () => { show('play'); openMicSetup({ onDone: () => show('today') }); }, show, redraw: refreshToday });
   root.querySelector('[data-go=exam]')?.addEventListener('click', () => show('exam'));
   root.querySelector('#today-report').addEventListener('click', openReportCard);
   root.querySelector('#today-timer').addEventListener('click', () => {
@@ -250,6 +255,11 @@ function p_noExam() {
   const p = profile();
   return p?.board && p.board !== 'Not doing exams' ? `<button class="exam-chip quiet" type="button" data-go="exam">${ICONS.trophy}<span><b>Got an exam date?</b><small>Plan backwards from it</small></span></button>` : '';
 }
+
+function runTour() {
+  startTour({ show, onEnd: () => show('today') });
+}
+addEventListener('stave:tour', runTour); // from Settings
 
 function openSetup() {
   mountWelcome(document.getElementById('view-welcome'), finishWelcome);

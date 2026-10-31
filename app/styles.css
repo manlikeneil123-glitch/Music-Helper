@@ -1018,3 +1018,30 @@ dialog::backdrop { background: rgba(5, 6, 10, 0.55); -webkit-backdrop-filter: bl
 .ms-result li span { width: 22px; height: 22px; flex: none; border-radius: 50%; display: grid; place-items: center; font-weight: 800; font-size: 0.8rem; }
 .ms-result li.ok span { background: rgba(95, 214, 143, 0.25); color: var(--good); }
 .ms-result li.fix span { background: rgba(242, 180, 90, 0.25); color: var(--warn); }
+
+/* ---- Getting started checklist ---- */
+.getting-started .goal { margin: 0 0 6px; height: 6px; }
+.gs-list { list-style: none; padding: 0; margin: 4px 0 0; display: grid; gap: 2px; }
+.gs-list button {
+  display: flex; align-items: center; gap: 12px; width: 100%; min-height: 44px; padding: 8px 6px; border: 0; border-radius: var(--radius-sm);
+  background: none; color: var(--ink); font: inherit; font-weight: 600; text-align: left; cursor: pointer;
+}
+.gs-list button:hover { background: var(--raised); }
+.gs-list .tick { width: 24px; height: 24px; flex: none; border-radius: 50%; border: 2px solid var(--edge); display: grid; place-items: center; font-size: 0.8rem; }
+.gs-list li.done .tick { border-color: transparent; background: var(--grad-btn); color: #fff; }
+.gs-list li.done button { color: var(--muted); text-decoration: line-through; cursor: default; }
+.getting-started .btn.ghost.link { margin: 4px 0 0; }
+
+/* ---- Guided tour: dim everything but the part being explained ---- */
+.tour-blocker { position: fixed; inset: 0; z-index: 59; }
+.tour-spot {
+  position: fixed; z-index: 60; border-radius: 16px; pointer-events: none;
+  box-shadow: 0 0 0 2px rgba(255, 143, 177, 0.9), 0 0 0 9999px rgba(5, 6, 10, 0.68);
+  transition: left 0.3s var(--ease), top 0.3s var(--ease), width 0.3s var(--ease), height 0.3s var(--ease);
+}
+.card.tour-box { position: fixed; z-index: 61; margin: 0; padding: 16px; background: var(--surface-strong); }
+.tour-box h3 { margin: 2px 0 6px; }
+.tour-box p { margin: 0 0 12px; }
+.tour-box .tour-count { margin: 0; font-size: 0.78rem; font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.06em; }
+.tour-box .btn.ghost.link { width: auto; margin: 0; padding: 8px 4px; min-height: 44px; }
+:root.still .tour-spot { transition: none; }

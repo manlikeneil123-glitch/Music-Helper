@@ -27,7 +27,16 @@ fully on-device and the Account page says accounts aren't switched on yet.
    `supabase functions deploy parent-consent` and
    `supabase secrets set RESEND_API_KEY=... MAIL_FROM="Stave <hello@your-domain>" SITE_URL=https://manlikeneil123-glitch.github.io/Music-Helper/`.
    Without it, under-13s can still be approved by their teacher.
-7. Commit and push. GitHub Pages redeploys in about a minute.
+7. **Scanning printed music (optional, off by default).** Run migration `0004_scans.sql`,
+   then `supabase functions deploy scan-score` and
+   `supabase secrets set ANTHROPIC_API_KEY=... SCAN_DAILY_PAGES=6 SCAN_MONTHLY_PAGES=3000`.
+   Also set a monthly spend limit on the key in the Anthropic Console as a second guard.
+   **Test before switching it on:** photograph 5 to 10 real exam-book pages, type each
+   one into MuseScore and export MusicXML with the same name (`minuet.jpg` +
+   `minuet.musicxml`), then `npm i --no-save @anthropic-ai/sdk` and
+   `ANTHROPIC_API_KEY=... node tools/scan-eval.mjs <that folder>`. Only if every page
+   scores 95% or better, set `SCAN_ENABLED = true` in `app/js/config.js`.
+8. Commit and push. GitHub Pages redeploys in about a minute.
 
 **Never use the `service_role` / secret key in the app.** It bypasses all security.
 

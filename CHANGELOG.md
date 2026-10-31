@@ -2,6 +2,10 @@
 
 What changed in each version of Stave, in plain words. Written from `app/js/changelog.js`.
 
+## 0.14.0: Getting ready to scan (2026-10-31)
+
+- Coming soon: photograph a printed page and Stave turns it into a score you can play against. It switches on once it has been tested on real exam books.
+
 ## 0.13.0: Covers (2026-10-31)
 
 - Each piece on your shelf now shows its own first bars, like the first page of the music.

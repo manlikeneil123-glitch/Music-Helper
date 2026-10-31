@@ -11,3 +11,8 @@ export const SUPABASE_ANON_KEY = '';
 // that can't receive mail (your GitHub Pages host is ideal). Never change it after
 // launch: every existing account's sign-in depends on it.
 export const USERNAME_DOMAIN = 'manlikeneil123-glitch.github.io';
+
+// Photo scanning (Perform → Scan a page). Needs accounts, the scan-score function and
+// an Anthropic API key (supabase/README.md). Leave false until tools/scan-eval.mjs shows
+// it reads real exam-book photos accurately.
+export const SCAN_ENABLED = false;

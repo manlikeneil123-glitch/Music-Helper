@@ -286,4 +286,25 @@ insert into auth.users (id, email, raw_user_meta_data) values ('00000000-0000-00
 update public.profiles set created_at = now() - interval '15 days' where username = 'oldkid';
 insert into auth.users (email, raw_user_meta_data) values ('new@x', '{"username":"newbie","born":"1990-01","terms":"t"}');
 select pg_temp.ok((select count(*) from public.profiles where username = 'oldkid') = 0, 'unapproved accounts deleted after 14 days');
+
+-- Photo scan limits (migration 0004).
+insert into auth.users (id, email, raw_user_meta_data) values ('00000000-0000-0000-0000-0000000000f6', 'wait@x', json_build_object('username', 'waitkid', 'born', to_char(current_date - interval '8 years', 'YYYY-MM'), 'terms', 't'));
+set role authenticated;
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000f4', false);
+do $$ begin perform public.claim_scan(auth.uid(), 1); raise exception 'FAIL: student claimed a scan directly';
+exception when insufficient_privilege then raise notice 'ok: only the server can claim scans'; end $$;
+do $$ begin perform count(*) from public.scans; raise exception 'FAIL: student read scans';
+exception when insufficient_privilege then raise notice 'ok: scans table is private'; end $$;
+reset role;
+set role service_role;
+select public.claim_scan('00000000-0000-0000-0000-0000000000f4', 3);
+select public.claim_scan('00000000-0000-0000-0000-0000000000f4', 3);
+do $$ begin perform public.claim_scan('00000000-0000-0000-0000-0000000000f4', 1); raise exception 'FAIL: daily limit';
+exception when raise_exception then if sqlerrm like 'FAIL%' then raise; end if; raise notice 'ok: six pages a day per student'; end $$;
+do $$ begin perform public.claim_scan('00000000-0000-0000-0000-0000000000f6', 1); raise exception 'FAIL: pending child scanned';
+exception when raise_exception then if sqlerrm like 'FAIL%' then raise; end if; raise notice 'ok: unapproved under-13s cannot scan'; end $$;
+do $$ begin perform public.claim_scan('00000000-0000-0000-0000-0000000000f2', 1, 6, 6); raise exception 'FAIL: monthly cap';
+exception when raise_exception then if sqlerrm like 'FAIL%' then raise; end if; raise notice 'ok: monthly cap across everyone'; end $$;
+reset role;
+select pg_temp.ok((select sum(pages) from public.scans) = 6, 'refused scans are not counted');
 \echo ALL RLS CHECKS PASSED

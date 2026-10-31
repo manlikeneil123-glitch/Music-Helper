@@ -39,7 +39,7 @@ export function setPending(pending) {
 }
 
 // Messages raised by supabase/migrations, already in plain English.
-const OUR_ERRORS = ['Choose the month and year', 'Tick the box to agree', 'Your account needs', 'You can only approve', 'Wait a few minutes', 'That email address', 'This link has expired', 'The email couldn', 'No studio has that code', 'Only student accounts', 'Only teacher accounts', 'Passwords need at least', 'Sign in first', 'You can only reset passwords'];
+const OUR_ERRORS = ['Send 1 to', 'One of the photos', 'You\'ve scanned the most', 'Scanning is', 'That photo couldn', 'That was too much', 'That doesn\'t look like', 'The scanner is', 'Choose the month and year', 'Tick the box to agree', 'Your account needs', 'You can only approve', 'Wait a few minutes', 'That email address', 'This link has expired', 'The email couldn', 'No studio has that code', 'Only student accounts', 'Only teacher accounts', 'Passwords need at least', 'Sign in first', 'You can only reset passwords'];
 
 // Supabase's messages are written for developers; students get plain English.
 function friendly(status, body) {
@@ -160,6 +160,11 @@ export async function publicRpc(name, args = {}) {
 /** Emails a parent the approval link (supabase/functions/parent-consent). */
 export async function askParent(email) {
   return call('/functions/v1/parent-consent', { method: 'POST', body: { email }, token: await token() });
+}
+
+/** Photos of printed music → SCN1 text (supabase/functions/scan-score). */
+export async function scanPages(images) {
+  return call('/functions/v1/scan-score', { method: 'POST', body: { images }, token: await token() });
 }
 
 export async function rpc(name, args = {}) {

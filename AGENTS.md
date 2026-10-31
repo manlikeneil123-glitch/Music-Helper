@@ -21,7 +21,7 @@ Don't put model names in commits. Follow `docs/APP-PLAYBOOK.md`, minus the decis
 | 2026-10 | Recordings sent to a teacher auto-delete after 20 days. Performance Grade videos stay on the phone, never uploaded. |
 | 2026-10 | Parent view: a private link the student can turn off, no parent account. |
 | 2026-10 | Exam pieces: the student or teacher types their own 3 (or 4) pieces; no syllabus database. |
-| 2026-10 | Deferred: F1 sight-reading generator ("later"). Not now: G5 photo-to-score. E5 camera hand hints: an experiment only, never a score. |
+| 2026-10 | Deferred: F1 sight-reading generator ("later"). G5 photo-to-score: now built, see below. E5 camera hand hints: an experiment only, never a score. |
 | 2026-10 | Streak: one rest day in any seven doesn't break it (playbook §17). Two missed days in a row, or two rest days within a week, do. |
 | 2026-10 | **Minimalist** screens. **Sunset** gradient glass (coral, magenta, purple) on both themes; Night still the default. |
 | 2026-10 | Keep **5 tabs** (Today, Read, Practise, Perform, Exam), each simplified. **No on-screen piano on Perform** (microphone or MIDI keyboard only); Read keeps it for answering flashcards. |
@@ -32,6 +32,7 @@ Don't put model names in commits. Follow `docs/APP-PLAYBOOK.md`, minus the decis
 | 2026-10 | Sign-up has an **unticked** "I agree to the Terms and Privacy Policy" box; the server stores the terms version and time. Links are blue and underlined. Deleting an account is a button in Account, never "email us". |
 | 2026-10 | **Stats page** behind Today's three numbers (Today stays minimal). Tab bar: stretchy pill plus a rising bead in each tab's own Sunset colour. Glassy sign-in card that folds to the mark when switching forms. |
 | 2026-10 | **Today's shelf** (after a perfume-shop reel): pieces in lit niches at the top of Today, plan and checklist below. Tap = zoom into the piece with Perform / Learn. Empty shelf = an add-a-piece niche; the warm-up scale stays hidden. |
+| 2026-10 | **Photo scanning** (reverses the earlier G5 'not now'): Claude Haiku via the `scan-score` Supabase function, accounts only, 6 pages/day per student and a monthly cap; the model writes SCN1 (`app/js/scnformat.js`), converted to MusicXML on the phone. Student compares photo and result and confirms. **Stays off (`SCAN_ENABLED`) until `tools/scan-eval.mjs` scores 95%+ on real photos.** Free self-hosted OMR (oemer) was tested and rejected: ~5 min/page and it crashed. |
 | 2026-10 | Agent autonomy: fix bugs and small polish without asking; ask for anything with product or design choices. Ship in batches, push each. |
 
 ## Facts that took research

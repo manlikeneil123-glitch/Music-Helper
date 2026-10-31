@@ -20,7 +20,7 @@ function cover(p, i) {
     }
   }
   const art = covers.get(p.id);
-  return art ? `<div class="sheet cover paper" aria-hidden="true" style="--tint:${TINTS[i % TINTS.length]}"><span class="cover-title">${esc(p.title)}</span>${art}</div>` : page(i);
+  return art ? `<div class="piece-page cover paper" aria-hidden="true" style="--tint:${TINTS[i % TINTS.length]}"><span class="cover-title">${esc(p.title)}</span>${art}</div>` : page(i);
 }
 
 const TINTS = ['#ff8a5c', '#ff4f8b', '#c06bff', '#ffb35c', '#ff6b8b'];
@@ -28,7 +28,7 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(
 const MIN_NICHES = 4;
 
 // A little page of music, tinted per piece: the "bottle" on the shelf.
-const page = (i) => `<svg class="sheet" viewBox="0 0 60 80" aria-hidden="true" style="--tint:${TINTS[i % TINTS.length]}">
+const page = (i) => `<svg class="piece-page" viewBox="0 0 60 80" aria-hidden="true" style="--tint:${TINTS[i % TINTS.length]}">
   <rect x="2" y="2" width="56" height="76" rx="4" class="leaf"/>
   ${[0, 1].map((s) => [0, 1, 2, 3, 4].map((l) => `<line x1="9" x2="51" y1="${18 + s * 28 + l * 3.4}" y2="${18 + s * 28 + l * 3.4}"/>`).join('')).join('')}
   ${[[16, 25], [24, 21], [32, 27], [40, 19], [18, 52], [27, 56], [36, 49], [45, 54]].map(([x, y]) => `<ellipse cx="${x}" cy="${y}" rx="2.6" ry="2" class="head"/><line x1="${x + 2.4}" x2="${x + 2.4}" y1="${y}" y2="${y - 9}" class="stem"/>`).join('')}

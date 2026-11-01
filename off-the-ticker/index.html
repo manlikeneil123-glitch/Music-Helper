@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="description" content="Spin an economics, markets, finance, AI or startup topic and speak. Off the cuff, or research first." />
+    <meta name="theme-color" content="#0f1512" />
+    <meta name="color-scheme" content="dark" />
+    <title>Off The Ticker</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230f1512'/%3E%3Cpath d='M6 22l6-7 5 4 9-11' fill='none' stroke='%23d8a24a' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="atmosphere" aria-hidden="true"></div>
+    <div class="page">
+      <header class="brand">
+        <p class="brand-mark">Off The Ticker</p>
+        <h1 class="brand-line">speaking practice for markets, money &amp; startups</h1>
+      </header>
+
+      <main class="stage">
+        <div class="controls">
+          <div class="mode-switch" role="radiogroup" aria-label="Mode">
+            <span class="mode-thumb" aria-hidden="true"></span>
+            <button type="button" class="mode-option is-active" role="radio" aria-checked="true" data-mode="cuff">🧠 Off the cuff</button>
+            <button type="button" class="mode-option" role="radio" aria-checked="false" data-mode="deep">🔍 Deep research</button>
+          </div>
+          <p class="mode-blurb" id="blurb"></p>
+          <label class="niche">
+            <span class="sr-only">Category</span>
+            <select id="category">
+              <option value="all">✦ Everything</option>
+              <option value="economics">📈 Economics</option>
+              <option value="stocks">💹 Stocks</option>
+              <option value="finance">💰 Finance</option>
+              <option value="ai">🤖 AI</option>
+              <option value="entrepreneurship">🚀 Entrepreneurship</option>
+            </select>
+          </label>
+        </div>
+
+        <section class="reel" id="reel">
+          <p class="reel-eyebrow" id="eyebrow">Ready</p>
+          <p class="reel-phrase" id="phrase"></p>
+        </section>
+        <p class="sr-only" aria-live="polite" id="announce"></p>
+        <p class="deck-note" id="deck-note" aria-live="polite"></p>
+
+        <div class="actions">
+          <button type="button" class="btn primary" id="spin">Spin</button>
+          <button type="button" class="btn secondary" id="start" disabled></button>
+          <button type="button" class="icon-btn" id="open-settings" aria-label="Settings">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" /></svg>
+          </button>
+        </div>
+      </main>
+    </div>
+
+    <dialog class="panel" id="settings" aria-labelledby="settings-title">
+      <form method="dialog">
+        <h2 id="settings-title">Settings</h2>
+        <p class="panel-blurb">Timer lengths in whole minutes. Saved for next time.</p>
+        <label class="field">Speech <input type="number" id="speech-min" min="1" max="10" step="1" /></label>
+        <label class="field">Research <small>Deep research only</small> <input type="number" id="research-min" min="1" max="60" step="1" /></label>
+        <label class="check"><input type="checkbox" id="muted" /> Mute sound effects</label>
+        <div class="seen">
+          <p id="seen-count"></p>
+          <button type="button" class="btn ghost" id="reset-seen">Reset seen topics</button>
+        </div>
+        <button class="btn primary" value="done">Done</button>
+      </form>
+    </dialog>
+
+    <div class="timer-overlay" id="timer" role="dialog" aria-modal="true" aria-label="Timer" hidden>
+      <p class="timer-topic" id="timer-topic"></p>
+      <p class="timer-phase" id="timer-phase"></p>
+      <ol class="speech-stages" id="stages" aria-label="Speech arc">
+        <li>What?</li><li>So what?</li><li>Now what?</li>
+      </ol>
+      <div class="timer-ring" id="ring" role="timer"><span class="timer-digits" id="digits">1:00</span></div>
+      <p class="timer-status" id="timer-status" aria-live="polite"></p>
+      <div class="timer-actions">
+        <button type="button" class="btn primary" id="timer-next"></button>
+        <button type="button" class="btn ghost" id="timer-close">Close</button>
+      </div>
+    </div>
+
+    <script src="topics.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>

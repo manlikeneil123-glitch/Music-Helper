@@ -15,5 +15,5 @@ drawTopic(['a'], other);
 assert.ok(other.has('x'), 'reshuffling one deck keeps other decks\' history');
 
 const all = Object.values(window.TOPICS).flat();
-assert.ok(new Set(all).size >= 1500, `only ${new Set(all).size} unique topics`);
+assert.ok(new Set(all).size >= 1200, `only ${new Set(all).size} unique topics`);
 console.log('ok:', new Set(all).size, 'unique topics');

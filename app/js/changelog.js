@@ -3,6 +3,12 @@
 // and the service worker, and writes CHANGELOG.md from this list.
 export const CHANGES = [
   {
+    version: '0.14.1', date: '2026-11-01', title: 'Fix',
+    items: [
+      'Fixed: on phones with a notch, the Stave bar at the top covered the first lines of every page.',
+    ],
+  },
+  {
     version: '0.14.0', date: '2026-10-31', title: 'Getting ready to scan',
     items: [
       'Coming soon: photograph a printed page and Stave turns it into a score you can play against. It switches on once it has been tested on real exam books.',

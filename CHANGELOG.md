@@ -2,6 +2,10 @@
 
 What changed in each version of Stave, in plain words. Written from `app/js/changelog.js`.
 
+## 0.14.1: Fix (2026-11-01)
+
+- Fixed: on phones with a notch, the Stave bar at the top covered the first lines of every page.
+
 ## 0.14.0: Getting ready to scan (2026-10-31)
 
 - Coming soon: photograph a printed page and Stave turns it into a score you can play against. It switches on once it has been tested on real exam books.

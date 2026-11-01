@@ -1,0 +1,38 @@
+name: Deploy Off The Ticker to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths: ['off-the-ticker/**', '.github/workflows/pages.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build site
+        # index.html has no <head> wrapper (it is also published as a claude.ai artifact),
+        # so add the doctype and meta tags here to keep browsers out of quirks mode.
+        run: |
+          mkdir _site
+          cp off-the-ticker/index.html off-the-ticker/style.css off-the-ticker/topics.js off-the-ticker/app.js _site/
+          { printf '<!doctype html>\n<html lang="en">\n<meta charset="UTF-8" />\n<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />\n'; cat off-the-ticker/index.html; } > _site/index.html
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deployment
+        uses: actions/deploy-pages@v4

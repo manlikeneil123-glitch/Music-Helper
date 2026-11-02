@@ -296,7 +296,7 @@ body.lowfx .card, body.lowfx .tile, body.lowfx .stat, body.lowfx .tabbar, body.l
   outline: 2px solid var(--accent); outline-offset: 2px;
 }
 
-select, input[type='number'], input[type='text'], input[type='password'], input[type='email'] {
+select, textarea, input[type='number'], input[type='text'], input[type='password'], input[type='email'] {
   font: inherit; color: var(--ink); background: var(--raised);
   border: 1px solid var(--edge); border-radius: var(--radius-sm); padding: 10px 14px; min-height: 48px;
 }
@@ -1225,3 +1225,9 @@ dialog.scan { width: min(960px, calc(100vw - 24px)); }
 .scan-photos { display: grid; gap: 8px; max-height: 52vh; overflow: auto; border-radius: 12px; }
 .scan-photos img { width: 100%; border-radius: 10px; }
 .scan-score { max-height: 52vh; }
+dialog.scan .steps { padding-left: 20px; }
+dialog.scan .steps li { margin: 8px 0; }
+dialog.scan .steps .btn { margin-top: 8px; }
+dialog.scan details { margin-top: 8px; }
+dialog.scan summary { cursor: pointer; font-weight: 600; }
+dialog.scan textarea { width: 100%; resize: vertical; font-family: ui-monospace, monospace; font-size: 0.8rem; font-weight: 400; }

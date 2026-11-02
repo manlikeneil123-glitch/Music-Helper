@@ -1,5 +1,7 @@
 // Photo scanner's short format (SCN1) → MusicXML → the normal importer.
-import { scnToMusicXML, parseScn } from '../app/js/scnformat.js';
+import { scnToMusicXML, parseScn, scnFromReply } from '../app/js/scnformat.js';
+import * as appPrompt from '../app/js/scanprompt.js';
+import * as serverPrompt from '../supabase/functions/_shared/scan-prompt.js';
 import { parseMusicXML } from '../app/js/musicxml.js';
 import { normalize } from '../app/js/score.js';
 
@@ -45,6 +47,14 @@ for (const [bad, why] of [['BAR\nR: C4/q', 'missing header'], ['SCN1\nR: C4/q', 
   ok(threw, `rejects ${why}`);
 }
 ok(!scnToMusicXML('SCN1\nTITLE <b>&"x"</b>\nBAR\nR: C4/q').includes('<b>'), 'title is escaped');
+
+// Chat-app route: the reply is pasted back with whatever the app wraps round it.
+const reply = "Here's the transcription:\n\n```\nSCN1\nTIME 4/4\nBAR\nR: C4/w\n```\n\nLet me know if you'd like changes.";
+ok(scnFromReply(reply) === 'SCN1\nTIME 4/4\nBAR\nR: C4/w', 'chat reply: chatter and code fences dropped');
+ok(load(scnFromReply(reply)).notes.length === 1, 'chat reply imports');
+ok(scnFromReply('Sorry, I cannot read that.') === '', 'chat reply with no SCN1 = empty');
+ok(scnFromReply('SCN1 NONE') === 'SCN1 NONE', 'not-music answer kept so Stave can say so');
+ok(appPrompt.SCAN_SYSTEM === serverPrompt.SCAN_SYSTEM && appPrompt.SCAN_ASK === serverPrompt.SCAN_ASK, 'app and server scan instructions match');
 
 if (fails) { console.log(`${fails} failed`); process.exit(1); }
 console.log('scan: all passed');

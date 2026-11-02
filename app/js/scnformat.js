@@ -116,3 +116,11 @@ export function scnToMusicXML(text) {
   return `<?xml version="1.0" encoding="UTF-8"?>
 <score-partwise version="4.0"><work><work-title>${xmlEsc(title)}</work-title></work><part-list><score-part id="P1"><part-name>Piano</part-name></score-part></part-list><part id="P1">${measures.join('')}</part></score-partwise>`;
 }
+
+/** A chat reply → just the SCN1 text: drops any chatter and code fences around it. */
+export function scnFromReply(reply) {
+  const text = String(reply);
+  const at = text.search(/^\s*SCN1\b/m);
+  if (at < 0) return '';
+  return text.slice(at).split(/^\s*```/m)[0].trim();
+}

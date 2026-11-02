@@ -2,6 +2,12 @@
 
 What changed in each version of Stave, in plain words. Written from `app/js/changelog.js`.
 
+## 0.15.0: Scan a page (2026-11-02)
+
+- Perform can now turn a photo of printed music into a score, for free: copy Stave's message, send it with your photo to an AI chat app you're allowed to use (such as ChatGPT or Gemini), then paste the reply back.
+- Stave shows what it read next to your photo. Check every bar before you add it, because AI apps can get notes wrong.
+- Under 13? Ask a parent, carer or teacher to send the photo for you.
+
 ## 0.14.1: Fix (2026-11-01)
 
 - Fixed: on phones with a notch, the Stave bar at the top covered the first lines of every page.

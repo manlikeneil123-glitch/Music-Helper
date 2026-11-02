@@ -22,7 +22,7 @@ import { ICONS } from './icons.js';
 import { logWin } from './quality.js';
 import { dayKey } from './store.js';
 import { tap } from './haptics.js';
-import { openScan, scanAvailable } from './scan.js';
+import { openScan } from './scan.js';
 
 
 const COUNT_IN = 4;
@@ -917,7 +917,7 @@ export function mountCheck(el) {
         <li>Then tap <b>Add a piece</b> and pick the file.</li>
       </ol>
       <label class="btn primary block" for="import-file">Add a piece</label>
-      ${scanAvailable() ? '<button class="btn block" type="button" data-scan>Or scan a printed page</button>' : ''}
+      <button class="btn block" type="button" data-scan>Or scan a printed page</button>
       <p class="fine"><a href="help.html#scores">More help getting a score</a></p>
     </section>
 
@@ -928,7 +928,7 @@ export function mountCheck(el) {
         <p class="muted small" id="check-level"></p>
         <div class="row gap">
           <label class="btn small-btn" for="import-file" title="MusicXML (.musicxml, .xml) or compressed .mxl from MuseScore, Sibelius, Dorico or Finale">+ Add a piece</label>
-          ${scanAvailable() ? '<button class="btn small-btn" type="button" data-scan>Scan a page</button>' : ''}
+          <button class="btn small-btn" type="button" data-scan>Scan a page</button>
           <button class="btn small-btn" id="remove-import" type="button" hidden>Remove</button>
         </div>
       </section>

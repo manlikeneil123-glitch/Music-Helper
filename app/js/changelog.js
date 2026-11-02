@@ -3,6 +3,14 @@
 // and the service worker, and writes CHANGELOG.md from this list.
 export const CHANGES = [
   {
+    version: '0.15.0', date: '2026-11-02', title: 'Scan a page',
+    items: [
+      'Perform can now turn a photo of printed music into a score, for free: copy Stave\'s message, send it with your photo to an AI chat app you\'re allowed to use (such as ChatGPT or Gemini), then paste the reply back.',
+      'Stave shows what it read next to your photo. Check every bar before you add it, because AI apps can get notes wrong.',
+      'Under 13? Ask a parent, carer or teacher to send the photo for you.',
+    ],
+  },
+  {
     version: '0.14.1', date: '2026-11-01', title: 'Fix',
     items: [
       'Fixed: on phones with a notch, the Stave bar at the top covered the first lines of every page.',

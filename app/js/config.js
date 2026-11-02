@@ -1,10 +1,10 @@
 // Server settings. Leave SUPABASE_URL empty and the app runs fully on-device, with
 // accounts shown as "not set up yet". See supabase/README.md for the five-minute setup.
-export const SUPABASE_URL = '';
+export const SUPABASE_URL = 'https://nevcnfbffwzbifnjouyg.supabase.co';
 // The public key from Supabase → Project Settings → API Keys: the "publishable" key
 // (sb_publishable_…) or, on older projects, the "anon" key. It is meant to be
 // public: what each account can read is enforced by row-level security on the server.
-export const SUPABASE_ANON_KEY = '';
+export const SUPABASE_ANON_KEY = 'sb_publishable_Up9aOL6kpZavsNiQdea12w_Czcfh9o4';
 
 // Accounts are username + password, no email. Supabase still wants an address, so a
 // username is stored as username@USERNAME_DOMAIN. This must be a domain you control

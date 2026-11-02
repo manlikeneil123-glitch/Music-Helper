@@ -3,6 +3,13 @@
 // and the service worker, and writes CHANGELOG.md from this list.
 export const CHANGES = [
   {
+    version: '0.16.0', date: '2026-11-02', title: 'Accounts are on',
+    items: [
+      'You can now make an account (tap the circle at the top): your practice is backed up, and you can join your teacher\'s studio with their code.',
+      'Accounts are optional. Without one, everything still works and stays on your phone.',
+    ],
+  },
+  {
     version: '0.15.0', date: '2026-11-02', title: 'Scan a page',
     items: [
       'Perform can now turn a photo of printed music into a score, for free: copy Stave\'s message, send it with your photo to an AI chat app you\'re allowed to use (such as ChatGPT or Gemini), then paste the reply back.',

@@ -2,6 +2,11 @@
 
 What changed in each version of Stave, in plain words. Written from `app/js/changelog.js`.
 
+## 0.16.1: Easier to see, easier to start (2026-11-11)
+
+- Fixed: the Stave bar no longer covers the top of the page. It now scrolls away with the page. On iPhone, remove Stave from your home screen and add it again so it sits below the clock.
+- Adding your first piece is simpler: take a photo of the music, or add a file from your teacher or MuseScore.
+
 ## 0.16.0: Accounts are on (2026-11-02)
 
 - You can now make an account (tap the circle at the top): your practice is backed up, and you can join your teacher's studio with their code.

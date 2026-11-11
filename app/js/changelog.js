@@ -3,6 +3,13 @@
 // and the service worker, and writes CHANGELOG.md from this list.
 export const CHANGES = [
   {
+    version: '0.16.1', date: '2026-11-11', title: 'Easier to see, easier to start',
+    items: [
+      'Fixed: the Stave bar no longer covers the top of the page. It now scrolls away with the page. On iPhone, remove Stave from your home screen and add it again so it sits below the clock.',
+      'Adding your first piece is simpler: take a photo of the music, or add a file from your teacher or MuseScore.',
+    ],
+  },
+  {
     version: '0.16.0', date: '2026-11-02', title: 'Accounts are on',
     items: [
       'You can now make an account (tap the circle at the top): your practice is backed up, and you can join your teacher\'s studio with their code.',

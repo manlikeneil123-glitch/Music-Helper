@@ -910,15 +910,10 @@ export function mountCheck(el) {
 
     <section class="card perf-empty" id="perf-empty" hidden>
       <h3>Add your first piece</h3>
-      <p>Stave checks your playing against the real score, so it needs your piece as a <b>MusicXML</b> file (.musicxml or .mxl).</p>
-      <ol class="steps">
-        <li>Ask your teacher to share it in Stave, or to send you the file.</li>
-        <li>Or find it on <b>MuseScore.com</b>, or type it into the free MuseScore app, then choose Export, MusicXML.</li>
-        <li>Then tap <b>Add a piece</b> and pick the file.</li>
-      </ol>
-      <label class="btn primary block" for="import-file">Add a piece</label>
-      <button class="btn block" type="button" data-scan>Or scan a printed page</button>
-      <p class="fine"><a href="help.html#scores">More help getting a score</a></p>
+      <p>Stave listens to you play and checks every note against your music.</p>
+      <button class="btn primary block" type="button" data-scan>Take a photo of the music</button>
+      <label class="btn block" for="import-file">Add a file from your teacher or MuseScore</label>
+      <p class="fine">Files are MusicXML (.musicxml or .mxl). <a href="help.html#scores">How to get one</a></p>
     </section>
 
     <div id="perf-main">
@@ -927,8 +922,8 @@ export function mountCheck(el) {
         <select id="check-piece"></select>
         <p class="muted small" id="check-level"></p>
         <div class="row gap">
-          <label class="btn small-btn" for="import-file" title="MusicXML (.musicxml, .xml) or compressed .mxl from MuseScore, Sibelius, Dorico or Finale">+ Add a piece</label>
-          <button class="btn small-btn" type="button" data-scan>Scan a page</button>
+          <label class="btn small-btn" for="import-file" title="MusicXML (.musicxml, .xml) or compressed .mxl from MuseScore, Sibelius, Dorico or Finale">+ File</label>
+          <button class="btn small-btn" type="button" data-scan>+ Photo</button>
           <button class="btn small-btn" id="remove-import" type="button" hidden>Remove</button>
         </div>
       </section>

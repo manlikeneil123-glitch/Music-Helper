@@ -43,7 +43,7 @@ export function openScan({ onAdd, signIn }) {
   let photos = [];
 
   const shell = (body) => {
-    dlg.innerHTML = `<div class="row between"><h3 id="scan-title">Scan a page</h3><button class="btn small-btn" type="button" data-x aria-label="Close">✕</button></div>${body}`;
+    dlg.innerHTML = `<div class="row between"><h3 id="scan-title">Photo of the music</h3><button class="btn small-btn" type="button" data-x aria-label="Close">✕</button></div>${body}`;
     dlg.querySelector('[data-x]').addEventListener('click', () => dlg.close());
   };
 

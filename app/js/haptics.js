@@ -16,7 +16,7 @@ export function setHaptics(on) {
 }
 
 /** What this device can do, in words for Settings. */
-export const hapticsSupport = () => (canVibrate() ? 'Vibration' : 'Not available on this device (iPhone browsers can’t vibrate)');
+export const hapticsSupport = () => canVibrate();
 
 /** A meaningful moment: a selection changed, something finished, a right or wrong answer. */
 export function tap(kind = 'light') {

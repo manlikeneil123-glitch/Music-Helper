@@ -3,6 +3,14 @@
 // and the service worker, and writes CHANGELOG.md from this list.
 export const CHANGES = [
   {
+    version: '0.16.2', date: '2026-11-11', title: 'Smoother and tidier',
+    items: [
+      'Scrolling is smoother on phones.',
+      'Fixed: with a pop-up open, swiping moved the page behind it.',
+      'Tidier screens: your shelf lines up with the page, covers show one whole line of music, Practise only shows Discard and Finish once you\'ve started, and the tempo shown matches the tempo lock.',
+    ],
+  },
+  {
     version: '0.16.1', date: '2026-11-11', title: 'Easier to see, easier to start',
     items: [
       'Fixed: the Stave bar no longer covers the top of the page. It now scrolls away with the page. On iPhone, remove Stave from your home screen and add it again so it sits below the clock.',

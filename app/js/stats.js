@@ -44,7 +44,8 @@ export function buckets(sessions, days, now = new Date()) {
 }
 
 function tile(value, label, unit = '') {
-  return `<div class="stat-tile"><b data-count="${value}">${still() ? value : 0}</b>${unit}<span>${label}</span></div>`;
+  const b = typeof value === 'number' ? `<b data-count="${value}">${still() ? value : 0}</b>` : `<b>${value}</b>`;
+  return `<div class="stat-tile">${b}${unit}<span>${label}</span></div>`;
 }
 
 function barsChart(data) {
@@ -131,7 +132,7 @@ export function renderStats(root, { back, report }) {
     <section class="stat-tiles" aria-label="Totals for this ${RANGES[range].toLowerCase()}">
       ${tile(Math.round(minutes), 'minutes practised')}
       ${tile(practised, `day${practised === 1 ? '' : 's'} practised`)}
-      ${tile(avg, checks.length ? `average score, ${checks.length} check${checks.length === 1 ? '' : 's'}` : 'no checks yet')}
+      ${tile(checks.length ? avg : '–', checks.length ? `average score, ${checks.length} check${checks.length === 1 ? '' : 's'}` : 'average score (no checks yet)')}
       ${tile(mastered, 'cards mastered')}
     </section>
     <section class="card">

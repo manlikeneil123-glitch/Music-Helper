@@ -2,6 +2,12 @@
 
 What changed in each version of Stave, in plain words. Written from `app/js/changelog.js`.
 
+## 0.16.2: Smoother and tidier (2026-11-11)
+
+- Scrolling is smoother on phones.
+- Fixed: with a pop-up open, swiping moved the page behind it.
+- Tidier screens: your shelf lines up with the page, covers show one whole line of music, Practise only shows Discard and Finish once you've started, and the tempo shown matches the tempo lock.
+
 ## 0.16.1: Easier to see, easier to start (2026-11-11)
 
 - Fixed: the Stave bar no longer covers the top of the page. It now scrolls away with the page. On iPhone, remove Stave from your home screen and add it again so it sits below the clock.

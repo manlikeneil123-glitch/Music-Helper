@@ -64,8 +64,8 @@ export function settingsCard() {
       </div>
       <label class="set-row"><span>Still scenery<small>No moving background or animations${motionQuery.matches ? '. Your device already asks for less motion' : ''}</small></span>
         <input type="checkbox" role="switch" id="set-still" ${stillChosen() || motionQuery.matches ? 'checked' : ''} ${motionQuery.matches ? 'disabled' : ''}></label>
-      <label class="set-row"><span>Vibration<small>${hapticsSupport()}</small></span>
-        <input type="checkbox" role="switch" id="set-haptics" ${hapticsOn() ? 'checked' : ''}></label>
+      ${hapticsSupport() ? `<label class="set-row"><span>Vibration<small>A buzz for right and wrong answers</small></span>
+        <input type="checkbox" role="switch" id="set-haptics" ${hapticsOn() ? 'checked' : ''}></label>` : ''}
       <button class="btn ghost" type="button" id="set-tour">Show me around (2-minute tour)</button>
       <button class="btn ghost" type="button" id="set-export">Download my data<small class="muted">&nbsp;(JSON)</small></button>
       <nav class="legal-links" aria-label="About Stave"><a href="privacy.html">Privacy</a><a href="terms.html">Terms</a><a href="help.html">Help and support</a><a href="accessibility.html">Accessibility</a></nav>

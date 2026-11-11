@@ -14,7 +14,7 @@ function cover(p, i) {
       const s = normalize(p);
       const first = 1 + (s.barOffset ?? 0);
       const view = renderScore(excerpt(s, first, first + 3), { mode: 'page', width: 340 });
-      covers.set(p.id, view.systems.slice(0, 2).map((x) => x.svg.outerHTML).join(''));
+      covers.set(p.id, view.systems[0].svg.outerHTML); // one whole line: a second one was sliced in half by the page edge
     } catch {
       covers.set(p.id, null); // an odd score still gets the plain page
     }
@@ -48,7 +48,7 @@ export function shelfHtml() {
     <li><button type="button" class="niche" data-piece="${esc(p.id)}" style="--tint:${TINTS[i % TINTS.length]}" aria-label="${esc(p.title)}: open">
       ${cover(p, i)}<span class="ledge" aria-hidden="true"></span><span class="niche-name">${esc(p.title)}</span>
     </button></li>`);
-  if (!pieces.length) niches.push(`<li><button type="button" class="niche add" data-add><span class="plus" aria-hidden="true">+</span><span class="ledge" aria-hidden="true"></span><span class="niche-name">Add your first piece</span></button></li>`);
+  if (!pieces.length) niches.push(`<li><button type="button" class="niche add" data-add><span class="plus" aria-hidden="true">+</span><span class="ledge" aria-hidden="true"></span><span class="niche-name">Add a piece</span></button></li>`);
   while (niches.length < MIN_NICHES) niches.push('<li aria-hidden="true"><span class="niche empty"><span class="ledge"></span></span></li>');
   return `
     <section class="shelf" aria-labelledby="shelf-h">

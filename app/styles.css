@@ -222,6 +222,9 @@ body::before { content: ''; position: fixed; inset: 0 0 auto; height: env(safe-a
   background: linear-gradient(135deg, #f5a65b, #e7783a); color: #fff; font: inherit; font-weight: 800; font-size: 0.82rem;
   position: relative;
 }
+.avatar svg { width: 18px; height: 18px; }
+.avatar:has(svg) { display: grid; place-items: center; }
+.avatar:has(svg)::after { display: none; }
 .avatar::after { content: ''; position: absolute; right: -1px; bottom: -1px; width: 9px; height: 9px; border-radius: 50%; background: var(--good); border: 2px solid #20242b; }
 
 main {
@@ -1146,7 +1149,7 @@ dialog::backdrop { background: rgba(5, 6, 10, 0.55); -webkit-backdrop-filter: bl
 .shelf { margin: 18px 0 8px; }
 .shelf h3 { font-size: 1.25rem; font-weight: 600; margin: 0 0 10px; letter-spacing: -0.01em; }
 .shelf h3 em, .pz-info h2 em { font-family: Georgia, 'Times New Roman', serif; font-style: italic; font-weight: 400; color: var(--link-photo); }
-.niches { list-style: none; margin: 0 -16px; padding: 4px 16px 10px; display: grid; grid-auto-flow: column; grid-auto-columns: 112px; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; }
+.niches { list-style: none; margin: 0 -16px; padding: 4px 16px 10px; display: grid; grid-auto-flow: column; grid-auto-columns: 112px; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; scroll-padding-inline: 16px; scrollbar-width: none; }
 .niches::-webkit-scrollbar { display: none; }
 @media (min-width: 900px) { .niches { margin: 0; padding: 4px 0 10px; grid-auto-flow: row; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); grid-auto-columns: auto; overflow: visible; } }
 .niches li { scroll-snap-align: start; }
@@ -1182,7 +1185,7 @@ dialog.piece-zoom::backdrop { background: rgba(5, 6, 9, 0.35); }
   background: radial-gradient(90% 70% at 50% 0%, color-mix(in srgb, var(--tint) 55%, transparent), transparent 78%), linear-gradient(180deg, rgba(var(--fg-rgb), 0.14), rgba(var(--fg-rgb), 0.04));
   box-shadow: inset 0 18px 30px rgba(0, 0, 0, 0.35), 0 0 0 1px var(--edge), 0 30px 80px -20px color-mix(in srgb, var(--tint) 60%, transparent); }
 .pz-niche .piece-page { width: 62%; height: auto; filter: drop-shadow(0 18px 18px rgba(0, 0, 0, 0.4)); }
-.pz-niche .ledge { position: absolute; left: 8%; right: 8%; bottom: 11%; height: 8px; border-radius: 3px; background: rgba(var(--fg-rgb), 0.4); box-shadow: 0 10px 22px rgba(0, 0, 0, 0.4); }
+.pz-niche .ledge { position: absolute; left: 8%; right: 8%; bottom: calc(10% - 8px); height: 8px; border-radius: 3px; background: rgba(var(--fg-rgb), 0.4); box-shadow: 0 10px 22px rgba(0, 0, 0, 0.4); }
 .pz-info .kicker { margin: 0; font-size: 0.74rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
 .pz-info h2 { font-size: clamp(2.2rem, 9vw, 3.4rem); line-height: 1.05; margin: 6px 0 16px; font-weight: 500; letter-spacing: -0.02em; overflow-wrap: anywhere; }
 .pz-facts { margin: 0 0 20px; display: grid; }
@@ -1231,3 +1234,20 @@ dialog.scan .steps .btn { margin-top: 8px; }
 dialog.scan details { margin-top: 8px; }
 dialog.scan summary { cursor: pointer; font-weight: 600; }
 dialog.scan textarea { width: 100%; resize: vertical; font-family: ui-monospace, monospace; font-size: 0.8rem; font-weight: 400; }
+
+/* ---- Popups: the page behind must not scroll while one is open (iPhone scrolled it). ---- */
+html:has(dialog[open]) { overflow: hidden; }
+dialog { overscroll-behavior: contain; }
+
+/* ---- Phones: live glass blur on every card re-renders on each scroll frame and made
+   scrolling lag on iPhone. Cards become slightly more opaque glass instead; the tab bar
+   and popups keep the real blur. Entrance animations drop their blur for the same reason. ---- */
+@media (pointer: coarse) {
+  .card:not(dialog), .tile, .stat, .stat-tile, .timer-ring, .news-line, .topbar, .segmented, .card-back { -webkit-backdrop-filter: none; backdrop-filter: none; }
+  :root { --surface: rgba(32, 35, 44, 0.8); }
+  :root[data-theme='day'] { --surface: rgba(255, 255, 255, 0.82); }
+  body::after { display: none; }
+  body.bg-soft .bg-photo { filter: var(--photo-filter); transform: none; }
+  @keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+  @keyframes leave { to { opacity: 0; transform: translateY(-6px); } }
+}

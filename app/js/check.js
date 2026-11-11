@@ -972,7 +972,7 @@ export function mountCheck(el) {
       </section>
       <div id="perform-options">
         <h4>Playing</h4>
-        <label class="field">Tempo <span class="row gap"><input id="check-bpm" type="range" min="40" max="160" step="2"> <span id="check-bpm-label"></span></span></label>
+        <label class="field">Tempo <span class="row gap"><input id="check-bpm" type="range" min="40" max="160" step="1"> <span id="check-bpm-label"></span></span></label>
         <p class="lock-note" id="tempo-lock" hidden><span id="tempo-lock-text"></span> <button class="linkish" id="tempo-unlock" type="button">Unlock (teacher)</button></p>
         <label class="set-row"><span>Metronome sound</span><input id="check-metro" type="checkbox" role="switch" checked></label>
         <label class="set-row"><span>Exam conditions<small>No metronome and no beat light, like the exam room</small></span><input id="check-exam" type="checkbox" role="switch"></label>

@@ -67,7 +67,8 @@ function render() {
   startBtn.textContent = state.running ? 'Pause' : elapsed() > 0 ? 'Resume' : 'Start';
   startBtn.classList.toggle('primary', !state.running);
   root.querySelector('#timer-finish').disabled = elapsed() < 1000;
-  root.querySelector('#timer-discard').disabled = elapsed() === 0;
+  root.querySelector('#timer-finish').hidden = elapsed() === 0;
+  root.querySelector('#timer-discard').hidden = elapsed() === 0;
   root.querySelector('.timer-ring').classList.toggle('running', state.running);
 
   const today = minutesOn(dayKey()) + elapsed() / 60000;

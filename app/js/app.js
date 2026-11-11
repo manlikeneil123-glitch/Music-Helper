@@ -126,7 +126,7 @@ function updateTopbar() {
     avatar.title = `@${user.username}: your account`;
   } else if (p) {
     const level = p.level ?? '';
-    avatar.textContent = /Grade (\d)/.exec(level)?.[1] ? `G${/Grade (\d)/.exec(level)[1]}` : level === 'Just starting' ? 'New' : 'Me';
+    avatar.innerHTML = ICONS.user;
     avatar.title = `${level}${p.board && p.board !== 'Not doing exams' ? ` · ${p.board}` : ''}. Your account and setup.`;
   }
 }

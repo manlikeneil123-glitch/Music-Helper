@@ -72,7 +72,7 @@ function signedOut() {
     <form class="card account-form glass-login" id="acct-form" novalidate>
       <span class="login-mark" aria-hidden="true">${MARK}</span>
       <h3 class="login-title">${creating ? 'Create <span class="grad-text">account</span>' : 'Welcome <span class="grad-text">back</span>'}</h3>
-      <p class="muted small">${creating ? 'Back up your practice and connect with your teacher.' : 'Sign in to pick up where you left off.'}</p>
+      ${creating ? '' : '<p class="muted small">Sign in to pick up where you left off.</p>'}
       ${field(ICONS.user, 'Username', '<input id="acct-user" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="20" placeholder="e.g. ana_plays" required>')}
       <label class="field">Password
         <span class="pw with-icon">${ICONS.lock}<input id="acct-pass" type="password" autocomplete="${creating ? 'new-password' : 'current-password'}" minlength="8" required><button type="button" class="btn small-btn" id="acct-show" aria-controls="acct-pass">Show</button></span>

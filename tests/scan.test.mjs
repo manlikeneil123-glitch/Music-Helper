@@ -48,6 +48,28 @@ for (const [bad, why] of [['BAR\nR: C4/q', 'missing header'], ['SCN1\nR: C4/q', 
 }
 ok(!scnToMusicXML('SCN1\nTITLE <b>&"x"</b>\nBAR\nR: C4/q').includes('<b>'), 'title is escaped');
 
+// Expression: tempo, dynamics, hairpins, articulation, slurs, pedal, pause.
+const expr = normalize(parseMusicXML(scnToMusicXML(`SCN1
+TITLE Study
+TEMPO 96 Allegro
+TIME 4/4
+BAR
+R: [p] [<] C4/q( D4/q E4/q F4/q)
+L: [ped] C3/w
+BAR
+R: [/] [f] G4/q! A4/q' [>] B4/q C5/q^ [/]
+L: [*] C3/w`), { id: 'scan' }));
+ok(expr.targetBpm === 96 && expr.tempoWords === 'Allegro', 'TEMPO sets the marked speed and its words');
+ok(expr.dynamics.map((d) => d.mark).join() === 'p,f', 'dynamics p then f');
+ok(expr.hairpins.length === 2 && expr.hairpins[0].type === 'cresc' && expr.hairpins[1].type === 'dim', 'crescendo and diminuendo');
+ok(expr.notes.find((n) => n.midi === 67).artic === 'accent' && expr.notes.find((n) => n.midi === 69).artic === 'staccato', 'accent and staccato');
+ok(expr.notes.filter((n) => n.slur).length >= 4, 'slurred notes are legato');
+ok(expr.pedal.length === 1, 'pedal down and up');
+ok(expr.notes.find((n) => n.midi === 72).fermata, 'pause on the last note');
+let badMark = false;
+try { parseScn('SCN1\nBAR\nR: [loud] C4/q'); } catch { badMark = true; }
+ok(badMark, 'rejects unknown marks');
+
 // Chat-app route: the reply is pasted back with whatever the app wraps round it.
 const reply = "Here's the transcription:\n\n```\nSCN1\nTIME 4/4\nBAR\nR: C4/w\n```\n\nLet me know if you'd like changes.";
 ok(scnFromReply(reply) === 'SCN1\nTIME 4/4\nBAR\nR: C4/w', 'chat reply: chatter and code fences dropped');

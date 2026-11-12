@@ -10,7 +10,7 @@ import { renderScore } from './render.js';
 import { readScoreFile, parseMusicXML } from './musicxml.js';
 import { analyse, STRICTNESS, guessBeatMs } from './analysis.js';
 import { analyseAudio, firstOnsetSec, encodeWav, liveCheck } from './micanalysis.js';
-import { audio, click, scheduleNote, ctxToPerf } from './audio.js';
+import { audio, click, scheduleNote, ctxToPerf, stopScheduled } from './audio.js';
 import { onNote, onStatus } from './input.js';
 import { micThresholds, reportVerdict, resetTuning, describeTuning } from './tuning.js';
 import { micSupported, openMic, startRecording, calibration } from './mic.js';
@@ -25,6 +25,7 @@ import { tap } from './haptics.js';
 import { openScan } from './scan.js';
 import { examMark, markingBoard, BAND_NAME, bandTone, bestMark } from './marking.js';
 import { celebrate } from './celebrate.js';
+import { expressivePlan } from './expressive.js';
 
 
 const COUNT_IN = 4;
@@ -54,7 +55,6 @@ let lastMic = null; // { args, evidence, record, reported } of the last mic anal
 let scoreView = null; // renderScore() output
 let mode = load('inputMode', 'mic'); // 'mic' | 'keys' (a MIDI keyboard, or computer keys A–K)
 let practice = load('practiceMode', 'perform'); // 'perform' | 'learn'
-let showMusic = false; // Perform hides the music until the result, unless asked
 let layout = load('scoreLayout', 'scroll'); // 'scroll' | 'page'
 let hands = 'both';
 let strictness = load('profile', null)?.strictness ?? 'standard';
@@ -176,19 +176,20 @@ function drawScore(result = lastResult) {
   const colours = new Map();
   if (result) for (const n of result.notes) colours.set(`${n.beat}|${n.midi}|${n.staff ?? 1}`, STATUS_COLOR[n.status]);
   const shown = drill ? excerpt(base, drill.from, drill.to) : base;
+  const inSheet = freeTempo(); // the sheet shows whole lines, like a page
   scoreView = renderScore(shown, {
-    mode: layout,
+    mode: inSheet ? 'page' : layout,
     width: box.clientWidth || 600,
     statusOf: result ? (n) => colours.get(`${n.beat}|${n.midi}|${n.staff ?? 1}`) ?? null : null,
     dimStaff: hands === 'rh' ? 2 : hands === 'lh' ? 1 : null,
   });
-  box.classList.toggle('page', layout === 'page');
+  box.classList.toggle('page', inSheet || layout === 'page');
   box.replaceChildren(...scoreView.systems.map((s) => s.svg));
-  // Perform is played from memory, as in the exam: the music shows only afterwards,
-  // with every note coloured (or when the player asks for it).
-  const hide = freeTempo() && !result && !showMusic;
-  box.hidden = hide;
-  $('#music-hidden').hidden = !hide;
+  // Perform is played from memory, as in the exam: the music lives in the score sheet
+  // (the Score chip), not on the page. Learn and bar practice keep it on the page.
+  const home = freeTempo() ? $('#ss-body') : $('#score-home');
+  if (box.parentElement !== home) home.append(box);
+  $('#score-home').hidden = freeTempo();
   renderHeat();
 }
 
@@ -205,13 +206,32 @@ function moveCursor(beat) {
   }
 }
 
+// Hear it / Play in the score sheet: one playback at a time, stoppable.
+let playing = null;
+function togglePlay() {
+  if (playing) {
+    clearTimeout(playing);
+    playing = null;
+    stopScheduled();
+  } else {
+    const p = listen();
+    if (p) playing = setTimeout(() => { playing = null; playLabels(); }, (p.end - audio().currentTime) * 1000);
+  }
+  playLabels();
+}
+function playLabels() {
+  $('#ss-play').innerHTML = playing ? 'Stop' : `${ICONS.play} Play`;
+  $('#check-listen').innerHTML = playing ? '<b class="plus-glyph" aria-hidden="true">■</b><span>Stop</span>' : `${ICONS.play}<span>Hear it</span>`;
+}
+
 function listen() {
-  if (rec || learn) return;
+  if (rec || learn) return null;
   const ac = audio();
-  const spb = 60 / (freeTempo() ? base.targetBpm : bpm());
+  const tempo = freeTempo() ? base.targetBpm : bpm();
   const start = ac.currentTime + 0.15;
-  for (const n of timeline(piece)) scheduleNote(n.midi, start + n.beat * spb, Math.max(0.08, n.beats * spb * 0.95));
-  animateCursor(ctxToPerf(start), spb * 1000, () => moveCursor(null));
+  const plan = expressivePlan(piece, tempo);
+  for (const n of plan) scheduleNote(n.midi, start + n.at, n.dur, n.vel);
+  return { start, end: start + Math.max(...plan.map((n) => n.at + n.dur)), spb: 60 / tempo };
 }
 
 function animateCursor(t0, msPerBeat, done, cancelled = () => false) {
@@ -495,6 +515,7 @@ function showResult(r, source) {
     </div>` : ''}
     <ul class="feedback-list">${r.feedback.lines.map((l) => `<li class="${l.kind}">${l.text}</li>`).join('')}</ul>
     <p class="next"><b>Next step:</b> ${r.feedback.next}</p>
+    ${freeTempo() ? '<button class="btn block" id="see-notes" type="button">See your notes on the score</button>' : ''}
     ${canDrill ? `<button class="btn primary block" id="drill-start" type="button">Practise bar ${r.worstBar} until it's right ${DRILL_STREAK} times in a row</button>` : ''}
     <div class="legend"><span class="good">● correct</span><span class="warn">● timing</span><span class="bad">● wrong</span><span class="miss">● missed</span>${source === 'mic' ? '<span class="unclear">● unclear</span>' : ''}</div>
     ${sendHook && (lastTake?.compressed || lastNotes) ? `<button class="btn block" id="send-take" type="button">${ICONS.mic} Send this take to your teacher</button>` : ''}
@@ -516,6 +537,7 @@ function showResult(r, source) {
     }
   });
   box.querySelector('#drill-start')?.addEventListener('click', () => startDrill(r.worstBar, r.worstBar));
+  box.querySelector('#see-notes')?.addEventListener('click', () => $('#open-score').click());
   box.querySelectorAll('[data-verdict]').forEach((b) => b.addEventListener('click', () => correctVerdict(b.dataset.verdict, b.dataset.key)));
   box.querySelector('#verdict-wrong')?.addEventListener('click', () => {
     const key = box.querySelector('#verdict-pick').value;
@@ -855,6 +877,23 @@ function showEmpty(on) {
 const escapeHtml = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 
 /** hidden: allow a built-in (the warm-up scale, or a piece the app itself asks for). */
+// The piece as a "now playing" card: its own first line of music as the cover,
+// the composer above the title (imports title pieces "Composer: Title").
+function showNowPlaying() {
+  const cut = base.title.indexOf(': ');
+  const [composer, title] = cut > 0 ? [base.title.slice(0, cut), base.title.slice(cut + 2)] : ['', base.title];
+  $('#np-title').textContent = title;
+  $('#np-composer').textContent = composer || 'Your piece';
+  $('#score-sheet-title').textContent = title;
+  let art = '';
+  try {
+    const s = normalize(base);
+    const first = 1 + (s.barOffset ?? 0);
+    art = renderScore(excerpt(s, first, first + 1), { mode: 'page', width: 300 }).systems[0].svg.outerHTML;
+  } catch { /* an odd score just gets the plain cover */ }
+  $('#np-cover').innerHTML = `<span class="paper np-page">${art}</span><span class="np-open">${ICONS.book} Score</span>`;
+}
+
 function selectPiece(id, { hidden = id === WARMUP } = {}) {
   if (rec || learn) return;
   const found = allPieces().find((p) => p.id === id) ?? (hidden ? library.find((p) => p.id === id) : null) ?? allPieces()[0];
@@ -871,7 +910,8 @@ function selectPiece(id, { hidden = id === WARMUP } = {}) {
   tempoUnlocked = false;
   $('#check-bpm').value = suggestedBpm(base);
   $('#check-result').hidden = true;
-  $('#check-level').textContent = [`${base.beatsPerBar}/${base.beatUnit}`, `aim for ${base.targetBpm} beats a minute`, base.level].filter(Boolean).join(' · ');
+  $('#check-level').textContent = [`${base.beatsPerBar}/${base.beatUnit}`, `${base.targetBpm} beats a minute`, base.tempoWords].filter(Boolean).join(' · ');
+  showNowPlaying();
   $('#check-warnings').hidden = !base.warnings?.length;
   $('#check-warnings').textContent = base.warnings?.join(' ') ?? '';
   $('#remove-import').hidden = !imported.some((p) => p.id === base.id);
@@ -975,7 +1015,7 @@ function syncPracticeButtons() {
   $('#perform-options').hidden = practice !== 'perform';
   $('#mode-hint').textContent = practice === 'learn'
     ? 'Stave waits on each note until you find it, then moves on. No rush, no marks.'
-    : 'Tap Start listening, then play the whole piece at your own speed. Stave marks it like an examiner.';
+    : 'Play the whole piece from memory at your own speed. Stave listens and marks it like an examiner.';
   setStartLabel(false);
   if (scoreView) drawScore();
 }
@@ -1036,29 +1076,23 @@ export function mountCheck(el) {
     </section>
 
     <div id="perf-main">
-      <section class="card piece-bar">
-        <label class="sr-only" for="check-piece">Piece</label>
-        <select id="check-piece"></select>
-        <p class="muted small" id="check-level"></p>
-        <div class="row gap">
-          <label class="btn small-btn" for="import-file" title="MusicXML (.musicxml, .xml) or compressed .mxl from MuseScore, Sibelius, Dorico or Finale">+ File</label>
-          <button class="btn small-btn" type="button" data-scan>+ Photo</button>
-          <button class="btn small-btn" id="remove-import" type="button" hidden>Remove</button>
+      <section class="np" aria-labelledby="np-title">
+        <button class="np-cover" type="button" id="np-cover" aria-label="Open the score"></button>
+        <div class="np-info">
+          <p class="np-kicker" id="np-composer"></p>
+          <h3 id="np-title"></h3>
+          <p class="np-meta" id="check-level"></p>
         </div>
+        <label class="np-change"><span>Change piece</span><select id="check-piece" aria-label="Piece"></select></label>
       </section>
       <p class="warn-note" id="check-warnings" hidden></p>
       <div class="segmented practice-switch" role="group" aria-label="Practice mode">
-        <button type="button" data-practice="perform" aria-pressed="false">${ICONS.play} Play it through</button>
+        <button type="button" data-practice="perform" aria-pressed="false">${ICONS.mic} Perform</button>
         <button type="button" data-practice="learn" aria-pressed="false">${ICONS.book} Learn slowly</button>
       </div>
       <p class="mode-hint" id="mode-hint"></p>
       <section class="card heat" id="heat" hidden></section>
-      <section class="music-hidden" id="music-hidden" hidden>
-        <span class="mh-icon" aria-hidden="true">${ICONS.mic}</span>
-        <p><b>The music is hidden</b> so you play from memory, like the exam. It comes back afterwards with every note marked.</p>
-        <button class="btn small-btn" type="button" id="show-music">Show the music</button>
-      </section>
-      <div class="score-scroll paper" id="check-score"></div>
+      <div class="score-home" id="score-home"><div class="score-scroll paper" id="check-score" tabindex="0" role="group" aria-label="The score"></div></div>
       <section class="card drill" id="drill-banner" hidden></section>
       <section class="listen-panel" id="listen-panel" aria-live="polite">
         <div class="lp-ring" aria-hidden="true">${ICONS.mic}</div>
@@ -1068,9 +1102,13 @@ export function mountCheck(el) {
         <p class="muted small">Play the whole piece at your own speed. Pauses are fine: Stave keeps listening until you tap <b>I've finished</b>.</p>
       </section>
       <button class="input-pill" id="input-pill" type="button"></button>
-      <div class="row gap perf-actions">
+      <div class="perf-actions">
         <button class="btn primary start-big" id="check-start" type="button">Start</button>
-        <button class="btn" id="check-listen" type="button">${ICONS.play} Hear the piece</button>
+      </div>
+      <div class="np-chips" role="group" aria-label="More">
+        <button class="chip-btn" type="button" id="open-score">${ICONS.book}<span>Score</span></button>
+        <button class="chip-btn" type="button" id="check-listen">${ICONS.play}<span>Hear it</span></button>
+        <button class="chip-btn" type="button" id="open-add"><b class="plus-glyph" aria-hidden="true">+</b><span>Add</span></button>
       </div>
       <p class="status" id="check-status" aria-live="polite"></p>
       <section class="card result" id="check-result" hidden></section>
@@ -1088,6 +1126,24 @@ export function mountCheck(el) {
         <button class="btn small-btn" id="sec-share" type="button">Teachers: send this as an assignment link</button>
       </details>
     </div>
+
+    <dialog class="score-sheet" id="score-sheet" aria-labelledby="score-sheet-title">
+      <div class="ss-grip" aria-hidden="true"></div>
+      <div class="ss-head">
+        <div><p class="np-kicker">Score</p><h3 id="score-sheet-title"></h3></div>
+        <button class="btn small-btn ss-play" type="button" id="ss-play">${ICONS.play} Play</button>
+        <button class="btn small-btn" type="button" id="ss-close" aria-label="Close the score">✕</button>
+      </div>
+      <div class="ss-body" id="ss-body"></div>
+    </dialog>
+
+    <dialog class="card sheet add-sheet" id="add-sheet" aria-labelledby="add-sheet-title">
+      <div class="row between"><h3 id="add-sheet-title">Add a piece</h3><button class="btn small-btn" type="button" data-close>✕</button></div>
+      <button class="btn primary block" type="button" data-scan>Take a photo of the music</button>
+      <label class="btn block" for="import-file">Add a MusicXML file</label>
+      <button class="btn bad block" id="remove-import" type="button" hidden>Remove this piece</button>
+      <p class="fine">Files come from your teacher or MuseScore. <a href="help.html#scores">How to get one</a></p>
+    </dialog>
 
     <dialog class="card sheet" id="perf-options" aria-labelledby="perf-options-title">
       <div class="row between"><h3 id="perf-options-title">Options</h3><button class="btn small-btn" type="button" id="perf-options-close">Done</button></div>
@@ -1151,8 +1207,20 @@ export function mountCheck(el) {
     signIn: () => document.getElementById('top-avatar')?.click(),
   })));
   $('#check-bpm').addEventListener('input', updateBpmLabel);
-  $('#check-listen').addEventListener('click', listen);
-  $('#show-music').addEventListener('click', () => { showMusic = true; drawScore(); });
+  $('#check-listen').addEventListener('click', togglePlay);
+  // The score sheet, Hear it and Add.
+  const sheet = $('#score-sheet');
+  const openScore = () => { sheet.showModal(); drawScore(); };
+  $('#open-score').addEventListener('click', openScore);
+  $('#np-cover').addEventListener('click', openScore);
+  $('#ss-close').addEventListener('click', () => sheet.close());
+  sheet.addEventListener('click', (e) => { if (e.target === sheet) sheet.close(); }); // tap outside
+  sheet.addEventListener('close', () => playing && togglePlay());
+  $('#ss-play').addEventListener('click', togglePlay);
+  const add = $('#add-sheet');
+  $('#open-add').addEventListener('click', () => add.showModal());
+  add.querySelector('[data-close]').addEventListener('click', () => add.close());
+  add.querySelectorAll('[data-scan], label[for="import-file"], #remove-import').forEach((b) => b.addEventListener('click', () => add.close()));
   $('#check-start').addEventListener('click', start);
   $('#check-hands').addEventListener('change', (e) => {
     hands = e.target.value;

@@ -215,7 +215,12 @@ export function parseMusicXML(text, { id = 'imported' } = {}) {
             }
           }
           const sound = kid(node, 'sound');
-          if (sound?.attrs.tempo && score.targetBpm == null) score.targetBpm = Math.round((Number(sound.attrs.tempo) * beatUnit) / 4);
+          if (sound?.attrs.tempo && score.targetBpm == null) {
+            score.targetBpm = Math.round((Number(sound.attrs.tempo) * beatUnit) / 4);
+            // The printed tempo words with it ("Allegretto"), shown with the piece.
+            const words = deep(node, 'words').map((w) => w.text.trim()).join(' ').trim();
+            if (words && !/[=\u2669]/.test(words)) score.tempoWords = words.slice(0, 40);
+          }
         } else if (node.name === 'sound' && node.attrs.tempo && score.targetBpm == null) {
           score.targetBpm = Math.round((Number(node.attrs.tempo) * beatUnit) / 4);
         } else if (node.name === 'note') {
@@ -250,6 +255,7 @@ export function parseMusicXML(text, { id = 'imported' } = {}) {
             artic: has('staccato') || has('staccatissimo') ? 'staccato' : has('accent') || has('strong-accent') ? 'accent' : null,
             ornament: has('trill-mark') ? 'trill' : has('mordent') || has('inverted-mordent') ? 'mordent' : has('turn') || has('inverted-turn') ? 'turn' : null,
             grace: grace || undefined,
+            fermata: notations.some((nt) => kids(nt, 'fermata').length) || undefined,
             finger: deep(node, 'fingering')[0]?.text.trim() || undefined,
             slurStart: notations.some((nt) => kids(nt, 'slur').some((s) => s.attrs.type === 'start')) || undefined,
             // What's printed: note type and dots (so triplets and compound time draw right).

@@ -100,8 +100,23 @@ export function noteOff(midi) {
   }
 }
 
-export function scheduleNote(midi, when, duration) {
-  release(voice(midi, when), when + duration);
+const scheduled = new Set();
+export function scheduleNote(midi, when, duration, velocity = 0.8) {
+  const v = voice(midi, when, velocity);
+  release(v, when + duration);
+  scheduled.add(v);
+  setTimeout(() => scheduled.delete(v), (when + duration + 1 - audio().currentTime) * 1000);
+}
+
+/** Silence everything scheduled with scheduleNote (a playback being stopped). */
+export function stopScheduled() {
+  const now = audio().currentTime;
+  for (const v of scheduled) {
+    v.out.gain.cancelScheduledValues(now);
+    v.out.gain.setTargetAtTime(0, now, 0.03);
+    v.oscs.forEach((o) => { try { o.stop(now + 0.2); } catch { /* already stopped */ } });
+  }
+  scheduled.clear();
 }
 
 export function click(when, accent = false) {

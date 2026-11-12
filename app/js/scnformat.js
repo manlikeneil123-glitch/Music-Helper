@@ -3,19 +3,23 @@
 //
 //   SCN1
 //   TITLE Minuet in G
+//   TEMPO 108 Allegretto  crotchets per minute, then the tempo words as printed
 //   KEY 1            fifths: -7..7 (flats negative)
 //   TIME 3/4
 //   CLEF L G         optional: left hand in treble (default R G, L F)
 //   BAR
-//   R: D5/q G4/e A4/e B4/e C5/e
+//   R: [mf] D5/q( G4/e A4/e B4/e C5/e)
 //   L: G3+B3+D4/h.
 //   BAR
 //   ...
 // A token is pitches/duration: pitches are r (rest) or notes joined with +, each a
 // letter, optional # ## b bb, and octave (C4 = middle C), written as they sound (key
 // signature applied). Durations w h q e s t (32nd), optional . for dotted, optional ~
-// to tie into the next note of the same pitch. KEY, TIME and CLEF before a BAR change
-// from that bar on. A piece with no L: lines is a single stave.
+// to tie into the next note of the same pitch, then any of: ! accent, ' staccato,
+// ( slur starts, ) slur ends, ^ pause (fermata). Marks in [ ] apply from the next note:
+// [pp] [p] [mp] [mf] [f] [ff] [sf], [<] crescendo, [>] diminuendo, [/] end of the
+// hairpin, [ped] pedal down, [*] pedal up. KEY, TIME, CLEF and TEMPO before a BAR
+// change from that bar on. A piece with no L: lines is a single stave.
 
 const DIV = 8; // divisions per crotchet
 const DUR = { w: 32, h: 16, q: 8, e: 4, s: 2, t: 1 };
@@ -23,18 +27,29 @@ const TYPE = { w: 'whole', h: 'half', q: 'quarter', e: 'eighth', s: '16th', t: '
 const ALTER = { '': 0, '#': 1, '##': 2, b: -1, bb: -2 };
 const STEPS = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
 const MAX_BARS = 400;
+const DYN = new Set(['ppp', 'pp', 'p', 'mp', 'mf', 'f', 'ff', 'fff', 'sf', 'sfz', 'fp']);
+const MARKS = new Set([...DYN, '<', '>', '/', 'ped', '*']);
 
 const xmlEsc = (s) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 
 function token(t, where) {
-  const m = /^(r|[A-G](?:##|#|bb|b)?-?\d(?:\+[A-G](?:##|#|bb|b)?-?\d)*)\/([whqest])(\.?)(~?)$/.exec(t);
+  const mark = /^\[([a-z<>/*]+)\]$/.exec(t);
+  if (mark) {
+    if (!MARKS.has(mark[1])) throw new Error(`${where}: unknown mark "${t}"`);
+    return { mark: mark[1] };
+  }
+  const m = /^(r|[A-G](?:##|#|bb|b)?-?\d(?:\+[A-G](?:##|#|bb|b)?-?\d)*)\/([whqest])(\.?)(~?)([!'^()]*)$/.exec(t);
   if (!m) throw new Error(`${where}: can't read "${t}"`);
+  const flags = m[5];
   if (m[2] === 't' && m[3]) throw new Error(`${where}: a dotted 32nd isn't supported`);
   const notes = m[1] === 'r' ? [] : m[1].split('+').map((p) => {
     const [, step, acc, oct] = /^([A-G])(##|#|bb|b)?(-?\d)$/.exec(p);
     return { step, alter: ALTER[acc ?? ''], octave: Number(oct), midi: 12 * (Number(oct) + 1) + STEPS[step] + ALTER[acc ?? ''] };
   });
-  return { notes, dur: DUR[m[2]] * (m[3] ? 1.5 : 1), type: TYPE[m[2]], dot: Boolean(m[3]), tie: Boolean(m[4]) };
+  return {
+    notes, dur: DUR[m[2]] * (m[3] ? 1.5 : 1), type: TYPE[m[2]], dot: Boolean(m[3]), tie: Boolean(m[4]),
+    accent: flags.includes('!'), staccato: flags.includes("'"), fermata: flags.includes('^'), slurStart: flags.includes('('), slurStop: flags.includes(')'),
+  };
 }
 
 /** Parse SCN1 text into { title, bars: [{ attrs, R, L }] }. Throws with a line number on bad input. */
@@ -49,6 +64,11 @@ export function parseScn(text) {
     const [word, ...rest] = line.split(/\s+/);
     const arg = rest.join(' ');
     if (word === 'TITLE') title = arg.slice(0, 120) || title;
+    else if (word === 'TEMPO') {
+      const m = /^(\d{2,3})(?:\s+(.{1,40}))?$/.exec(arg);
+      if (!m || Number(m[1]) < 20 || Number(m[1]) > 300) throw new Error(`${where}: bad tempo "${arg}"`);
+      pending.tempo = { bpm: Number(m[1]), words: m[2] ?? '' };
+    }
     else if (word === 'KEY') {
       const k = Number(arg);
       if (!Number.isInteger(k) || k < -7 || k > 7) throw new Error(`${where}: bad key "${arg}"`);
@@ -73,22 +93,39 @@ export function parseScn(text) {
       throw new Error(`${where}: unknown "${word}"`);
     }
   });
-  if (!bars.some((b) => b.R.length || b.L.length)) throw new Error('No notes found');
+  if (!bars.some((b) => [...b.R, ...b.L].some((t) => t.notes))) throw new Error('No notes found');
   return { title, bars };
+}
+
+// A [mark] becomes a <direction> at the current position, before the next note.
+function markXml(mark, staff) {
+  const at = (type) => `<direction placement="${staff === 1 ? 'above' : 'below'}"><direction-type>${type}</direction-type><staff>${staff}</staff></direction>`;
+  if (DYN.has(mark)) return at(`<dynamics><${mark}/></dynamics>`);
+  if (mark === '<') return at('<wedge type="crescendo"/>');
+  if (mark === '>') return at('<wedge type="diminuendo"/>');
+  if (mark === '/') return at('<wedge type="stop"/>');
+  if (mark === 'ped') return at('<pedal type="start"/>');
+  return at('<pedal type="stop"/>');
 }
 
 function notesXml(tokens, staff, tiedIn) {
   let out = '';
   for (const t of tokens) {
+    if (t.mark) { out += markXml(t.mark, staff); continue; }
     const head = `<duration>${t.dur}</duration>`;
     const tail = `<voice>${staff === 1 ? 1 : 5}</voice><type>${t.type}</type>${t.dot ? '<dot/>' : ''}<staff>${staff}</staff>`;
-    if (!t.notes.length) { out += `<note><rest/>${head}${tail}</note>`; tiedIn.clear(); continue; }
+    if (!t.notes.length) { out += `<note><rest/>${head}${tail}${t.fermata ? '<notations><fermata/></notations>' : ''}</note>`; tiedIn.clear(); continue; }
     const nextTied = new Set();
     t.notes.forEach((n, k) => {
       const stop = tiedIn.has(n.midi);
       const ties = `${stop ? '<tie type="stop"/>' : ''}${t.tie ? '<tie type="start"/>' : ''}`;
       const tied = `${stop ? '<tied type="stop"/>' : ''}${t.tie ? '<tied type="start"/>' : ''}`;
-      out += `<note>${k ? '<chord/>' : ''}<pitch><step>${n.step}</step>${n.alter ? `<alter>${n.alter}</alter>` : ''}<octave>${n.octave}</octave></pitch>${head}${ties}${tail}${tied ? `<notations>${tied}</notations>` : ''}</note>`;
+      // Slurs and the pause go on the chord's first note; articulations on every note.
+      const marks = tied
+        + (k === 0 && t.slurStart ? '<slur type="start" number="1"/>' : '') + (k === 0 && t.slurStop ? '<slur type="stop" number="1"/>' : '')
+        + (k === 0 && t.fermata ? '<fermata/>' : '')
+        + (t.accent || t.staccato ? `<articulations>${t.accent ? '<accent/>' : ''}${t.staccato ? '<staccato/>' : ''}</articulations>` : '');
+      out += `<note>${k ? '<chord/>' : ''}<pitch><step>${n.step}</step>${n.alter ? `<alter>${n.alter}</alter>` : ''}<octave>${n.octave}</octave></pitch>${head}${ties}${tail}${marks ? `<notations>${marks}</notations>` : ''}</note>`;
       if (t.tie) nextTied.add(n.midi);
     });
     tiedIn.clear();
@@ -106,12 +143,13 @@ export function scnToMusicXML(text) {
   const measures = bars.map((b, i) => {
     const a = i === 0 ? { key: 0, time: [4, 4], clefR: 'G', clefL: 'F', ...b.attrs } : b.attrs;
     const clef = (n, sign) => `<clef number="${n}"><sign>${sign}</sign><line>${sign === 'G' ? 2 : 4}</line></clef>`;
-    const attrs = i === 0 || Object.keys(a).length
+    const attrs = i === 0 || Object.keys(a).some((k) => k !== 'tempo')
       ? `<attributes>${i === 0 ? `<divisions>${DIV}</divisions>` : ''}${a.key != null ? `<key><fifths>${a.key}</fifths></key>` : ''}${a.time ? `<time><beats>${a.time[0]}</beats><beat-type>${a.time[1]}</beat-type></time>` : ''}${i === 0 && two ? '<staves>2</staves>' : ''}${a.clefR ? clef(1, a.clefR) : ''}${two && a.clefL ? clef(2, a.clefL) : ''}</attributes>`
       : '';
-    const rLen = b.R.reduce((s, t) => s + t.dur, 0);
+    const rLen = b.R.reduce((s, t) => s + (t.dur ?? 0), 0);
+    const tempo = a.tempo ? `<direction placement="above">${a.tempo.words ? `<direction-type><words>${xmlEsc(a.tempo.words)}</words></direction-type>` : ''}<sound tempo="${a.tempo.bpm}"/></direction>` : '';
     const left = two && b.L.length ? `${rLen ? `<backup><duration>${rLen}</duration></backup>` : ''}${notesXml(b.L, 2, tiedL)}` : '';
-    return `<measure number="${i + 1}">${attrs}${notesXml(b.R, 1, tiedR)}${left}</measure>`;
+    return `<measure number="${i + 1}">${attrs}${tempo}${notesXml(b.R, 1, tiedR)}${left}</measure>`;
   });
   return `<?xml version="1.0" encoding="UTF-8"?>
 <score-partwise version="4.0"><work><work-title>${xmlEsc(title)}</work-title></work><part-list><score-part id="P1"><part-name>Piano</part-name></score-part></part-list><part id="P1">${measures.join('')}</part></score-partwise>`;

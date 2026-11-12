@@ -2,6 +2,13 @@
 
 What changed in each version of Stave, in plain words. Written from `app/js/changelog.js`.
 
+## 0.21.0: A new Perform (2026-11-12)
+
+- Perform looks like a music player now: your piece's first line as the cover, the title big and clear, and one Start listening button.
+- The music no longer fills the screen. Tap the cover or Score and it slides up from the bottom, with a Play button. After you play, "See your notes on the score" shows every note marked.
+- Hear it plays your piece with its expression: louder and softer where marked, accents, short staccato, smooth slurs, pedal and pauses, at the marked speed.
+- Photo scans now ask the AI for the tempo and every marking on the page, so Stave can mark your dynamics, accents and flow against them.
+
 ## 0.20.1: Listening that stays on (2026-11-12)
 
 - Fixed: Perform could stop listening by itself in a quiet passage, or not keep your take at all. Now it keeps listening until you tap "I've finished".

@@ -1439,3 +1439,60 @@ body.perf-listening #check-start { min-height: 64px; }
 @media (prefers-reduced-motion: reduce) { .listen-panel.hearing .lp-ring { animation: none; } }
 .mode-hint { margin: -4px 2px 10px; color: var(--muted); font-size: 0.92rem; }
 body.perf-listening #mode-hint { display: none; }
+
+/* ================= Perform: "now playing" =================
+   After music players: the piece's own first line as a cover, the composer above a
+   big title, one main action, and three small controls. The score is a slide-up
+   sheet you open from the cover or the Score chip, so it never fills the page. */
+.np { display: grid; justify-items: center; text-align: center; gap: 6px; margin: 6px 0 14px; }
+.np-cover {
+  position: relative; width: min(54vw, 210px); aspect-ratio: 1; padding: 0; border: 0; border-radius: 22px; cursor: pointer;
+  background: #f7f3ea; overflow: hidden; display: grid; place-items: center;
+  box-shadow: 0 0 0 2px var(--edge), 0 22px 40px rgba(0, 0, 0, 0.45); transition: transform 0.2s var(--ease);
+}
+:root[data-theme='day'] .np-cover { box-shadow: 0 0 0 2px var(--edge), 0 18px 34px rgba(20, 24, 30, 0.16); }
+.np-cover::before { content: ''; position: absolute; inset: 0 0 auto; height: 10px; background: var(--tab-c); }
+.np-cover:active { transform: scale(0.97); }
+.np-page { display: block; width: 88%; background: transparent !important; }
+.np-page svg { width: 100%; height: auto; display: block; }
+.np-open { position: absolute; right: 10px; bottom: 10px; display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 999px; font-size: 0.78rem; font-weight: 750; color: #fff; background: rgba(15, 17, 20, 0.82); }
+.np-open svg { width: 15px; height: 15px; }
+.np-info { margin-top: 12px; }
+.np-kicker { margin: 0; font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.09em; color: var(--tab-c); }
+:root[data-theme='day'] .np-kicker { color: #6b2fa0; }
+#np-title { margin: 4px 0 2px; font-size: clamp(1.45rem, 6vw, 1.85rem); font-weight: 850; letter-spacing: -0.03em; line-height: 1.1; }
+.np-meta { margin: 0; color: var(--muted); font-size: 0.92rem; font-variant-numeric: tabular-nums; }
+.np-change { position: relative; display: inline-flex; align-items: center; gap: 6px; margin-top: 6px; padding: 6px 12px; border-radius: 999px; border: 2px solid var(--edge); font-size: 0.85rem; font-weight: 700; color: var(--muted); cursor: pointer; }
+.np-change::after { content: '▾'; font-size: 0.8rem; }
+.np-change select { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; min-height: 0; }
+.np-change:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+.practice-switch { margin-top: 4px; }
+.mode-hint { text-align: center; }
+.perf-actions { margin-top: 4px; }
+.np-chips { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 12px 0 6px; }
+.chip-btn {
+  display: grid; justify-items: center; gap: 4px; padding: 12px 6px 10px; border-radius: 16px; cursor: pointer; font: inherit; font-size: 0.82rem; font-weight: 750;
+  color: var(--ink); background: var(--surface); border: 2px solid var(--edge); border-bottom-width: 4px; transition: transform 0.06s, border-width 0.06s;
+}
+.chip-btn:active { transform: translateY(2px); border-bottom-width: 2px; margin-bottom: 2px; }
+.chip-btn svg { width: 22px; height: 22px; color: var(--tab-c); }
+.plus-glyph { display: grid; place-items: center; width: 22px; height: 22px; font-size: 1.35rem; line-height: 1; color: var(--tab-c); }
+.chip-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.score-home[hidden] { display: none; }
+
+/* The score sheet slides up from the bottom. */
+dialog.score-sheet {
+  position: fixed; inset: auto 0 0 0; margin: 0 auto; width: min(760px, 100vw); max-width: none; max-height: 86dvh; padding: 8px 16px calc(16px + env(safe-area-inset-bottom));
+  border: 2px solid var(--edge); border-bottom: 0; border-radius: 24px 24px 0 0; background: var(--surface); color: var(--ink); box-sizing: border-box; overflow: auto;
+}
+dialog.score-sheet[open] { animation: sheet-up 0.32s var(--ease) both; }
+@keyframes sheet-up { from { transform: translateY(100%); } }
+.ss-grip { width: 44px; height: 5px; border-radius: 3px; margin: 2px auto 10px; background: var(--edge); }
+.ss-head { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; align-items: center; margin-bottom: 12px; }
+.ss-head h3 { margin: 2px 0 0; font-size: 1.15rem; }
+.ss-body .score-scroll { max-height: none; }
+:root.still dialog.score-sheet[open] { animation: none; }
+@media (prefers-reduced-motion: reduce) { dialog.score-sheet[open] { animation: none; } }
+
+/* While listening, only the listening panel and the finish button. */
+body.perf-listening .np, body.perf-listening .np-chips, body.perf-listening .practice-switch { display: none !important; }

@@ -12,6 +12,7 @@ import { parseMusicXML } from './musicxml.js';
 import { normalize, timeline } from './score.js';
 import { renderScore } from './render.js';
 import { audio, scheduleNote } from './audio.js';
+import { expressivePlan } from './expressive.js';
 
 const MAX_PAGES = 3;
 const LONG_SIDE = 1800; // px: enough for noteheads, small enough to send quickly
@@ -163,10 +164,8 @@ export function openScan({ onAdd, signIn }) {
     const box = dlg.querySelector('.scan-score');
     box.replaceChildren(...renderScore(piece, { mode: 'page', width: box.clientWidth || 520 }).systems.map((s) => s.svg));
     dlg.querySelector('[data-listen]').addEventListener('click', () => {
-      const ac = audio();
-      const spb = 60 / Math.min(100, piece.targetBpm || 80);
-      const t0 = ac.currentTime + 0.15;
-      for (const n of timeline(piece).filter((x) => x.beat < 40)) scheduleNote(n.midi, t0 + n.beat * spb, Math.max(0.08, n.beats * spb * 0.95));
+      const t0 = audio().currentTime + 0.15;
+      for (const n of expressivePlan(piece, piece.targetBpm || 80).filter((x) => x.at < 30)) scheduleNote(n.midi, t0 + n.at, n.dur, n.vel);
     });
     dlg.querySelector('[data-retake]').addEventListener('click', () => { photos = []; back(); });
     dlg.querySelector('[data-add]').addEventListener('click', () => {

@@ -10,6 +10,7 @@ import { refreshTeacherWork } from './teach.js';
 import { examTitle } from './exam.js';
 import { settingsCard, wireSettings } from './settings.js';
 import { MARK } from './welcome.js';
+import { bandTone } from './marking.js';
 import { bornOnDevice, under13 } from './age.js';
 
 let root;
@@ -23,6 +24,8 @@ let onOpenSetup = () => {};
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 const tone = (score) => (score >= 85 ? 'good' : score >= 60 ? 'warn' : 'bad');
+// Newer summaries carry the exam mark and band; older ones only a /100 score.
+const badge = (c) => `<span class="mini-badge ${c.band ? bandTone(c.band) : tone(c.score)}">${c.mark ?? c.score}</span>`;
 
 function ago(t) {
   if (!t) return 'never';
@@ -155,7 +158,7 @@ function studentRow(st) {
             <span title="Practice this week">${ICONS.clock}${s.week}′</span>
             <span title="Day streak">${ICONS.flame}${s.streak}</span>
             ${s.exam?.days >= 0 ? `<span title="Days to exam">${ICONS.trophy}${s.exam.days}d</span>` : ''}
-            ${last ? `<span class="mini-badge ${tone(last.score)}" title="Last check">${last.score}</span>` : ''}
+            ${last ? badge(last).replace('<span ', '<span title="Last mark" ') : ''}
           </span>
         </summary>
         <div class="student-detail">
@@ -165,9 +168,9 @@ function studentRow(st) {
           <div class="mini-chart" role="img" aria-label="Minutes per day, last 14 days: ${s.days.map((d) => d.minutes).join(', ')}">
             ${s.days.map((d) => `<i style="height:${Math.max(2, (d.minutes / max) * 44)}px" title="${d.day}: ${d.minutes} min"></i>`).join('')}
           </div>
-          ${s.recent?.length ? `<h4>Recent checks</h4><ul class="log recent">${s.recent.slice(0, 6).map((c) => `
-            <li><span class="who"><span class="mini-badge ${tone(c.score)}">${c.score}</span><span>${esc(c.title)}${c.hands !== 'both' ? ` <small class="muted">(${c.hands === 'rh' ? 'RH' : 'LH'})</small>` : ''}${c.worstBar ? ` <small class="muted">· weakest bar ${c.worstBar}</small>` : ''}</span></span><small class="muted">${ago(c.at)}</small></li>`).join('')}</ul>` : '<p class="empty">No checks yet.</p>'}
-          ${s.pieces?.length ? `<h4>Pieces</h4><ul class="log">${s.pieces.map((p) => `<li><span>${esc(p.title)} <small class="muted">· ${p.runs} run${p.runs === 1 ? '' : 's'}</small></span><b>${p.ready ? '✓ ready' : `best ${p.best}`}</b></li>`).join('')}</ul>` : ''}
+          ${s.recent?.length ? `<h4>Recent play-throughs</h4><ul class="log recent">${s.recent.slice(0, 6).map((c) => `
+            <li><span class="who">${badge(c)}<span>${esc(c.title)}${c.hands !== 'both' ? ` <small class="muted">(${c.hands === 'rh' ? 'RH' : 'LH'})</small>` : ''}${c.worstBar ? ` <small class="muted">· weakest bar ${c.worstBar}</small>` : ''}</span></span><small class="muted">${ago(c.at)}</small></li>`).join('')}</ul>` : '<p class="empty">No checks yet.</p>'}
+          ${s.pieces?.length ? `<h4>Pieces</h4><ul class="log">${s.pieces.map((p) => `<li><span>${esc(p.title)} <small class="muted">· played ${p.runs} time${p.runs === 1 ? '' : 's'}</small></span><b>${p.bestMark ? `best ${p.bestMark}` : p.ready ? '✓ ready' : `best ${p.best}`}</b></li>`).join('')}</ul>` : ''}
           ${extras ? studentTeaching(st, extras) : ''}
           <div class="row gap wrap">
             <button class="btn small-btn" type="button" data-reset="${st.id}" data-name="${esc(st.username)}">Reset password</button>

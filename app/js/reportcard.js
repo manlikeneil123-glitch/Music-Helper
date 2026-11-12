@@ -8,6 +8,7 @@ import { examWithReadiness } from './examview.js';
 import { daysUntil, examTitle } from './exam.js';
 import { currentUser } from './cloud.js';
 import { lastDays } from './timer.js';
+import { runMark } from './marking.js';
 
 /** The numbers on the card (pure apart from reading storage). */
 export function weekReport(now = Date.now()) {
@@ -18,10 +19,11 @@ export function weekReport(now = Date.now()) {
   const days = Array.from({ length: 7 }, (_, i) => { const d = new Date(now); d.setDate(d.getDate() - (6 - i)); return dayKey(d); });
   const titles = Object.fromEntries(everyPiece().map((p) => [p.id, p.title]));
   const pieces = Object.values(runs.reduce((acc, r) => {
-    const p = (acc[r.pieceId] ??= { id: r.pieceId, title: titles[r.pieceId] ?? 'Imported piece', runs: 0, best: 0, first: r.score, last: r.score, bars: {} });
+    const m = runMark(r);
+    const p = (acc[r.pieceId] ??= { id: r.pieceId, title: titles[r.pieceId] ?? 'Imported piece', runs: 0, best: 0, of: m.of, first: m.mark, last: m.mark, bars: {} });
     p.runs++;
-    p.best = Math.max(p.best, r.score);
-    p.last = r.score;
+    p.best = Math.max(p.best, m.mark);
+    p.last = m.mark;
     for (const [bar, n] of Object.entries(r.barErrors ?? {})) p.bars[bar] = (p.bars[bar] ?? 0) + n;
     return acc;
   }, {}));
@@ -96,7 +98,7 @@ function draw(r) {
   });
 
   // Numbers
-  const stats = [[r.cleanRuns, 'clean runs'], [r.barsFixed + r.drills, 'bars fixed'], [r.notesRead, 'notes read'], [r.minutes, 'minutes']];
+  const stats = [[r.cleanRuns, 'played well'], [r.barsFixed + r.drills, 'bars fixed'], [r.notesRead, 'notes read'], [r.minutes, 'minutes']];
   stats.forEach(([n, label], i) => {
     const x = 60 + i * 245;
     panel(x, 480, 225, 170);
@@ -116,7 +118,7 @@ function draw(r) {
     panel(60, y, W - 120, 112);
     const exam = r.exam?.pieces.find((x) => x.pieceId === p.id)?.readiness;
     text(p.title, 96, y + 50, 34, '#f3f5f8', 700, 'left', W - 96 - (exam?.band ? 300 : 96));
-    text(`${p.runs} run${p.runs === 1 ? '' : 's'} · best ${p.best}${p.last > p.first ? ` · up ${p.last - p.first}` : ''}${p.trouble.length ? ` · work on bar ${p.trouble.join(', ')}` : ''}`, 96, y + 92, 26, '#a9b0bb', 500);
+    text(`played ${p.runs}× · best ${p.best}/${p.of}${p.last > p.first ? ` · up ${p.last - p.first}` : ''}${p.trouble.length ? ` · work on bar ${p.trouble.join(', ')}` : ''}`, 96, y + 92, 26, '#a9b0bb', 500);
     if (exam?.band) {
       const [label, color] = BAND[exam.band];
       text(label, W - 96, y + 50, 28, color, 700, 'right');

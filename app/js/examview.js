@@ -1,5 +1,6 @@
 // The Exam page: countdown, the three pieces and how ready they are, the other parts
 // of the exam, this week's targets, and a mock exam in the order the day runs.
+import { BAND_NAME } from './marking.js';
 import { BOARDS, GRADES, RATINGS, EXAM_TYPES, examSpec, isPerformance, examTitle, gradeNumber, pieceReadiness, daysUntil, phaseFor, weekTargets, mockSteps, bandLabel } from './exam.js';
 import { checkHistory, allPieces, performPiece } from './check.js';
 import { renderScore } from './render.js';
@@ -259,16 +260,16 @@ function runStep(e) {
     performPiece(step.pieceId, { exam: true, bpm: piece?.targetBpm, onDone: (r, entry) => pieceDone(e, r, entry) });
   } else if (step.kind === 'scales') {
     goTo('play');
-    performPiece('c-scale', { exam: true, onDone: (r) => { goTo('exam'); setTimeout(() => alert(`C major: ${r.score}/100, pulse ${r.pulse?.score ?? '–'}. Now rate your scales overall.`), 400); } });
+    performPiece('c-scale', { exam: true, onDone: (r) => { goTo('exam'); setTimeout(() => alert(`C major: notes ${Math.round(r.pitchAccuracy * 100)}% right, evenness ${r.pulse?.score ?? '–'}/100. Now rate your scales overall.`), 400); } });
   } else if (step.kind === 'sight') {
     startPrep(e);
   }
 }
 
 function pieceDone(e, r, entry) {
-  const band = entry ? pieceReadiness([entry], e.board, Date.now(), 1, e.type) : null;
-  const slow = entry?.targetBpm && entry.playedBpm < entry.targetBpm * 0.95 ? `, ${entry.playedBpm} of ${entry.targetBpm} bpm` : '';
-  record({ score: r.score, band: band?.band ?? null, summary: band?.band ? `${bandLabel(band.band)} (${r.score}${slow})` : `${r.score}/100${slow}` });
+  const m = r.exam;
+  const slow = entry?.targetBpm && entry.playedBpm < entry.targetBpm * 0.95 ? `, ${entry.playedBpm} of ${entry.targetBpm} beats a minute` : '';
+  record({ score: r.score, band: m?.band ?? null, summary: m ? `${m.mark}/${m.of} ${BAND_NAME[m.band]}${slow}` : `${r.score}/100${slow}` });
   goTo('exam');
 }
 
@@ -296,7 +297,7 @@ function startPrep(e) {
     const p = prep.piece;
     prep = null;
     goTo('play');
-    performPiece(p.id, { exam: true, bpm: Math.max(40, Math.round((p.targetBpm * 0.75) / 2) * 2), onDone: (r) => { record({ score: r.score, summary: `Sight-reading ${r.score}/100` }); goTo('exam'); } });
+    performPiece(p.id, { exam: true, bpm: Math.max(40, Math.round((p.targetBpm * 0.75) / 2) * 2), onDone: (r) => { record({ score: r.score, summary: `Sight-reading: ${Math.round(r.pitchAccuracy * 100)}% of notes right${r.continuity?.stops ? ', with stops' : ', kept going'}` }); goTo('exam'); } });
   }, 1000);
 }
 

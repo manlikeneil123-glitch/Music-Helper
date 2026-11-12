@@ -27,15 +27,15 @@ function render(v) {
       <div class="big">
         <div><b>${s.streak}</b><span class="muted small">day streak</span></div>
         <div><b>${s.week}′</b><span class="muted small">this week</span></div>
-        <div><b>${s.recent?.filter((c) => Date.now() - c.at < 7 * 86400000).length ?? 0}</b><span class="muted small">checked runs</span></div>
+        <div><b>${s.recent?.filter((c) => Date.now() - c.at < 7 * 86400000).length ?? 0}</b><span class="muted small">play-throughs</span></div>
       </div>
       <div class="mini-chart" role="img" aria-label="Minutes per day, last 14 days">${s.days.map((d) => `<i style="height:${Math.max(2, (d.minutes / max) * 44)}px" title="${d.day}: ${d.minutes} min"></i>`).join('')}</div>
       <p class="muted small">The streak counts days with real progress (a piece played well, a bar fixed, or 20 notes read), not just time.</p>
     </section>
     ${s.exam && s.exam.days >= 0 ? `<section class="card"><h3>${esc(examTitle(s.exam))} in ${s.exam.days} days</h3>
       <ul class="log">${s.exam.pieces.map((p) => `<li><span>${esc(p.title || 'Piece')}</span>${p.band ? `<span class="band ${p.band}">${BAND[p.band]}</span>` : '<span class="muted small">no reading yet</span>'}</li>`).join('')}</ul>
-      <p class="muted small">Readiness covers right notes and rhythm only, from the last few runs. It isn't an exam mark.</p></section>` : ''}
-    ${s.recent?.length ? `<section class="card"><h3>Recent checks</h3><ul class="log recent">${s.recent.slice(0, 6).map((c) => `<li><span class="who"><span class="mini-badge ${tone(c.score)}">${c.score}</span><span>${esc(c.title)}</span></span><small class="muted">${ago(c.at)}</small></li>`).join('')}</ul></section>` : ''}
+      <p class="muted small">Readiness covers right notes and rhythm only, from the last few play-throughs. Each play-through also gets an estimated exam mark, shown below.</p></section>` : ''}
+    ${s.recent?.length ? `<section class="card"><h3>Recent play-throughs</h3><ul class="log recent">${s.recent.slice(0, 6).map((c) => `<li><span class="who"><span class="mini-badge ${c.band ? ({ distinction: 'good', merit: 'good', pass: 'warn' }[c.band] ?? 'bad') : tone(c.score)}">${c.mark ?? c.score}</span><span>${esc(c.title)}</span></span><small class="muted">${ago(c.at)}</small></li>`).join('')}</ul></section>` : ''}
     ${s.weekBars?.length ? `<section class="card"><h3>Working on</h3><ul class="log">${s.weekBars.map((p) => `<li><span>${esc(p.title)}</span><span class="muted">${p.bars.map((b) => `bar ${b.bar}`).join(', ')}</span></li>`).join('')}</ul></section>` : ''}
     <p class="fine">This link was shared by @${esc(v.username)} and can be turned off by them at any time.</p>
     <nav class="legal-links" aria-label="About Stave"><a href="privacy.html">Privacy</a><a href="help.html#adults">For parents and carers</a></nav>`;

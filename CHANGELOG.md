@@ -2,6 +2,13 @@
 
 What changed in each version of Stave, in plain words. Written from `app/js/changelog.js`.
 
+## 0.18.0: Marked like an examiner (2026-11-12)
+
+- After you play a piece, Stave now gives an estimated exam mark for your board: out of 30 for ABRSM (Pitch, Time, Tone, Shape, Performance) or out of 22 for Trinity (Accuracy and fluency, Technical facility, Communication and interpretation).
+- Each part gets its own band and a comment, so you can see exactly what stands between you and Distinction.
+- It marks a little strictly on purpose, so the real exam doesn't surprise you. With the microphone, tone and shape are rough; a digital piano with a cable hears them exactly.
+- Your marks replace the old score out of 100 on Today, your shelf and the Stats page.
+
 ## 0.17.0: A cleaner look (2026-11-12)
 
 - Stave has a new, cleaner look: a plain dark background, simple cards and one colour, coral, for the things you tap.

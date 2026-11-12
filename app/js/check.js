@@ -23,6 +23,7 @@ import { logWin } from './quality.js';
 import { dayKey } from './store.js';
 import { tap } from './haptics.js';
 import { openScan } from './scan.js';
+import { examMark, markingBoard, BAND_NAME, bandTone } from './marking.js';
 
 
 const COUNT_IN = 4;
@@ -364,6 +365,8 @@ function finish({ played, source, msPerBeat, unclear = [], spread = [], pedalEve
     expected: timeline(piece), played, unclear, spread, msPerBeat, beatsPerBar: piece.beatsPerBar, source,
     strictness, score: piece, pedalEvents, dense: d.maxChord >= 4 || (d.twoHands && d.minDur <= 0.25),
   });
+  const { board, type } = markingBoard();
+  result.exam = examMark(result, board, type);
   lastResult = result;
   if (played.length && record && !drill) {
     history.push({
@@ -371,6 +374,7 @@ function finish({ played, source, msPerBeat, unclear = [], spread = [], pedalEve
       worstBar: result.worstBar, input: source, barErrors: result.barErrors, keptGoing: result.continuity?.score ?? null, pulse: result.pulse?.score ?? null,
       pitch: +result.pitchAccuracy.toFixed(3), rhythm: +result.rhythmAccuracy.toFixed(3), targetBpm: base.targetBpm,
       exam: examMode || undefined,
+      mark: result.exam.mark, of: result.exam.of, band: result.exam.band, board,
     });
     if (result.score >= 85) logWin('clean');
     save('checks', history.slice(-300));
@@ -390,16 +394,26 @@ function finish({ played, source, msPerBeat, unclear = [], spread = [], pedalEve
   setStatus('Done. See your feedback below.', '');
 }
 
+// The examiner's sheet: an estimated mark for the board, then each criterion.
+function markSheet(m) {
+  return `<div class="mark-sheet">
+      <div class="mark-head">
+        <div class="score-badge ${bandTone(m.band)}"><b>${m.mark}</b><small>/${m.of}</small></div>
+        <div><p class="kicker">${m.board} estimated mark</p><b class="mark-band ${bandTone(m.band)}">${BAND_NAME[m.band]}</b></div>
+      </div>
+      <dl class="criteria">${m.criteria.map((c) => `<div><dt>${c.label}${c.max ? ` <span class="muted">${c.mark}/${c.max}</span>` : ''}</dt><dd><span class="band-chip ${c.band ? bandTone(c.band) : ''}">${c.band ? BAND_NAME[c.band] : 'Not heard'}</span> ${c.comment}</dd></div>`).join('')}</dl>
+      <p class="fine">An estimate, marked a little strictly so the real exam doesn't surprise you.${m.rough ? ' Tone and shape are rough with the microphone; a digital piano with a cable hears them exactly.' : ''} An examiner hears more than any app can.</p>
+    </div>`;
+}
+
 function showResult(r, source) {
   const box = $('#check-result');
   box.hidden = false;
   const pct = (x) => `${Math.round(x * 100)}%`;
   const canDrill = r.worstBar != null && !r.ready && r.counts.correct + r.counts.early + r.counts.late > 0;
   box.innerHTML = `
-    <div class="result-head">
-      <div class="score-badge ${r.score >= 85 ? 'good' : r.score >= 60 ? 'warn' : 'bad'}">${r.score}</div>
-      <div><b>${r.feedback.headline}</b><div class="muted">Notes ${pct(r.pitchAccuracy)} · Rhythm ${pct(r.rhythmAccuracy)} · ${Math.round(r.playedBpm)} bpm${source === 'mic' ? ' · microphone' : ''} · ${STRICTNESS[r.strictness].label}</div></div>
-    </div>
+    ${markSheet(r.exam)}
+    <p class="muted small">${r.feedback.headline} Notes ${pct(r.pitchAccuracy)} · Rhythm ${pct(r.rhythmAccuracy)} · ${Math.round(r.playedBpm)} beats a minute${source === 'mic' ? ' · microphone' : ''} · ${STRICTNESS[r.strictness].label} marking</p>
     ${r.continuity || r.pulse ? `<div class="subscores">
       ${r.continuity ? `<span class="sub ${tone(r.continuity.score)}" title="Stops, restarts and hesitations"><b>${r.continuity.score}</b> Kept going</span>` : ''}
       ${r.pulse ? `<span class="sub ${tone(r.pulse.score)}" title="How evenly you kept the beat${examMode ? ', with no metronome' : ''}"><b>${r.pulse.score}</b> Pulse${examMode ? ' (no metronome)' : ''}</span>` : ''}
@@ -416,7 +430,7 @@ function showResult(r, source) {
     btn.disabled = true;
     btn.textContent = 'Sending';
     try {
-      const title = `${base.title}${drill ? ` (${span(drill)})` : ''} · ${r.score}/100`;
+      const title = `${base.title}${drill ? ` (${span(drill)})` : ''} · ${r.exam.mark}/${r.exam.of} (${BAND_NAME[r.exam.band]})`;
       await sendHook(lastTake?.compressed
         ? { title, kind: 'audio', blob: await lastTake.compressed, seconds: lastTake.samples.length / lastTake.sampleRate, score: r.score }
         : { title, kind: 'notes', notes: lastNotes.events, seconds: lastNotes.seconds, score: r.score });

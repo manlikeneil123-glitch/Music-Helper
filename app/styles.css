@@ -1327,3 +1327,19 @@ dialog.piece-zoom { background: var(--bg); }
 .key.down.white { background: #ffd2c6; }
 .key.down.black { background: #ff6b4a; }
 .next { border-color: color-mix(in srgb, var(--accent) 45%, transparent); }
+
+/* ---- Examiner's mark sheet (Perform result) ---- */
+.score-badge { border-radius: 16px; border: 0; width: 72px; height: 64px; grid-auto-flow: column; align-items: baseline; justify-content: center; align-content: center; gap: 1px; }
+.score-badge.good { background: #1b7a47; } .score-badge.warn { background: #9a5f12; } .score-badge.bad { background: #b03636; }
+.score-badge small { font-size: 0.8rem; font-weight: 700; opacity: 0.85; }
+.mark-head { display: flex; gap: 14px; align-items: center; }
+.mark-head .kicker { margin: 0 0 2px; font-size: 0.78rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+.mark-band { font-size: 1.3rem; }
+.mark-band.good { color: var(--good); } .mark-band.warn { color: var(--warn); } .mark-band.bad { color: var(--bad); }
+.criteria { margin: 14px 0 8px; display: grid; gap: 0; }
+.criteria > div { display: grid; grid-template-columns: 112px 1fr; gap: 10px; padding: 10px 0; border-top: 2px solid var(--line); }
+.criteria dt { font-weight: 750; }
+.criteria dd { margin: 0; color: var(--text-2); font-size: 0.92rem; }
+.band-chip { display: inline-block; margin: 0 6px 2px 0; padding: 1px 8px; border-radius: 8px; font-size: 0.76rem; font-weight: 750; background: var(--raised); color: var(--muted); }
+.band-chip.good { color: var(--good); } .band-chip.warn { color: var(--warn); } .band-chip.bad { color: var(--bad); }
+@media (max-width: 380px) { .criteria > div { grid-template-columns: 1fr; gap: 2px; } }

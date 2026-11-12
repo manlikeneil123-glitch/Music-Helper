@@ -5,6 +5,7 @@ import { onSave, exportSynced, importSynced, dayKey } from './store.js';
 import { cloudReady, currentUser, rest } from './cloud.js';
 import { qualityStreak } from './quality.js';
 import { pieceReadiness, daysUntil, examSpec } from './exam.js';
+import { runMark, bestMark, markText } from './marking.js';
 
 const PUSH_DELAY = 4000;
 let timer = null;
@@ -37,6 +38,8 @@ export function summarise(data, titleOf = {}, now = new Date()) {
     return { day: dayKey(d), minutes: Math.round(minutesOn(dayKey(d))) };
   });
   const streak = qualityStreak(data.quality?.v ?? {}, now);
+  const prof = data.profile?.v ?? {};
+  const markOn = { board: data.exam?.v?.board ?? (['ABRSM', 'Trinity'].includes(prof.board) ? prof.board : 'ABRSM'), type: data.exam?.v?.type ?? prof.examType ?? 'practical' };
   const pieces = {};
   for (const c of checks) {
     const p = (pieces[c.pieceId] ??= { title: titleOf[c.pieceId] ?? 'Imported piece', runs: 0, best: 0, last: 0, ready: false });
@@ -44,7 +47,10 @@ export function summarise(data, titleOf = {}, now = new Date()) {
     p.best = Math.max(p.best, c.score);
     p.last = c.score;
     p.ready ||= Boolean(c.ready);
+    const m = bestMark([c, ...(p.bestRun ? [p.bestRun] : [])], markOn);
+    if (m) { p.bestRun = { mark: m.mark, of: m.of, band: m.band }; p.bestMark = markText(m); p.bestBand = m.band; }
   }
+  for (const p of Object.values(pieces)) delete p.bestRun;
   const profile = data.profile?.v ?? {};
   const ex = data.exam?.v;
   const exam = ex?.date ? {
@@ -60,7 +66,7 @@ export function summarise(data, titleOf = {}, now = new Date()) {
     week: days.slice(7).reduce((a, x) => a + x.minutes, 0),
     days,
     notesKnown: Object.values(cards).filter((c) => (c.box ?? 0) >= 3).length,
-    recent: checks.slice(-10).reverse().map((c) => ({ title: titleOf[c.pieceId] ?? 'Imported piece', score: c.score, at: c.at, worstBar: c.worstBar ?? null, hands: c.hands ?? 'both', input: c.input ?? '' })),
+    recent: checks.slice(-10).reverse().map((c) => ({ title: titleOf[c.pieceId] ?? 'Imported piece', score: c.score, mark: markText(runMark(c, markOn)), band: runMark(c, markOn)?.band, at: c.at, worstBar: c.worstBar ?? null, hands: c.hands ?? 'both', input: c.input ?? '' })),
     pieces: Object.values(pieces),
     exam,
     lastMock: mocks[0] ?? null,

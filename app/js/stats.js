@@ -1,5 +1,6 @@
 // Stats: the dashboard behind Today's three numbers. Count-up tiles, minutes per day
 // split by what was practised, check scores over time, and this week's goal ring.
+import { runMark, bestMark, markText, bandTone, BAND_NAME } from './marking.js';
 import { allSessions, goalMinutes, FOCUSES } from './timer.js';
 import { checkHistory, findPiece, allPieces } from './check.js';
 import { cardStats, DECKS } from './flashcards.js';
@@ -23,7 +24,6 @@ function ago(t) {
   return d === 1 ? 'yesterday' : `${d} days ago`;
 }
 
-const tone = (score) => (score >= 85 ? 'good' : score >= 60 ? 'warn' : 'bad');
 const fmtDay = (d) => d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
 
 /** Minutes per bucket (a day, or a week for 3 months), split by focus. */
@@ -72,22 +72,24 @@ function splitBar(totals) {
 }
 
 function scoreLine(checks) {
-  if (checks.length < 2) return '<p class="empty">Play two or more pieces through in Perform to see your scores over time.</p>';
-  const pts = checks.slice(-30);
+  if (checks.length < 2) return '<p class="empty">Play two or more pieces through in Perform to see your marks over time.</p>';
+  const pts = checks.slice(-30).map((c) => runMark(c));
+  const of = pts[pts.length - 1].of;
+  const merit = of === 30 ? 24 : of === 25 ? 19 : 17; // lowest Merit mark for the board
   const x = (i) => (i / (pts.length - 1)) * 300;
-  const y = (s) => 110 - (s / 100) * 100;
-  const line = pts.map((c, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)} ${y(c.score).toFixed(1)}`).join(' ');
+  const y = (s) => 110 - (s / of) * 100;
+  const line = pts.map((c, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)} ${y((c.mark / c.of) * of).toFixed(1)}`).join(' ');
   const last = pts[pts.length - 1];
   return `
     <div class="line-chart">
-      <svg viewBox="0 0 300 120" preserveAspectRatio="none" role="img" aria-label="Your last ${pts.length} check scores, oldest first: ${pts.map((c) => c.score).join(', ')}">
+      <svg viewBox="0 0 300 120" preserveAspectRatio="none" role="img" aria-label="Your last ${pts.length} marks out of ${of}, oldest first: ${pts.map((c) => c.mark).join(', ')}">
         <defs><linearGradient id="score-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--accent)" stop-opacity="0.35"/><stop offset="1" stop-color="var(--accent)" stop-opacity="0"/></linearGradient></defs>
-        <line class="grid" x1="0" x2="300" y1="${y(85)}" y2="${y(85)}" vector-effect="non-scaling-stroke"/>
+        <line class="grid" x1="0" x2="300" y1="${y(merit)}" y2="${y(merit)}" vector-effect="non-scaling-stroke"/>
         <path class="area" d="${line} L300 120 L0 120 Z" fill="url(#score-fill)"/>
         <path class="stroke" d="${line}" pathLength="1" vector-effect="non-scaling-stroke"/>
       </svg>
-      <span class="ref" style="top:${(y(85) / 120) * 100}%">85, played well</span>
-      <span class="last" style="top:${(y(last.score) / 120) * 100}%">${last.score}</span>
+      <span class="ref" style="top:${(y(merit) / 120) * 100}%">${merit}, Merit</span>
+      <span class="last" style="top:${(y(last.mark) / 120) * 100}%">${last.mark}</span>
     </div>`;
 }
 
@@ -114,7 +116,8 @@ export function renderStats(root, { back, report }) {
   const minutes = inRange.reduce((a, s) => a + s.ms, 0) / 60000;
   const practised = new Set(inRange.map((s) => s.day)).size;
   const checks = checkHistory().filter((c) => c.at >= from.setHours(0, 0, 0, 0));
-  const avg = checks.length ? Math.round(checks.reduce((a, c) => a + c.score, 0) / checks.length) : 0;
+  const marks = checks.map((c) => runMark(c)).filter(Boolean);
+  const avg = marks.length ? Math.round(marks.reduce((a, m) => a + m.mark, 0) / marks.length) : 0;
   const mastered = Object.keys(DECKS).reduce((a, k) => a + cardStats(k).mastered, 0);
   const totals = FOCUSES.map((f, i) => inRange.filter((s) => Math.max(0, FOCUSES.indexOf(s.focus)) === i).reduce((a, s) => a + s.ms / 60000, 0));
   const monday = new Date();
@@ -132,7 +135,7 @@ export function renderStats(root, { back, report }) {
     <section class="stat-tiles" aria-label="Totals for this ${RANGES[range].toLowerCase()}">
       ${tile(Math.round(minutes), 'minutes practised')}
       ${tile(practised, `day${practised === 1 ? '' : 's'} practised`)}
-      ${tile(checks.length ? avg : '–', checks.length ? `average score, ${checks.length} check${checks.length === 1 ? '' : 's'}` : 'average score (none yet)')}
+      ${tile(marks.length ? avg : '–', marks.length ? `average mark out of ${marks[0].of}, ${marks.length} play-through${marks.length === 1 ? '' : 's'}` : 'average mark (none yet)')}
       ${tile(mastered, 'flashcards learned')}
     </section>
     <section class="card">
@@ -141,7 +144,7 @@ export function renderStats(root, { back, report }) {
     </section>
     <div class="stats-pair">
       <section class="card">
-        <h3>Your scores</h3>
+        <h3>Your marks</h3>
         ${scoreLine(history)}
       </section>
       <section class="card">
@@ -153,11 +156,11 @@ export function renderStats(root, { back, report }) {
       <h3>Pieces</h3>
       <ul class="log">${pieces.map((x) => {
         const runs = history.filter((h) => h.pieceId === x.id);
-        const best = runs.length ? Math.max(...runs.map((r) => r.score)) : null;
-        return `<li><span>${esc(x.title)}<small class="muted"> · played ${runs.length} time${runs.length === 1 ? '' : 's'}</small></span><b>${best == null ? '–' : runs.some((r) => r.ready) ? '✓ ready' : `best ${best}`}</b></li>`;
+        const best = bestMark(runs);
+        return `<li><span>${esc(x.title)}<small class="muted"> · played ${runs.length} time${runs.length === 1 ? '' : 's'}</small></span><b>${best ? `best ${markText(best)} ${BAND_NAME[best.band]}` : '–'}</b></li>`;
       }).join('')}</ul>
     </section>` : ''}
-    ${history.length ? `<section class="card"><h3>Recent checks</h3><ul class="log recent">${history.slice(-5).reverse().map((h) => `<li><span class="who"><span class="mini-badge ${tone(h.score)}">${h.score}</span><span>${esc(findPiece(h.pieceId)?.title ?? 'A removed piece')}</span></span><small class="muted">${ago(h.at)}</small></li>`).join('')}</ul></section>` : ''}
+    ${history.length ? `<section class="card"><h3>Recent play-throughs</h3><ul class="log recent">${history.slice(-5).reverse().map((h) => `<li><span class="who"><span class="mini-badge ${bandTone(runMark(h).band)}">${markText(runMark(h))}</span><span>${esc(findPiece(h.pieceId)?.title ?? 'A removed piece')}</span></span><small class="muted">${ago(h.at)}</small></li>`).join('')}</ul></section>` : ''}
     <button class="btn block" id="stats-report" type="button">${ICONS.trophy} This week's report card</button>`;
 
   root.querySelector('#stats-back').addEventListener('click', back);

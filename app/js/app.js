@@ -16,6 +16,7 @@ import { loadPiano } from './audio.js';
 import { mountBackground, pulseBackground } from './background.js';
 import { mountWelcome, profile, MARK } from './welcome.js';
 import { ICONS } from './icons.js';
+import { runMark, markText } from './marking.js';
 import { load, save, dayKey } from './store.js';
 import { mountAccount, renderAccount, resumeAccount } from './account.js';
 import { startSync, setPieceTitles } from './sync.js';
@@ -160,7 +161,8 @@ function renderToday() {
   const history = checkHistory();
   const plan = lessonPlan();
   const last = history[history.length - 1];
-  const prevScore = history[history.length - 2]?.score;
+  const lastMark = runMark(last);
+  const prevMark = runMark(history[history.length - 2]);
   const s = qualityStreak();
   const qWeek = qualityWeek();
   const qToday = qualityOn(dayKey());
@@ -196,10 +198,10 @@ function renderToday() {
         </button></li>`).join('')}
       </ol>
     </section>
-    <button class="card stat-strip" type="button" id="today-stats" aria-label="Your stats: ${s} day streak, ${Math.round(weekMins)} minutes this week, last score ${last ? last.score : 'none yet'}. Open the stats page">
-      <span title="A day counts when you get a clean run (85+), fix a bar in a drill, or read ${CARDS_TARGET} notes right. One rest day a week won't break it."><b data-count="${s}">${s}</b><span>day streak</span><span class="week-dots" aria-hidden="true">${qWeek.map((on, k) => `<i class="${on ? 'on' : ''}" style="--k:${k}"></i>`).join('')}</span></span>
+    <button class="card stat-strip" type="button" id="today-stats" aria-label="Your stats: ${s} day streak, ${Math.round(weekMins)} minutes this week, last mark ${lastMark ? markText(lastMark) : 'none yet'}. Open the stats page">
+      <span title="A day counts when you play a piece well, fix a bar, or read ${CARDS_TARGET} notes right. One rest day a week won't break it."><b data-count="${s}">${s}</b><span>day streak</span><span class="week-dots" aria-hidden="true">${qWeek.map((on, k) => `<i class="${on ? 'on' : ''}" style="--k:${k}"></i>`).join('')}</span></span>
       <span><b data-count="${Math.round(weekMins)}">${Math.round(weekMins)}</b><span>min this week</span>${deltaChip(weekMins, prevWeek || null, ' min')}</span>
-      <span><b ${last ? `data-count="${last.score}"` : ''}>${last ? last.score : '–'}</b><span>last score</span>${last ? deltaChip(last.score, prevScore) : ''}</span>
+      <span><b>${lastMark ? `${lastMark.mark}<small>/${lastMark.of}</small>` : '–'}</b><span>last mark</span>${lastMark && prevMark?.of === lastMark.of ? deltaChip(lastMark.mark, prevMark.mark) : ''}</span>
       <span class="stat-more" aria-hidden="true">${ICONS.chart} Stats ${ICONS.arrow}</span>
     </button>
     ${installCard()}

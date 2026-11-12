@@ -3,6 +3,15 @@
 // and the service worker, and writes CHANGELOG.md from this list.
 export const CHANGES = [
   {
+    version: '0.18.0', date: '2026-11-12', title: 'Marked like an examiner',
+    items: [
+      'After you play a piece, Stave now gives an estimated exam mark for your board: out of 30 for ABRSM (Pitch, Time, Tone, Shape, Performance) or out of 22 for Trinity (Accuracy and fluency, Technical facility, Communication and interpretation).',
+      'Each part gets its own band and a comment, so you can see exactly what stands between you and Distinction.',
+      'It marks a little strictly on purpose, so the real exam doesn\'t surprise you. With the microphone, tone and shape are rough; a digital piano with a cable hears them exactly.',
+      'Your marks replace the old score out of 100 on Today, your shelf and the Stats page.',
+    ],
+  },
+  {
     version: '0.17.0', date: '2026-11-12', title: 'A cleaner look',
     items: [
       'Stave has a new, cleaner look: a plain dark background, simple cards and one colour, coral, for the things you tap.',

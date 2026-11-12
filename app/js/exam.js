@@ -1,9 +1,9 @@
 // The exam itself: what each board marks, how ready each part is, and what to do in
 // the weeks left. Pure functions — examview.js draws it, tests call it directly.
 //
-// Readiness is a *Pitch & Time* band measured from real runs, mapped onto the
-// published mark bands. It is never presented as a mark: tone, shape and
-// performance (and everything an examiner hears in the room) aren't measured.
+// Readiness is a *Pitch & Time* band measured over the last few runs, mapped onto
+// the published mark bands. Each single run also gets an estimated mark against all
+// the board's criteria: see marking.js.
 
 export const BOARDS = {
   ABRSM: {

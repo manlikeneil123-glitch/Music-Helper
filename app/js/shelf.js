@@ -2,6 +2,7 @@
 // it and the details slide in, with Perform (play it through) and Learn (learn slowly).
 import { allPieces, checkHistory, troubleBars } from './check.js';
 import { ICONS } from './icons.js';
+import { bestMark, markText, BAND_NAME } from './marking.js';
 import { still } from './settings.js';
 import { renderScore } from './render.js';
 import { excerpt, normalize } from './score.js';
@@ -36,7 +37,7 @@ const page = (i) => `<svg class="piece-page" viewBox="0 0 60 80" aria-hidden="tr
 
 function facts(p) {
   const runs = checkHistory().filter((h) => h.pieceId === p.id);
-  const best = runs.length ? Math.max(...runs.map((r) => r.score)) : null;
+  const best = bestMark(runs);
   const last = runs[runs.length - 1];
   const weak = Object.entries(troubleBars(p.id).perRun).sort((a, b) => b[1] - a[1])[0];
   return { runs: runs.length, best, ready: runs.some((r) => r.ready), last, weak: weak?.[0] };
@@ -70,7 +71,7 @@ function detail(p, i, count) {
         <h2 id="pz-title">${esc(p.title.trim().slice(0, cut))}<em>${esc(p.title.trim().slice(cut))}</em></h2>
         <dl class="pz-facts">
           <div><dt>Played through</dt><dd>${f.runs ? `${f.runs} time${f.runs === 1 ? '' : 's'}` : 'Not yet'}</dd></div>
-          <div><dt>Best score</dt><dd>${f.best == null ? '–' : f.ready ? `${f.best}, exam ready` : f.best}</dd></div>
+          <div><dt>Best mark</dt><dd>${f.best ? `${markText(f.best)}, ${BAND_NAME[f.best.band]}` : '–'}</dd></div>
           <div><dt>Trickiest bar</dt><dd>${f.weak ? `Bar ${f.weak}` : 'None found yet'}</dd></div>
         </dl>
         <div class="pz-actions">

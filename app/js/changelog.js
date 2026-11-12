@@ -3,6 +3,14 @@
 // and the service worker, and writes CHANGELOG.md from this list.
 export const CHANGES = [
   {
+    version: '0.17.0', date: '2026-11-12', title: 'A cleaner look',
+    items: [
+      'Stave has a new, cleaner look: a plain dark background, simple cards and one colour, coral, for the things you tap.',
+      'Buttons press down when you tap them, so it\'s clear what you can tap.',
+      'Plainer words everywhere: "Practise bar 3" instead of "Drill", "Speed (beats a minute)" instead of "Tempo", and a short hint under every setting.',
+    ],
+  },
+  {
     version: '0.16.2', date: '2026-11-11', title: 'Smoother and tidier',
     items: [
       'Scrolling is smoother on phones.',

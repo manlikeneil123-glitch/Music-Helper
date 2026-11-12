@@ -30,7 +30,7 @@ function render(v) {
         <div><b>${s.recent?.filter((c) => Date.now() - c.at < 7 * 86400000).length ?? 0}</b><span class="muted small">checked runs</span></div>
       </div>
       <div class="mini-chart" role="img" aria-label="Minutes per day, last 14 days">${s.days.map((d) => `<i style="height:${Math.max(2, (d.minutes / max) * 44)}px" title="${d.day}: ${d.minutes} min"></i>`).join('')}</div>
-      <p class="muted small">The streak counts days with real progress (a clean run, a bar fixed, or 20 notes read), not just time.</p>
+      <p class="muted small">The streak counts days with real progress (a piece played well, a bar fixed, or 20 notes read), not just time.</p>
     </section>
     ${s.exam && s.exam.days >= 0 ? `<section class="card"><h3>${esc(examTitle(s.exam))} in ${s.exam.days} days</h3>
       <ul class="log">${s.exam.pieces.map((p) => `<li><span>${esc(p.title || 'Piece')}</span>${p.band ? `<span class="band ${p.band}">${BAND[p.band]}</span>` : '<span class="muted small">no reading yet</span>'}</li>`).join('')}</ul>

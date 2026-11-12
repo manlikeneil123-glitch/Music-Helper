@@ -145,7 +145,7 @@ export function weekTargets(exam, now = new Date()) {
     if (!p.pieceId) out.push({ part: name, text: 'Import or link the score so the app can check it, or ask your teacher to.' });
     else if (!r?.band) out.push({ part: name, text: phase.id === 'learn' ? 'Learn it in sections ("Add a bar at a time"), hands separately first.' : 'Two full runs this week so the app can measure it.' });
     else if (r.band === 'below') out.push({ part: name, text: `Notes and rhythm first: practise the trouble bars slowly. Weakest: ${r.weakest}.` });
-    else if (r.band === 'pass') out.push({ part: name, text: r.weakest === 'tempo' ? 'Raise the tempo 4–8 bpm a week, only after a clean run.' : `Pass level for pitch and time. Work on ${r.weakest}.` });
+    else if (r.band === 'pass') out.push({ part: name, text: r.weakest === 'tempo' ? 'Go 4–8 beats a minute faster each week, but only once it\'s right at the current speed.' : `Pass level for pitch and time. Work on ${r.weakest}.` });
     else if (r.band === 'merit') out.push({ part: name, text: ['polish', 'final'].includes(phase.id) ? 'Two runs in Exam conditions this week, no stopping.' : `Merit level. Push ${r.weakest} for Distinction.` });
     else out.push({ part: name, text: 'Distinction level for pitch and time. Keep it fresh with one run every few days, and work on the music: dynamics, shape, character.' });
   });

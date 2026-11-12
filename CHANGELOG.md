@@ -2,6 +2,12 @@
 
 What changed in each version of Stave, in plain words. Written from `app/js/changelog.js`.
 
+## 0.17.0: A cleaner look (2026-11-12)
+
+- Stave has a new, cleaner look: a plain dark background, simple cards and one colour, coral, for the things you tap.
+- Buttons press down when you tap them, so it's clear what you can tap.
+- Plainer words everywhere: "Practise bar 3" instead of "Drill", "Speed (beats a minute)" instead of "Tempo", and a short hint under every setting.
+
 ## 0.16.2: Smoother and tidier (2026-11-11)
 
 - Scrolling is smoother on phones.

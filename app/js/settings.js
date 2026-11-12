@@ -21,7 +21,7 @@ export function applyTheme(t, { sync = true } = {}) {
   const d = document.documentElement;
   d.dataset.theme = t;
   local(THEME_KEY, t);
-  const bg = t === 'day' ? '#e9edf2' : '#0d1014';
+  const bg = t === 'day' ? '#f4f5f7' : '#131619';
   d.style.background = bg;
   document.querySelector('meta[name="theme-color"]')?.setAttribute('content', bg);
   // Saved with the account too, so a new phone opens in the same theme.

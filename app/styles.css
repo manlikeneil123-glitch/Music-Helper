@@ -11,48 +11,49 @@
   font-display: swap;
 }
 
-/* Smoky glass, after the "Glassy Dashboard V5" look: a darkened photo of a grand
-   piano by a window wall, frosted translucent panels with a thin light edge,
-   white type, and a Sunset gradient (coral, magenta, purple) washed through the glass
-   and on the main buttons. Sheet music keeps a light "paper" panel: notation
-   is read dark-on-light, as in a real book, and stays legible. */
+/* Clean dark (owner decision 2026-11): a solid near-black page, flat cards with a
+   2px edge, one flat coral accent, chunky buttons with a darker bottom edge that
+   sinks when pressed. No photo, glass blur or gradients. Sheet music keeps a light
+   "paper" panel: notation is read dark-on-light, as in a real book. The old glass
+   variables (--wash, --rim, --glow, --grad...) are kept as flat values so older
+   rules still resolve. */
 :root {
-  --bg: #0d1014;
-  --surface: rgba(38, 40, 50, 0.6);       /* glass panel */
-  --surface-strong: rgba(30, 34, 41, 0.78);  /* glass where text is dense */
-  --surface-solid: #1d2128;
-  --raised: rgba(255, 255, 255, 0.07);       /* rows, inputs inside glass */
-  --raised-hover: rgba(255, 255, 255, 0.12);
-  --edge: rgba(255, 255, 255, 0.14);          /* the thin light rim of glass */
+  --bg: #131619;
+  --surface: #1b1f24;       /* card */
+  --surface-strong: #1b1f24;
+  --surface-solid: #1b1f24;
+  --raised: #242930;       /* rows, inputs inside cards */
+  --raised-hover: #2c323a;
+  --edge: #2e343c;          /* card and button edges */
   --ink: #f3f5f8;
-  --muted: #c3c8d1;
-  --line: rgba(255, 255, 255, 0.1);
-  --brand: #ffffff;                           /* headlines; primary pill is white */
-  --accent: #ff6b8b;                          /* Sunset pink: outlines, progress, focus */
-  --accent-soft: rgba(255, 107, 139, 0.22);
-  --link: #a9c8ff;                            /* links: blue and underlined, 4.5:1 or better */
-  --link-photo: #e6efff;                      /* links sitting straight on the photo */
+  --muted: #aeb5bf;
+  --line: #2a3037;
+  --brand: #ffffff;
+  --accent: #ff7a59;                          /* coral: outlines, progress, focus */
+  --accent-soft: rgba(255, 122, 89, 0.16);
+  --link: #8fb8ff;                            /* links: blue and underlined, 4.5:1 or better */
+  --link-photo: #8fb8ff;                      /* links on the page background */
   --viz-1: #1ea891; --viz-2: #e8673a; --viz-3: #8f6cf0; --viz-4: #b38500; --viz-5: #d94a8c; /* chart series, validated for colour-blind separation */
-  --grad: linear-gradient(120deg, #ff8a5c 0%, #ff4f8b 52%, #a35cff 100%);          /* bars, rings, glow: decoration */
-  --grad-btn: linear-gradient(120deg, #c4402c 0%, #b42462 55%, #6f35c8 100%);      /* buttons: white text at 4.5:1 on every stop */
-  --wash: linear-gradient(140deg, rgba(255, 138, 92, 0.11), rgba(255, 79, 139, 0.05) 50%, rgba(163, 92, 255, 0.11));
-  --rim: linear-gradient(150deg, rgba(255, 190, 160, 0.55), rgba(255, 255, 255, 0.08) 32%, rgba(255, 255, 255, 0.02) 60%, rgba(196, 150, 255, 0.32));
-  --glow: radial-gradient(60% 45% at 0% 100%, rgba(255, 110, 80, 0.2), transparent 70%), radial-gradient(55% 45% at 100% 0%, rgba(150, 80, 255, 0.2), transparent 70%);
+  --grad: linear-gradient(#ff7a59, #ff7a59);          /* bars and rings (flat) */
+  --grad-btn: linear-gradient(#ff6b4a, #ff6b4a);      /* primary buttons, dark text */
+  --wash: linear-gradient(transparent, transparent);
+  --rim: linear-gradient(transparent, transparent);
+  --glow: linear-gradient(transparent, transparent);
   --fg-rgb: 255, 255, 255;                    /* faint overlays: tracks, bars, rows */
-  --pill-on: #ffffff;                         /* selected pill / primary button */
-  --pill-on-hover: #e9edf3;
+  --pill-on: #ff7a59;                         /* selected pill / primary button */
+  --pill-on-hover: #ff8f73;
   --t-green: #c8f7da; --t-blue: #cfe0ff; --t-gold: #ffe1b0; --t-red: #ffd0d0; --t-violet: #d4ccff; /* text on tinted chips */
   --chip-blue: #b9d1ff; --sheen: #ffb3c7; --chip-gold: #ffd79c; --chip-green: #a9f0c6;
-  --tagline: #d6dbe3;
-  --text-2: #eef0f4;                          /* secondary text that sits on the photo */
-  --accent-btn: #b42462;                      /* solid fallback for --grad-btn */
-  --photo-filter: blur(0) brightness(0.62) saturate(0.95);
-  --shade: linear-gradient(180deg, rgba(8, 10, 14, 0.62) 0%, rgba(8, 10, 14, 0.25) 38%, rgba(8, 10, 14, 0.55) 100%), radial-gradient(120% 80% at 50% 0%, transparent 40%, rgba(5, 6, 9, 0.55) 100%);
+  --tagline: #c3c9d1;
+  --text-2: #d9dde3;                          /* secondary text that sits on the photo */
+  --accent-btn: #ff6b4a;                      /* solid fallback for --grad-btn */
+  --photo-filter: none;
+  --shade: none;
   --mint: #8edbbb;
   --green: #6ee19a;
   --chip: rgba(255, 255, 255, 0.1);
   --chip-ink: #e8ecf2;
-  --on-brand: #0d1014;
+  --on-brand: #1d0e08;
   --good: #72e3a0;
   --warn: #f2b45a;
   --bad: #ffadad;
@@ -65,38 +66,39 @@
   --key-label: #545c69;
   --key-black: #15181d;
   --key-black-edge: #2c323b;
-  --radius: 20px;
+  --radius: 18px;
   --radius-sm: 14px;
-  --shadow: 0 1px 0 rgba(255, 255, 255, 0.06) inset, 0 10px 30px rgba(0, 0, 0, 0.28);
-  --blur: saturate(140%) blur(22px);
+  --shadow: none;
+  --blur: none;
   --font: 'Geist', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --tabbar-h: 68px;
   --dock-w: 0px;
   --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
   color-scheme: dark;
+  --sheen: #ff9b80;
 }
 /* Day: the same glass, frosted white over a washed-out photo. Night stays the default. */
 :root[data-theme='day'] {
-  --bg: #e9edf2;
-  --surface: rgba(255, 255, 255, 0.66);
-  --surface-strong: rgba(255, 255, 255, 0.84);
+  --bg: #f4f5f7;
+  --surface: #ffffff;
+  --surface-strong: #ffffff;
   --surface-solid: #ffffff;
-  --raised: rgba(20, 24, 30, 0.06);
-  --raised-hover: rgba(20, 24, 30, 0.1);
-  --edge: rgba(20, 24, 30, 0.13);
+  --raised: #eef0f3;
+  --raised-hover: #e5e8ec;
+  --edge: #dde1e6;
   --ink: #12151a;
   --muted: #4a5260;
-  --line: rgba(20, 24, 30, 0.1);
+  --line: #e3e6ea;
   --brand: #0d1014;
-  --accent: #c42a62;
-  --accent-soft: rgba(196, 42, 98, 0.14);
+  --accent: #c2410c;
+  --accent-soft: rgba(255, 107, 74, 0.14);
   --link: #1c47b8;
-  --link-photo: #0b2470;
+  --link-photo: #1c47b8;
   --viz-1: #138f7b; --viz-2: #d0552a; --viz-3: #7a56e0; --viz-4: #a87a00; --viz-5: #c2387a;
-  --wash: linear-gradient(140deg, rgba(255, 138, 92, 0.16), rgba(255, 79, 139, 0.07) 50%, rgba(163, 92, 255, 0.15));
-  --rim: linear-gradient(150deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.3) 40%, rgba(255, 190, 220, 0.5));
-  --glow: radial-gradient(60% 45% at 0% 100%, rgba(255, 120, 90, 0.16), transparent 70%), radial-gradient(55% 45% at 100% 0%, rgba(160, 90, 255, 0.14), transparent 70%);
-  --sheen: #c42a62;
+  --wash: linear-gradient(transparent, transparent);
+  --rim: linear-gradient(transparent, transparent);
+  --glow: linear-gradient(transparent, transparent);
+  --sheen: #c2410c;
   --chip: rgba(20, 24, 30, 0.06);
   --chip-ink: #1d2128;
   --on-brand: #ffffff;
@@ -114,10 +116,11 @@
   --chip-blue: #1f4fae; --chip-gold: #7a4b00; --chip-green: #0f6a3b;
   --tagline: #2c333d;
   --text-2: #2a303a;
-  --shadow: 0 1px 0 rgba(255, 255, 255, 0.7) inset, 0 10px 30px rgba(30, 40, 60, 0.14);
-  --photo-filter: blur(2px) brightness(1.15) saturate(0.85);
-  --shade: linear-gradient(180deg, rgba(236, 240, 245, 0.8), rgba(236, 240, 245, 0.66) 40%, rgba(236, 240, 245, 0.82));
+  --shadow: none;
+  --photo-filter: none;
+  --shade: none;
   color-scheme: light;
+  --grad: linear-gradient(#ff6b4a, #ff6b4a);
 }
 :root[data-theme='day'] body::before { background: rgba(236, 240, 245, 0.8); }
 :root[data-theme='day'] body::after { opacity: 0.03; }
@@ -382,7 +385,7 @@ body[data-tab='welcome'] .orbs { display: block; animation: fade-in 1.2s ease bo
 .stave-anim { display: block; width: 100%; max-width: 340px; margin: 18px auto 8px; overflow: visible; }
 .stave-anim > line { stroke: rgba(var(--fg-rgb), 0.28); stroke-width: 1.2; }
 .stave-anim .n { fill: var(--ink); stroke: var(--ink); stroke-width: 1.6; opacity: 0; animation: note-in 4.8s var(--ease) infinite; animation-delay: calc(var(--k) * 0.32s + 0.8s); }
-.stave-anim .n:nth-child(odd of .n) { fill: #ff8fb1; stroke: #ff8fb1; }
+.stave-anim .n:nth-child(odd of .n) { fill: var(--accent); stroke: var(--accent); }
 @keyframes note-in { 0% { opacity: 0; transform: translateY(8px); } 10%, 70% { opacity: 1; transform: none; } 85%, 100% { opacity: 0; transform: translateY(-4px); } }
 .pitch { list-style: none; padding: 0; margin: 12px 0 0; display: grid; gap: 8px; text-align: left; }
 .pitch li { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 18px; background: rgba(var(--fg-rgb), 0.06); border: 1px solid rgba(var(--fg-rgb), 0.08); }
@@ -1148,7 +1151,7 @@ dialog::backdrop { background: rgba(5, 6, 10, 0.55); -webkit-backdrop-filter: bl
 /* ---- Today's shelf: each piece in its own lit niche ---- */
 .shelf { margin: 18px 0 8px; }
 .shelf h3 { font-size: 1.25rem; font-weight: 600; margin: 0 0 10px; letter-spacing: -0.01em; }
-.shelf h3 em, .pz-info h2 em { font-family: Georgia, 'Times New Roman', serif; font-style: italic; font-weight: 400; color: var(--link-photo); }
+.shelf h3 em, .pz-info h2 em { font-family: Georgia, 'Times New Roman', serif; font-style: italic; font-weight: 400; color: var(--accent); }
 .niches { list-style: none; margin: 0 -16px; padding: 4px 16px 10px; display: grid; grid-auto-flow: column; grid-auto-columns: 112px; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; scroll-padding-inline: 16px; scrollbar-width: none; }
 .niches::-webkit-scrollbar { display: none; }
 @media (min-width: 900px) { .niches { margin: 0; padding: 4px 0 10px; grid-auto-flow: row; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); grid-auto-columns: auto; overflow: visible; } }
@@ -1239,15 +1242,88 @@ dialog.scan textarea { width: 100%; resize: vertical; font-family: ui-monospace,
 html:has(dialog[open]) { overflow: hidden; }
 dialog { overscroll-behavior: contain; }
 
-/* ---- Phones: live glass blur on every card re-renders on each scroll frame and made
-   scrolling lag on iPhone. Cards become slightly more opaque glass instead; the tab bar
-   and popups keep the real blur. Entrance animations drop their blur for the same reason. ---- */
-@media (pointer: coarse) {
-  .card:not(dialog), .tile, .stat, .stat-tile, .timer-ring, .news-line, .topbar, .segmented, .card-back { -webkit-backdrop-filter: none; backdrop-filter: none; }
-  :root { --surface: rgba(32, 35, 44, 0.8); }
-  :root[data-theme='day'] { --surface: rgba(255, 255, 255, 0.82); }
-  body::after { display: none; }
-  body.bg-soft .bg-photo { filter: var(--photo-filter); transform: none; }
-  @keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
-  @keyframes leave { to { opacity: 0; transform: translateY(-6px); } }
+/* ================= Clean dark: component layer =================
+   Overrides the old glass components. Later in the file, so it wins at equal specificity. */
+.bg-photo, .bg-shade, .orbs, body::after { display: none !important; }
+body { background: var(--bg); }
+body::before { background: var(--bg); }
+.card:not(dialog)::before, .topbar::before, .tabbar::before, .tile::before, .stat::before, .glass-hero::before,
+.glass-hero::after, .topbar::after, .tabbar::after { display: none; }
+* { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+dialog::backdrop { background: rgba(5, 6, 8, 0.72); }
+
+/* Cards: flat, solid, a 2px edge. */
+.card, .tile, .stat, .stat-tile, .segmented, .news-line, .exam-chip, .glass-hero {
+  background: var(--surface); border: 2px solid var(--edge); box-shadow: none;
 }
+.card:not(dialog) { border-radius: var(--radius); }
+.card .segmented, dialog .segmented { background: var(--raised); border-color: transparent; }
+
+/* Header: just the logo row, no bar. */
+.topbar { background: transparent; border: 0; box-shadow: none; padding-inline: 0; }
+.logo-tile { background: var(--raised); border: 0; }
+
+/* Buttons: chunky, with a darker bottom edge that sinks when pressed. */
+.btn {
+  border-radius: 14px; border: 2px solid var(--edge); border-bottom-width: 4px; background: var(--surface);
+  font-weight: 750; box-shadow: none; transition: transform 0.06s, border-width 0.06s, background 0.15s;
+}
+.btn:hover { background: var(--raised); }
+.btn:active:not(:disabled) { transform: translateY(2px); border-bottom-width: 2px; margin-bottom: 2px; }
+.btn.primary, .btn.accent { background: #ff6b4a; color: #1d0e08; border-color: #c94a2c; box-shadow: none; filter: none; }
+.btn.primary:hover, .btn.accent:hover { background: #ff7d5f; }
+.btn.good { background: var(--surface); border-color: color-mix(in srgb, var(--good) 55%, var(--edge)); color: var(--good); }
+.btn.bad { background: var(--surface); border-color: color-mix(in srgb, var(--bad) 55%, var(--edge)); color: var(--bad); }
+.btn.ghost { background: var(--raised); border-color: var(--edge); }
+.btn.ghost.link { background: transparent; border-color: transparent; border-bottom-width: 2px; }
+.btn.small-btn { border-radius: 12px; }
+.linkish, .btn.link { border: 0; }
+select, textarea, input[type='number'], input[type='text'], input[type='password'], input[type='email'] { background: var(--raised); border: 2px solid var(--edge); border-radius: 12px; }
+
+/* Switches and chips: flat, the chosen one in coral. */
+.segmented { border-radius: 14px; }
+.segmented button { border-radius: 10px; }
+.segmented button[aria-pressed='true'] { box-shadow: none; }
+.choice { border-radius: 12px; border-width: 2px; }
+
+/* Text that was gradient-filled is plain coral. */
+.grad-text, :root[data-theme='day'] .grad-text { background: none; -webkit-background-clip: border-box; background-clip: border-box; color: var(--accent); }
+
+/* Tab bar: a solid strip along the bottom edge; the current tab is a coral icon in an outlined box. */
+.tabbar {
+  left: 0; right: 0; bottom: 0; max-width: none; height: calc(var(--tabbar-h) + env(safe-area-inset-bottom));
+  padding: 6px max(8px, env(safe-area-inset-left, 0px)) calc(6px + env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-right, 0px));
+  border-radius: 0; border: 0; border-top: 2px solid var(--edge); background: var(--bg); box-shadow: none;
+}
+.tab-blob { display: none; }
+.tabbar button { border-radius: 12px; color: var(--muted); }
+.tabbar [data-icon] { width: 48px; height: 32px; border-radius: 10px; border: 2px solid transparent; }
+.tabbar button[aria-current='page'] { color: var(--accent); }
+.tabbar button[aria-current='page'] [data-icon] { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); box-shadow: none; transform: none; }
+body { padding-bottom: calc(var(--tabbar-h) + 20px + env(safe-area-inset-bottom)); }
+.keyboard { bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom)); background: var(--bg); border-top: 2px solid var(--edge); }
+@media (min-width: 900px) {
+  .tabbar { left: 18px; right: auto; top: 50%; bottom: auto; height: auto; padding: 9px; border: 2px solid var(--edge); border-radius: 18px; background: var(--surface); }
+  .tabbar [data-icon] { width: 40px; height: 40px; }
+  .keyboard { bottom: 0; }
+}
+
+/* Splash: a plain card on the dark page. */
+.glass-hero { border-radius: 24px; }
+.brand-mark.big, :root[data-theme='day'] .brand-mark.big { background: var(--raised); border: 2px solid var(--edge); box-shadow: none; }
+:root[data-theme='day'] .glass-hero { background: var(--surface); box-shadow: none; }
+
+/* Shelf: flat niches with a coloured top edge per piece. */
+.niche, :root[data-theme='day'] .niche { background: var(--surface); box-shadow: none; border: 2px solid var(--edge); border-top: 4px solid var(--tint); border-radius: 14px; }
+.niche:hover, .niche:focus-visible { background: var(--raised); }
+.niche.empty { border-top-color: var(--edge); }
+.niche .ledge, .pz-niche .ledge { background: var(--edge); box-shadow: none; }
+.niche.add .plus { background: #ff6b4a; color: #1d0e08; box-shadow: none; }
+.pz-niche { background: var(--surface) !important; box-shadow: none !important; border: 2px solid var(--edge); border-top: 4px solid var(--tint); }
+dialog.piece-zoom { background: var(--bg); }
+
+/* Progress: flat coral. */
+.gs-list li.done .tick { background: var(--accent); color: #1d0e08; }
+.key.down.white { background: #ffd2c6; }
+.key.down.black { background: #ff6b4a; }
+.next { border-color: color-mix(in srgb, var(--accent) 45%, transparent); }

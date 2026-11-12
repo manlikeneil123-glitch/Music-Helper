@@ -12,7 +12,7 @@ function items() {
   const list = [
     { id: 'tour', done: load('tourDone', false), text: 'Take the 2-minute tour', go: 'tour' },
     { id: 'piece', done: allPieces().length > 0, text: 'Add your first piece', go: 'play' },
-    { id: 'mic', done: Boolean(calibration()) || checkHistory().some((h) => h.input === 'midi'), text: 'Set up the microphone (or plug in a MIDI keyboard)', go: 'mic' },
+    { id: 'mic', done: Boolean(calibration()) || checkHistory().some((h) => h.input === 'midi'), text: 'Set up the microphone (or plug in a digital piano)', go: 'mic' },
     { id: 'play', done: checkHistory().some((h) => h.pieceId !== 'c-scale'), text: 'Play a piece through once', go: 'play' },
     { id: 'read', done: seen >= 20, text: 'Answer 20 note flashcards', go: 'cards' },
   ];

@@ -1,6 +1,6 @@
 // Contrast audit (WCAG 2.2 AA): node tests/contrast.test.mjs
-// Reads the colour tokens from styles.css for Night and Day, lays each glass surface
-// over the worst point of the background photo, and checks every text colour on it.
+// Reads the colour tokens from styles.css for Night and Day, lays each card surface
+// over the page background, and checks every text colour on it.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
@@ -14,10 +14,7 @@ const tokens = (text) => Object.fromEntries([...text.matchAll(/(--[\w-]+):\s*([^
 const night = tokens(block(':root'));
 const day = { ...night, ...tokens(block(":root[data-theme='day']")) };
 
-// The photo after each theme's filter and shade, measured from app/img/piano-room-*.webp
-// (99.5th percentile brightest for Night, 0.5th darkest for Day). Re-measure if the
-// photo, --photo-filter or --shade change.
-const BACKDROP = { night: [95, 97, 98], day: [159, 162, 166] };
+// The page is a solid --bg now (no photo behind it).
 
 function parse(c, vars) {
   c = c.trim();
@@ -35,6 +32,8 @@ function parse(c, vars) {
 const over = (top, under) => [0, 1, 2].map((i) => top[i] * top[3] + under[i] * (1 - top[3])).concat(1);
 const lum = ([r, g, b]) => [r, g, b].map((c) => c / 255).map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4)).reduce((a, c, i) => a + c * [0.2126, 0.7152, 0.0722][i], 0);
 const contrast = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
+
+const BACKDROP = { night: parse(night['--bg'], night).slice(0, 3), day: parse(day['--bg'], day).slice(0, 3) };
 
 let n = 0;
 const fails = [];
@@ -74,7 +73,8 @@ for (const [theme, vars] of [['night', night], ['day', day]]) {
   for (const [t, tint] of Object.entries(tints)) check(theme, vars, `var(${t})`, over(parse(tint, vars), surface), `${t} on its tint`);
   // Buttons: the primary pill and the blue action button.
   check(theme, vars, `var(--on-brand)`, parse(vars['--pill-on'], vars), 'primary button text');
-  for (const stop of (vars['--grad-btn'] ?? night['--grad-btn']).match(/#[0-9a-f]{6}/gi)) check(theme, vars, '#ffffff', parse(stop, vars), `button text on gradient stop ${stop}`);
+  // Coral buttons have dark text (styles.css .btn.primary); the coral is the same in both themes.
+  for (const stop of (vars['--grad-btn'] ?? night['--grad-btn']).match(/#[0-9a-f]{6}/gi)) check(theme, vars, '#1d0e08', parse(stop, vars), `button text on coral ${stop}`);
   // UI outlines and focus rings need 3:1.
   check(theme, vars, `var(--accent)`, surface, 'focus ring / accent outline', 3);
 }

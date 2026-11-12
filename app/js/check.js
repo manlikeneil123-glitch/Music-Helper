@@ -407,7 +407,7 @@ function showResult(r, source) {
     </div>` : ''}
     <ul class="feedback-list">${r.feedback.lines.map((l) => `<li class="${l.kind}">${l.text}</li>`).join('')}</ul>
     <p class="next"><b>Next step:</b> ${r.feedback.next}</p>
-    ${canDrill ? `<button class="btn primary block" id="drill-start" type="button">Drill bar ${r.worstBar} until it's clean ${DRILL_STREAK}× in a row</button>` : ''}
+    ${canDrill ? `<button class="btn primary block" id="drill-start" type="button">Practise bar ${r.worstBar} until it's right ${DRILL_STREAK} times in a row</button>` : ''}
     <div class="legend"><span class="good">● correct</span><span class="warn">● timing</span><span class="bad">● wrong</span><span class="miss">● missed</span>${source === 'mic' ? '<span class="unclear">● unclear</span>' : ''}</div>
     ${sendHook && (lastTake?.compressed || lastNotes) ? `<button class="btn block" id="send-take" type="button">${ICONS.mic} Send this take to your teacher</button>` : ''}
     ${source === 'mic' && lastMic ? verdictPanel(r) : ''}`;
@@ -490,8 +490,8 @@ function startDrill(from, to = from, kind = 'loop', { bpm: setBpm = null } = {})
   $('#check-result').hidden = true;
   renderDrillBanner();
   setStatus(kind === 'add'
-    ? `Building bars ${from}–${to} one bar at a time, at ${drillBpm} bpm. Each bar is added after ${ADD_STREAK} clean runs.`
-    : `Drill: ${span(drill)} at ${drillBpm} bpm. Get it clean ${DRILL_STREAK} times in a row.`, '');
+    ? `Building bars ${from}–${to} one bar at a time, at ${drillBpm} beats a minute. The next bar joins after ${ADD_STREAK} good runs.`
+    : `Practising ${span(drill)} at ${drillBpm} beats a minute. Get it right ${DRILL_STREAK} times in a row.`, '');
   setTimeout(() => drill && start(), 600);
 }
 
@@ -513,7 +513,7 @@ function drillRunDone(r) {
   const need = drill.kind === 'add' && drill.to < drill.end ? ADD_STREAK : DRILL_STREAK;
   if (drill.to >= drill.end && drill.streak >= DRILL_STREAK) return endDrill(true);
   if (/added/.test(note)) setStatus(`${note} Again.`, 'good');
-  else setStatus(clean ? `Clean run ${drill.streak} of ${need}. Go again.` : 'Not clean yet: the streak starts again. Go again.', clean ? 'good' : 'warn');
+  else setStatus(clean ? `Right ${drill.streak} of ${need} times. Go again.` : 'A mistake that time, so the count starts again. Go again.', clean ? 'good' : 'warn');
   setTimeout(() => drill && !rec && start(), 1800);
 }
 
@@ -537,7 +537,7 @@ function renderDrillBanner(note = '') {
   if (!drill) return;
   const need = drill.kind === 'add' && drill.to < drill.end ? ADD_STREAK : DRILL_STREAK;
   const dots = Array.from({ length: need }, (_, i) => `<span class="streak-dot${i < drill.streak ? ' on' : ''}"></span>`).join('');
-  const title = drill.kind === 'add' ? `Building bars ${drill.from}–${drill.end}: now ${span(drill)}` : `Drilling ${span(drill)}`;
+  const title = drill.kind === 'add' ? `Building bars ${drill.from}–${drill.end}: now ${span(drill)}` : `Practising ${span(drill)}`;
   b.innerHTML = `<div class="row between"><b>${title} · ${drill.bpm} bpm</b><span class="dots" role="img" aria-label="${drill.streak} of ${need} clean">${dots}</span></div>
     ${note ? `<p class="small">${note}</p>` : ''}
     <button class="btn block" id="drill-stop" type="button">Stop</button>`;
@@ -697,8 +697,8 @@ function stopLearn(cancelled) {
     <div class="result-head"><div class="score-badge good">${ICONS.check}</div>
       <div><b>You found every note.</b><div class="muted">${l.steps.length} steps in ${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}</div></div></div>
     <ul class="feedback-list">${hard.length ? hard.map(([bar, n]) => `<li class="warn">Bar ${bar} took ${n + 1} tries.</li>`).join('') : '<li class="good">No wrong notes at all.</li>'}</ul>
-    <p class="next"><b>Next step:</b> ${hard.length ? `Drill bar ${hard[0][0]} in Perform mode, then play it all with the metronome at ${suggestedBpm(base)} bpm.` : `Switch to Perform and play it with the metronome at ${suggestedBpm(base)} bpm.`}</p>
-    ${hard.length ? `<button class="btn primary block" id="drill-start" type="button">Drill bar ${hard[0][0]}</button>` : ''}`;
+    <p class="next"><b>Next step:</b> ${hard.length ? `Practise bar ${hard[0][0]} on its own (Practise just some bars, below), then play it all with the metronome at ${suggestedBpm(base)} beats a minute.` : `Play it through with the metronome at ${suggestedBpm(base)} beats a minute.`}</p>
+    ${hard.length ? `<button class="btn primary block" id="drill-start" type="button">Practise bar ${hard[0][0]}</button>` : ''}`;
   box.querySelector('#drill-start')?.addEventListener('click', () => startDrill(hard[0][0]));
   setStatus('Learn run finished.', 'good');
 }
@@ -721,7 +721,7 @@ function updateTempoLock() {
   slider.max = locked ? cap : Math.max(160, base.targetBpm + 20);
   if (Number(slider.value) > Number(slider.max)) slider.value = slider.max;
   $('#tempo-lock').hidden = !locked;
-  $('#tempo-lock-text').textContent = locked ? `Tempo locked at ${cap} bpm until you play it cleanly. Each clean run unlocks +8 (target ${base.targetBpm}).` : '';
+  $('#tempo-lock-text').textContent = locked ? `Speed is capped at ${cap} until you play it without mistakes. Each good play-through adds 8, up to ${base.targetBpm}.` : '';
   updateBpmLabel();
 }
 
@@ -760,7 +760,7 @@ function selectPiece(id, { hidden = id === WARMUP } = {}) {
   tempoUnlocked = false;
   $('#check-bpm').value = suggestedBpm(base);
   $('#check-result').hidden = true;
-  $('#check-level').textContent = [`${base.beatsPerBar}/${base.beatUnit}`, `target ${base.targetBpm} bpm`, base.level].filter(Boolean).join(' · ');
+  $('#check-level').textContent = [`${base.beatsPerBar}/${base.beatUnit}`, `aim for ${base.targetBpm} beats a minute`, base.level].filter(Boolean).join(' · ');
   $('#check-warnings').hidden = !base.warnings?.length;
   $('#check-warnings').textContent = base.warnings?.join(' ') ?? '';
   $('#remove-import').hidden = !imported.some((p) => p.id === base.id);
@@ -947,22 +947,22 @@ export function mountCheck(el) {
         <div class="row gap wrap section-row">
           <label class="field inline">Bars <input id="sec-from" type="number" inputmode="numeric" step="1"> to <input id="sec-to" type="number" inputmode="numeric" step="1"></label>
           <select id="sec-kind" aria-label="How to practise it">
-            <option value="loop">Loop until clean ${DRILL_STREAK}× in a row</option>
+            <option value="loop">Repeat until right ${DRILL_STREAK} times in a row</option>
             <option value="add">Add a bar at a time</option>
           </select>
           <button class="btn accent" id="sec-go" type="button">Start</button>
         </div>
-        <p class="muted small">"Add a bar at a time" starts with the first bar and adds the next one each time it's clean ${ADD_STREAK}× running, so the joins between bars get practised too.</p>
+        <p class="muted small">"Add a bar at a time" starts with one bar. Each time you get it right ${ADD_STREAK} times running, the next bar joins on.</p>
         <button class="btn small-btn" id="sec-share" type="button">Teachers: send this as an assignment link</button>
       </details>
     </div>
 
     <dialog class="card sheet" id="perf-options" aria-labelledby="perf-options-title">
       <div class="row between"><h3 id="perf-options-title">Options</h3><button class="btn small-btn" type="button" id="perf-options-close">Done</button></div>
-      <h4>Listen with</h4>
-      <div class="segmented" role="group" aria-label="Listen with">
+      <h4>How Stave hears you</h4>
+      <div class="segmented" role="group" aria-label="How Stave hears you">
         <button type="button" data-mode="mic" aria-pressed="false">${ICONS.mic} Microphone</button>
-        <button type="button" data-mode="keys" aria-pressed="false">${ICONS.piano} MIDI keyboard</button>
+        <button type="button" data-mode="keys" aria-pressed="false">${ICONS.piano} Digital piano</button>
       </div>
       <section class="mic-panel" id="mic-panel" hidden>
         <div class="row between"><b>Microphone</b><div class="level" id="mic-level" aria-hidden="true"><div></div></div></div>
@@ -971,29 +971,30 @@ export function mountCheck(el) {
         <p class="muted small"><span id="mic-tune-status"></span> <button class="linkish" type="button" id="mic-tune-reset">Reset</button></p>
       </section>
       <div id="perform-options">
-        <h4>Playing</h4>
-        <label class="field">Tempo <span class="row gap"><input id="check-bpm" type="range" min="40" max="160" step="1"> <span id="check-bpm-label"></span></span></label>
-        <p class="lock-note" id="tempo-lock" hidden><span id="tempo-lock-text"></span> <button class="linkish" id="tempo-unlock" type="button">Unlock (teacher)</button></p>
-        <label class="set-row"><span>Metronome sound</span><input id="check-metro" type="checkbox" role="switch" checked></label>
+        <h4>While you play</h4>
+        <label class="field">Speed (beats a minute) <span class="row gap"><input id="check-bpm" type="range" min="40" max="160" step="1"> <span id="check-bpm-label"></span></span></label>
+        <p class="lock-note" id="tempo-lock" hidden><span id="tempo-lock-text"></span> <button class="linkish" id="tempo-unlock" type="button">Unlock (for teachers)</button></p>
+        <label class="set-row"><span>Metronome<small>A click on every beat</small></span><input id="check-metro" type="checkbox" role="switch" checked></label>
         <label class="set-row"><span>Exam conditions<small>No metronome and no beat light, like the exam room</small></span><input id="check-exam" type="checkbox" role="switch"></label>
-        <label class="set-row"><span>Read ahead<small>Each bar disappears as you reach it</small></span><input id="check-readahead" type="checkbox" role="switch"></label>
-        <label class="field">How strict
+        <label class="set-row"><span>Hide bars as you play<small>Each bar disappears as you reach it, so you learn to look ahead</small></span><input id="check-readahead" type="checkbox" role="switch"></label>
+        <label class="field">How strict the marking is
           <select id="check-strict">${Object.entries(STRICTNESS).map(([k, v]) => `<option value="${k}">${v.label}</option>`).join('')}</select>
         </label>
+        <p class="muted small">Gentle forgives small timing slips; Exam marks like an examiner.</p>
         <span class="pulse" id="check-pulse" aria-hidden="true"></span>
       </div>
       <div id="learn-options" hidden>
         <p class="muted small">Learn mode waits on each note or chord until you find it, then moves on. No metronome, no rush.</p>
         <label class="set-row"><span>Name the next notes<small>Turn off to read them yourself</small></span><input id="learn-hints" type="checkbox" role="switch" checked></label>
       </div>
-      <h4>Score</h4>
+      <h4>How the music looks</h4>
       <div class="row gap wrap score-tools">
         <label class="field inline" id="hands-field" hidden>Hands
           <select id="check-hands"><option value="both">Both</option><option value="rh">Right only</option><option value="lh">Left only</option></select>
         </label>
-        <div class="segmented mini" role="group" aria-label="Score layout">
-          <button type="button" data-layout="scroll" aria-pressed="false">Scroll</button>
-          <button type="button" data-layout="page" aria-pressed="false">Page</button>
+        <div class="segmented mini" role="group" aria-label="How the music looks">
+          <button type="button" data-layout="scroll" aria-pressed="false">One long line</button>
+          <button type="button" data-layout="page" aria-pressed="false">Like a page</button>
         </div>
       </div>
       <details class="lab">

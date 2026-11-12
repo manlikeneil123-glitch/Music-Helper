@@ -117,7 +117,7 @@ function updateTopbar() {
   const pill = document.getElementById('top-streak');
   pill.hidden = !p || s === 0;
   pill.innerHTML = `${ICONS.flame} ${s} day${s === 1 ? '' : 's'}`;
-  pill.title = 'Quality streak: days with a clean run, a fixed bar or 20 notes read';
+  pill.title = 'Streak: days when you played a piece well (85 or more), fixed a bar or read 20 notes right';
   const avatar = document.getElementById('top-avatar');
   avatar.hidden = !p;
   const user = currentUser();
@@ -196,10 +196,10 @@ function renderToday() {
         </button></li>`).join('')}
       </ol>
     </section>
-    <button class="card stat-strip" type="button" id="today-stats" aria-label="Your stats: ${s} day streak, ${Math.round(weekMins)} minutes this week, last check ${last ? last.score : 'none yet'}. Open the stats page">
+    <button class="card stat-strip" type="button" id="today-stats" aria-label="Your stats: ${s} day streak, ${Math.round(weekMins)} minutes this week, last score ${last ? last.score : 'none yet'}. Open the stats page">
       <span title="A day counts when you get a clean run (85+), fix a bar in a drill, or read ${CARDS_TARGET} notes right. One rest day a week won't break it."><b data-count="${s}">${s}</b><span>day streak</span><span class="week-dots" aria-hidden="true">${qWeek.map((on, k) => `<i class="${on ? 'on' : ''}" style="--k:${k}"></i>`).join('')}</span></span>
       <span><b data-count="${Math.round(weekMins)}">${Math.round(weekMins)}</b><span>min this week</span>${deltaChip(weekMins, prevWeek || null, ' min')}</span>
-      <span><b ${last ? `data-count="${last.score}"` : ''}>${last ? last.score : '–'}</b><span>last check</span>${last ? deltaChip(last.score, prevScore) : ''}</span>
+      <span><b ${last ? `data-count="${last.score}"` : ''}>${last ? last.score : '–'}</b><span>last score</span>${last ? deltaChip(last.score, prevScore) : ''}</span>
       <span class="stat-more" aria-hidden="true">${ICONS.chart} Stats ${ICONS.arrow}</span>
     </button>
     ${installCard()}

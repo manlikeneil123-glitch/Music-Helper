@@ -86,7 +86,7 @@ function scoreLine(checks) {
         <path class="area" d="${line} L300 120 L0 120 Z" fill="url(#score-fill)"/>
         <path class="stroke" d="${line}" pathLength="1" vector-effect="non-scaling-stroke"/>
       </svg>
-      <span class="ref" style="top:${(y(85) / 120) * 100}%">85, a clean run</span>
+      <span class="ref" style="top:${(y(85) / 120) * 100}%">85, played well</span>
       <span class="last" style="top:${(y(last.score) / 120) * 100}%">${last.score}</span>
     </div>`;
 }
@@ -96,7 +96,7 @@ function goalRing(minutes, goal) {
   return `
     <div class="ring-card">
       <svg class="ring" viewBox="0 0 100 100" aria-hidden="true">
-        <defs><linearGradient id="ring-g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff8a5c"/><stop offset="0.5" stop-color="#ff4f8b"/><stop offset="1" stop-color="#a35cff"/></linearGradient></defs>
+        <defs><linearGradient id="ring-g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff7a59"/><stop offset="1" stop-color="#ff7a59"/></linearGradient></defs>
         <circle class="track" cx="50" cy="50" r="42"/>
         <circle class="fill" cx="50" cy="50" r="42" pathLength="1" stroke="url(#ring-g)" style="stroke-dashoffset:${1 - pct}"/>
       </svg>
@@ -132,8 +132,8 @@ export function renderStats(root, { back, report }) {
     <section class="stat-tiles" aria-label="Totals for this ${RANGES[range].toLowerCase()}">
       ${tile(Math.round(minutes), 'minutes practised')}
       ${tile(practised, `day${practised === 1 ? '' : 's'} practised`)}
-      ${tile(checks.length ? avg : '–', checks.length ? `average score, ${checks.length} check${checks.length === 1 ? '' : 's'}` : 'average score (no checks yet)')}
-      ${tile(mastered, 'cards mastered')}
+      ${tile(checks.length ? avg : '–', checks.length ? `average score, ${checks.length} check${checks.length === 1 ? '' : 's'}` : 'average score (none yet)')}
+      ${tile(mastered, 'flashcards learned')}
     </section>
     <section class="card">
       <div class="chart-head"><div><h3>Practice</h3><span class="muted small">Minutes per ${range > 30 ? 'week' : 'day'}, by what you practised</span></div></div>
@@ -141,7 +141,7 @@ export function renderStats(root, { back, report }) {
     </section>
     <div class="stats-pair">
       <section class="card">
-        <h3>Check scores</h3>
+        <h3>Your scores</h3>
         ${scoreLine(history)}
       </section>
       <section class="card">
@@ -154,7 +154,7 @@ export function renderStats(root, { back, report }) {
       <ul class="log">${pieces.map((x) => {
         const runs = history.filter((h) => h.pieceId === x.id);
         const best = runs.length ? Math.max(...runs.map((r) => r.score)) : null;
-        return `<li><span>${esc(x.title)}<small class="muted"> · ${runs.length} run${runs.length === 1 ? '' : 's'}</small></span><b>${best == null ? '–' : runs.some((r) => r.ready) ? '✓ ready' : `best ${best}`}</b></li>`;
+        return `<li><span>${esc(x.title)}<small class="muted"> · played ${runs.length} time${runs.length === 1 ? '' : 's'}</small></span><b>${best == null ? '–' : runs.some((r) => r.ready) ? '✓ ready' : `best ${best}`}</b></li>`;
       }).join('')}</ul>
     </section>` : ''}
     ${history.length ? `<section class="card"><h3>Recent checks</h3><ul class="log recent">${history.slice(-5).reverse().map((h) => `<li><span class="who"><span class="mini-badge ${tone(h.score)}">${h.score}</span><span>${esc(findPiece(h.pieceId)?.title ?? 'A removed piece')}</span></span><small class="muted">${ago(h.at)}</small></li>`).join('')}</ul></section>` : ''}

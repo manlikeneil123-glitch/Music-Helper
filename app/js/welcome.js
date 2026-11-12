@@ -50,7 +50,7 @@ export function mountWelcome(el, onDone) {
     <form class="card setup" id="w-form" novalidate>
       <div class="segmented" role="group" aria-label="How are you learning?">
         <button type="button" data-teacher="yes">I have a teacher</button>
-        <button type="button" data-teacher="no">Learning on my own</button>
+        <button type="button" data-teacher="no">On my own</button>
       </div>
       <label class="field">Where are you now?
         <select id="w-level">${LEVELS.map((l) => `<option>${l}</option>`).join('')}</select>
@@ -61,7 +61,7 @@ export function mountWelcome(el, onDone) {
       <label class="field" id="w-lesson-field">Lesson day
         <select id="w-lesson"><option value="">No regular lesson</option>${['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map((d, i) => `<option value="${i}">${d}</option>`).join('')}</select>
       </label>
-      <label class="field">How strict should checking be?
+      <label class="field">How strict should Stave be when it marks your playing?
         <select id="w-strict">
           <option value="gentle">Gentle: encouraging, only clear mistakes</option>
           <option value="standard">Standard: like a lesson</option>

@@ -2,6 +2,11 @@
 
 What changed in each version of Stave, in plain words. Written from `app/js/changelog.js`.
 
+## 0.23.0: Swipe between pieces (2026-11-13)
+
+- On Perform, swipe your piece left or right to get to your other pieces, like flicking through album covers. The dots underneath show where you are; you can tap them or the arrows too.
+- Fixed: pop-ups on iPhone opened with their top hidden under the clock and notch, and faded in blurry. They now open fully in view, straight away.
+
 ## 0.22.0: Perform, made simple (2026-11-13)
 
 - Perform is now three steps: open your music book, tap the big button, play.

@@ -42,7 +42,7 @@ function stagger(view) {
   view.classList.remove('settled');
   let i = 0;
   const blocks = view.querySelectorAll(':scope > *:not(.dash):not(.stats4):not(.dash-bottom), .dash > *:not(.stats4):not(.dash-bottom), .stats4 > *, .dash-bottom > *');
-  blocks.forEach((b) => { b.classList.add('rise'); b.style.setProperty('--i', i++); });
+  blocks.forEach((b) => { if (b.tagName === 'DIALOG') return; b.classList.add('rise'); b.style.setProperty('--i', i++); });
   view.querySelectorAll('.plan li').forEach((li, j) => li.style.setProperty('--j', j));
   view.querySelectorAll('.chart .bar').forEach((b, j) => b.style.setProperty('--i', j));
 }

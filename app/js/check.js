@@ -25,6 +25,7 @@ import { tap } from './haptics.js';
 import { openScan } from './scan.js';
 import { examMark, markingBoard, BAND_NAME, bandTone, bestMark } from './marking.js';
 import { celebrate } from './celebrate.js';
+import { still } from './settings.js';
 import { expressivePlan } from './expressive.js';
 
 
@@ -905,12 +906,69 @@ function updateTempoLock() {
 }
 
 // ---- Piece selection & import -----------------------------------------------------------
+// Pieces swipe like album covers: the card follows the finger, dots show where you are.
+const swipeList = () => (allPieces().some((p) => p.id === base.id) ? allPieces() : [base, ...allPieces()]);
 function fillPieceSelect() {
-  const sel = $('#check-piece');
-  const opt = (p) => `<option value="${p.id}">${escapeHtml(p.title)}</option>`;
-  const warm = library.some((p) => p.id === base.id) ? `<option value="${base.id}">Warm-up: ${escapeHtml(base.title)}</option>` : '';
-  sel.innerHTML = `${warm}${imported.length ? `<optgroup label="Your pieces">${imported.map(opt).join('')}</optgroup>` : ''}${fromTeacher.length ? `<optgroup label="From your teacher">${fromTeacher.map(opt).join('')}</optgroup>` : ''}`;
-  sel.value = base.id;
+  const list = swipeList();
+  const i = list.findIndex((p) => p.id === base.id);
+  $('#pc-nav').hidden = list.length < 2;
+  $('#pc-dots').innerHTML = list.length > 8
+    ? `<span class="pc-count">${i + 1} of ${list.length}</span>`
+    : list.map((p, j) => `<button type="button" class="pc-dot" data-id="${p.id}" aria-label="${escapeHtml(p.title)}"${j === i ? ' aria-current="true"' : ''}></button>`).join('');
+}
+
+function slideTo(id, dir, from = 0) {
+  if (rec || learn || id === base.id) return;
+  const card = $('#pc');
+  if (still()) { selectPiece(id); return; }
+  tap();
+  card.animate([{ transform: `translateX(${from}px)` }, { transform: `translateX(${-dir * 60}%)`, opacity: 0 }], { duration: 160, easing: 'ease-in' }).onfinish = () => {
+    selectPiece(id);
+    card.animate([{ transform: `translateX(${dir * 60}%)`, opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 220, easing: 'cubic-bezier(0.2, 0.8, 0.3, 1)' });
+  };
+}
+
+function stepPiece(dir, from) {
+  const list = swipeList();
+  if (list.length < 2) return;
+  const i = list.findIndex((p) => p.id === base.id);
+  slideTo(list[(i + dir + list.length) % list.length].id, dir, from);
+}
+
+function wireSwipe() {
+  const card = $('#pc');
+  let sx = null, sy = 0, dx = 0, dragging = false, swiped = false;
+  card.addEventListener('pointerdown', (e) => {
+    if (rec || learn || swipeList().length < 2) return;
+    sx = e.clientX; sy = e.clientY; dx = 0; dragging = false;
+  });
+  card.addEventListener('pointermove', (e) => {
+    if (sx == null) return;
+    dx = e.clientX - sx;
+    if (!dragging && Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(e.clientY - sy)) { dragging = true; card.setPointerCapture(e.pointerId); }
+    if (dragging) card.style.transform = `translateX(${dx}px) rotate(${dx / 50}deg)`;
+  });
+  const end = () => {
+    if (sx == null) return;
+    sx = null;
+    if (!dragging) return;
+    swiped = true;
+    card.style.transform = '';
+    if (Math.abs(dx) > 60) stepPiece(dx < 0 ? 1 : -1, dx);
+    else if (!still()) card.animate([{ transform: `translateX(${dx}px)` }, { transform: 'none' }], { duration: 180, easing: 'ease-out' });
+  };
+  card.addEventListener('pointerup', end);
+  card.addEventListener('pointercancel', end);
+  // A swipe that ends on the cover must not also open the music.
+  card.addEventListener('click', (e) => { if (swiped) { e.stopPropagation(); e.preventDefault(); swiped = false; } }, true);
+  $('#pc-prev').addEventListener('click', () => stepPiece(-1));
+  $('#pc-next').addEventListener('click', () => stepPiece(1));
+  $('#pc-dots').addEventListener('click', (e) => {
+    const id = e.target.closest('.pc-dot')?.dataset.id;
+    if (!id) return;
+    const list = swipeList();
+    slideTo(id, list.findIndex((p) => p.id === id) > list.findIndex((p) => p.id === base.id) ? 1 : -1);
+  });
 }
 
 // No pieces yet: one clear card saying how to add one, instead of an empty player.
@@ -962,7 +1020,6 @@ function selectPiece(id, { hidden = id === WARMUP } = {}) {
   $('#check-warnings').hidden = !base.warnings?.length;
   $('#check-warnings').textContent = base.warnings?.join(' ') ?? '';
   $('#remove-import').hidden = !imported.some((p) => p.id === base.id);
-  $('#check-piece').value = base.id;
   $('#lab-bpm').value = base.targetBpm;
   syncSectionInputs();
   refreshPiece();
@@ -1125,15 +1182,19 @@ export function mountCheck(el) {
     </section>
 
     <div id="perf-main">
-      <section class="pc" aria-labelledby="np-title">
+      <section class="pc" id="pc" aria-labelledby="np-title">
         <button class="pc-cover" type="button" id="np-cover" aria-label="Look at the music"></button>
         <div class="pc-info">
           <p class="np-kicker" id="np-composer"></p>
           <h3 id="np-title"></h3>
           <p class="np-meta" id="check-level"></p>
         </div>
-        <label class="pc-change"><span>Change</span><select id="check-piece" aria-label="Choose a piece"></select></label>
       </section>
+      <nav class="pc-nav" id="pc-nav" aria-label="Your pieces: swipe the card or tap a dot" hidden>
+        <button class="pc-arrow" id="pc-prev" type="button" aria-label="Previous piece"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
+        <span class="pc-dots" id="pc-dots"></span>
+        <button class="pc-arrow" id="pc-next" type="button" aria-label="Next piece"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button>
+      </nav>
       <p class="warn-note" id="check-warnings" hidden></p>
       <section class="learn-banner" id="learn-banner" hidden>
         <b>${ICONS.book} Learning slowly</b><span>Stave waits on each note until you find it.</span>
@@ -1251,7 +1312,7 @@ export function mountCheck(el) {
       </details>
     </dialog>`;
 
-  $('#check-piece').addEventListener('change', (e) => selectPiece(e.target.value));
+  wireSwipe();
   $('#import-file').addEventListener('change', (e) => {
     if (e.target.files[0]) importFile(e.target.files[0]);
     e.target.value = '';

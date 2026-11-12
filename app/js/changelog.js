@@ -3,6 +3,13 @@
 // and the service worker, and writes CHANGELOG.md from this list.
 export const CHANGES = [
   {
+    version: '0.23.0', date: '2026-11-13', title: 'Swipe between pieces',
+    items: [
+      'On Perform, swipe your piece left or right to get to your other pieces, like flicking through album covers. The dots underneath show where you are; you can tap them or the arrows too.',
+      'Fixed: pop-ups on iPhone opened with their top hidden under the clock and notch, and faded in blurry. They now open fully in view, straight away.',
+    ],
+  },
+  {
     version: '0.22.0', date: '2026-11-13', title: 'Perform, made simple',
     items: [
       'Perform is now three steps: open your music book, tap the big button, play.',

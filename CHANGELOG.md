@@ -2,6 +2,12 @@
 
 What changed in each version of Stave, in plain words. Written from `app/js/changelog.js`.
 
+## 0.20.0: Play it your way (2026-11-12)
+
+- Perform is now played from memory, like the exam: the music stays hidden while you play and appears afterwards with every note marked. Tap "Show the music" if you need it.
+- No count-in and no set speed: tap the big Start listening button, start when you're ready and play at your own speed. Stave follows you, stops listening when you finish, and tells you how your speed compares with the marked one.
+- "Hear the piece" plays it to you at the marked speed.
+
 ## 0.19.0: More colour, more fun (2026-11-12)
 
 - The floating tab bar is back, with its sliding bubble and rising icon.

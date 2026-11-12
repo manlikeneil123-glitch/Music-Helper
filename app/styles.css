@@ -1402,3 +1402,17 @@ button.card:active, .plan li > button:active, .stat-strip:active, .exam-chip:act
 @media (prefers-reduced-motion: reduce) { .result .score-badge, .meter i.on { animation: none !important; } }
 .timer-ring { border-color: color-mix(in srgb, var(--tab-c) 40%, var(--edge)); }
 .timer-ring.running { border-color: var(--tab-c); }
+
+/* ---- Perform: played from memory, Stave listens ---- */
+.music-hidden { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; align-items: center; padding: 18px; margin: 12px 0; border: 2px dashed var(--edge); border-radius: var(--radius); }
+.music-hidden p { margin: 0; color: var(--text-2); font-size: 0.95rem; }
+.music-hidden .btn { grid-column: 2; justify-self: start; }
+.mh-icon { grid-row: span 2; display: grid; place-items: center; width: 52px; height: 52px; border-radius: 50%; background: color-mix(in srgb, var(--tab-c) 20%, transparent); color: var(--tab-c); }
+.mh-icon svg { width: 26px; height: 26px; }
+.perf-actions { display: grid !important; grid-template-columns: 1fr; gap: 10px; }
+.btn.start-big { min-height: 64px; font-size: 1.2rem; border-radius: 18px; }
+.btn.start-big svg { width: 22px; height: 22px; }
+#check-start.listening { background: var(--surface); color: var(--ink); border-color: var(--tab-c); animation: listening 1.6s ease-in-out infinite; }
+@keyframes listening { 50% { box-shadow: 0 0 0 8px color-mix(in srgb, var(--tab-c) 22%, transparent); } }
+:root.still #check-start.listening { animation: none; }
+@media (prefers-reduced-motion: reduce) { #check-start.listening { animation: none; } }

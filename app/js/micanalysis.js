@@ -11,7 +11,7 @@
 //      neighbouring semitone is clearly sounding instead.
 // Pure functions on Float32Array samples: runs the same on live mic input,
 // uploaded test recordings, and in Node tests.
-import { robustRegress } from './analysis.js';
+import { robustRegress, guessBeatMs } from './analysis.js';
 
 // Tuned on synthetic piano audio; to be re-tuned on real recordings.
 // minSustain: sound left 30 ms after an onset, relative to the attack (a knock or a
@@ -268,10 +268,13 @@ function isOvertoneOf(midi, sounding, tuningCents) {
  * samples/sampleRate: mono audio. beat0Sec: where beat 1 of the piece falls in the audio.
  * expected: timeline() notes. Returns { played, unclear } for analyse(), plus debug info.
  */
-export function analyseAudio({ samples, sampleRate, expected, msPerBeat, beat0Sec, latencyMs = 0, tuningCents = 0, thresholds = THRESHOLDS }) {
+// free: the player chose when to start and how fast to go (no count-in). Beat 0 is
+// their first real note and the tempo is guessed from their own playing.
+export function analyseAudio({ samples, sampleRate, expected, msPerBeat, beat0Sec, latencyMs = 0, tuningCents = 0, thresholds = THRESHOLDS, free = false }) {
   const T = thresholds;
-  const toMs = (sec) => (sec - beat0Sec) * 1000 - latencyMs;
-  const onsets = detectOnsets(samples, sampleRate).filter((o) => toMs(o.time) >= -0.6 * msPerBeat);
+  let beat0 = beat0Sec;
+  const toMs = (sec) => (sec - beat0) * 1000 - latencyMs;
+  const onsets = detectOnsets(samples, sampleRate).filter((o) => free || toMs(o.time) >= -0.6 * msPerBeat);
 
   const events = [];
   for (const n of expected) {
@@ -310,6 +313,13 @@ export function analyseAudio({ samples, sampleRate, expected, msPerBeat, beat0Se
     }
   }
   const maxRms = Math.max(1e-9, ...ev.map((e) => e.rms));
+  if (free) {
+    const real = onsets.filter((o, j) => candidates.some((c) => ev[j].presence[c] > 0));
+    if (real.length) {
+      msPerBeat = guessBeatMs(expected, real.map((o) => o.time * 1000)) ?? msPerBeat;
+      beat0 = real[0].time - latencyMs / 1000 - ((expected[0]?.beat ?? 0) * msPerBeat) / 1000;
+    }
+  }
 
   // ---- 2. Align onsets to chords. Pass 1 against the target tempo; pass 2 against
   // the player's own fitted tempo with timing weighted more (as for MIDI).
@@ -399,7 +409,7 @@ export function analyseAudio({ samples, sampleRate, expected, msPerBeat, beat0Se
     if (top != null) played.push({ midi: top, on: toMs(onsets[j].time), off: null, velocity: e.rms / maxRms });
   }
   played.sort((a, b) => a.on - b.on);
-  return { played, unclear, spread, evidence, onsets: onsets.length, matched: pairs.length };
+  return { played, unclear, spread, evidence, onsets: onsets.length, matched: pairs.length, msPerBeat };
 }
 
 const MAX_CHORD_SPREAD_SEC = 0.12;

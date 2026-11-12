@@ -61,9 +61,12 @@ function analyseOnce(args) {
   return result;
 }
 
+// msPerBeat is the first guess used to line the notes up; targetMsPerBeat (if given)
+// is the piece's marked tempo that speed is judged against. They differ when the
+// player chose their own speed (Perform follows the player).
 function analyseTake({
   expected, played, msPerBeat, beatsPerBar, source, unclear = [], spread = [],
-  strictness = 'standard', score = null, pedalEvents = null, dense = false,
+  strictness = 'standard', score = null, pedalEvents = null, dense = false, targetMsPerBeat = null,
 }) {
   const S = STRICTNESS[strictness] ?? STRICTNESS.standard;
   played = orderChords(played);
@@ -96,7 +99,7 @@ function analyseTake({
   const fit = fitOf(ops, played);
   const playedMsPerBeat = fit && fit.b > 0 ? fit.b : msPerBeat;
   const playedBpm = 60000 / playedMsPerBeat;
-  const targetBpm = 60000 / msPerBeat;
+  const targetBpm = 60000 / (targetMsPerBeat ?? msPerBeat);
   const anchors = matchAnchors(ops, expected, played);
   // The local curve is always measured (to report tempo changes); it's only used to
   // judge note timing in the expressive modes — Exam judges against one steady tempo.
@@ -744,4 +747,20 @@ function feedback(r, S) {
     next = r.worstBar ? `Spot-practise bar ${r.worstBar}, then play it through once more.` : 'Play it through once more, aiming for zero slips.';
   }
   return { headline, lines, next };
+}
+
+/**
+ * The player's own speed, guessed before alignment: the typical gap between the notes
+ * they played (ms) over the typical gap between the score's chords (beats). Rough on
+ * purpose: it only seeds the alignment, which then fits the real tempo bar by bar.
+ * onsets: played note-on times in ms. Returns ms per beat, or null with too few notes.
+ */
+export function guessBeatMs(expected, onsets) {
+  const mid = (xs) => { const v = [...xs].sort((a, b) => a - b); return v[Math.floor(v.length / 2)]; };
+  const beats = [...new Set(expected.map((n) => n.beat))].sort((a, b) => a - b);
+  const times = [...onsets].sort((a, b) => a - b).filter((t, i, a) => !i || t - a[i - 1] > 45); // a chord is one onset
+  if (beats.length < 4 || times.length < 4) return null;
+  const gapBeats = mid(beats.slice(1).map((b, i) => b - beats[i]));
+  const gapMs = mid(times.slice(1).map((t, i) => t - times[i]));
+  return gapBeats > 0 && gapMs > 0 ? gapMs / gapBeats : null;
 }

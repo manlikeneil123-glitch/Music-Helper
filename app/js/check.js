@@ -8,7 +8,7 @@ import { PIECES } from './pieces.js';
 import { normalize, timeline, totalBeats, excerpt, density, barMap, barCount as barsIn } from './score.js';
 import { renderScore } from './render.js';
 import { readScoreFile, parseMusicXML } from './musicxml.js';
-import { analyse, STRICTNESS } from './analysis.js';
+import { analyse, STRICTNESS, guessBeatMs } from './analysis.js';
 import { analyseAudio, firstOnsetSec, encodeWav, liveCheck } from './micanalysis.js';
 import { audio, click, scheduleNote, ctxToPerf } from './audio.js';
 import { onNote, onStatus } from './input.js';
@@ -54,6 +54,7 @@ let lastMic = null; // { args, evidence, record, reported } of the last mic anal
 let scoreView = null; // renderScore() output
 let mode = load('inputMode', 'mic'); // 'mic' | 'keys' (a MIDI keyboard, or computer keys A–K)
 let practice = load('practiceMode', 'perform'); // 'perform' | 'learn'
+let showMusic = false; // Perform hides the music until the result, unless asked
 let layout = load('scoreLayout', 'scroll'); // 'scroll' | 'page'
 let hands = 'both';
 let strictness = load('profile', null)?.strictness ?? 'standard';
@@ -183,6 +184,11 @@ function drawScore(result = lastResult) {
   });
   box.classList.toggle('page', layout === 'page');
   box.replaceChildren(...scoreView.systems.map((s) => s.svg));
+  // Perform is played from memory, as in the exam: the music shows only afterwards,
+  // with every note coloured (or when the player asks for it).
+  const hide = freeTempo() && !result && !showMusic;
+  box.hidden = hide;
+  $('#music-hidden').hidden = !hide;
   renderHeat();
 }
 
@@ -202,7 +208,7 @@ function moveCursor(beat) {
 function listen() {
   if (rec || learn) return;
   const ac = audio();
-  const spb = 60 / bpm();
+  const spb = 60 / (freeTempo() ? base.targetBpm : bpm());
   const start = ac.currentTime + 0.15;
   for (const n of timeline(piece)) scheduleNote(n.midi, start + n.beat * spb, Math.max(0.08, n.beats * spb * 0.95));
   animateCursor(ctxToPerf(start), spb * 1000, () => moveCursor(null));
@@ -264,6 +270,7 @@ async function start() {
     setBackgroundPaused(true);
     recorder = startRecording({ onLevel: showLevel });
   }
+  if (freeTempo()) return startFree(recorder);
   const ac = audio();
   const spb = 60 / bpm();
   const begin = ac.currentTime + 0.25;
@@ -285,6 +292,38 @@ async function start() {
   const session = rec;
   animateCursor(t0, msPerBeat, null, () => session.cancelled);
   rec.timer = setTimeout(() => endWhenQuiet(session), t0 - performance.now() + (beats + 1.5) * msPerBeat);
+}
+
+// Perform: no count-in, no metronome, no set speed. Stave listens from the moment
+// Start is pressed, the player starts when ready at their own speed, and the take
+// ends after a few seconds of quiet once they've played (or when they press Stop).
+const freeTempo = () => practice === 'perform' && !drill;
+const QUIET_END_MS = 4000;
+function startFree(recorder) {
+  const t0 = performance.now();
+  rec = { t0, beat0Ctx: audio().currentTime, msPerBeat: 60000 / base.targetBpm, events: [], open: new Map(), pedal: [], pedalDown: null, sawPedal: false, source: null, cancelled: false, recorder, free: true };
+  setStatus('Listening. Start whenever you\'re ready, at your own speed.', 'good');
+  setStartLabel(true);
+  $('#check-result').hidden = true;
+  const session = rec;
+  const tick = () => {
+    if (rec !== session) return;
+    const now = performance.now();
+    const lastNote = session.events.length ? session.t0 + Math.max(...session.events.map((e) => e.off ?? e.on)) : 0;
+    const last = Math.max(lastNote, session.lastLoud ?? 0);
+    const playing = session.events.length || session.lastLoud;
+    if (playing && now - last > QUIET_END_MS && !session.open.size) return stop();
+    if (!playing && now - t0 > 60000) { setStatus('Nothing heard for a minute, so Stave stopped listening.', 'warn'); return cancelFree(); }
+    session.timer = setTimeout(tick, 400);
+  };
+  session.timer = setTimeout(tick, 400);
+}
+function cancelFree() {
+  const r = rec;
+  rec = null;
+  r.recorder?.stop();
+  setBackgroundPaused(false);
+  setStartLabel(false);
 }
 
 // A student who paused or went back is still playing when the music "should" have
@@ -314,6 +353,12 @@ function stop() {
   setStartLabel(false);
   moveCursor(null);
 
+  if (r.free && !r.events.length && !r.lastLoud) {
+    r.recorder?.stop();
+    setStatus('Stopped before anything was played.', '');
+    return;
+  }
+
   if (performance.now() < r.t0) {
     r.recorder?.stop();
     pendingTake = null;
@@ -333,7 +378,7 @@ function stop() {
       const cal = calibration();
       runMic({
         samples: take.samples, sampleRate: take.sampleRate, expected: timeline(piece), msPerBeat: r.msPerBeat,
-        beat0Sec: lastTake.beat0Sec, latencyMs: cal?.latencyMs ?? 120, tuningCents: cal?.tuningCents ?? 0,
+        beat0Sec: lastTake.beat0Sec, latencyMs: cal?.latencyMs ?? 120, tuningCents: cal?.tuningCents ?? 0, free: Boolean(r.free),
       }, true);
     }, 30);
     return;
@@ -342,13 +387,22 @@ function stop() {
   const now = performance.now() - r.t0;
   for (const e of r.open.values()) e.off = now;
   if (r.pedalDown != null) r.pedal.push({ on: r.pedalDown, off: now });
-  const played = r.events.filter((e) => e.on >= -0.75 * r.msPerBeat);
+  let played = r.events.filter((e) => r.free || e.on >= -0.75 * r.msPerBeat);
+  let msPerBeat = r.msPerBeat;
+  if (r.free && played.length) {
+    // Beat 0 is their first note; the speed is theirs.
+    const tl = timeline(piece);
+    msPerBeat = guessBeatMs(tl, played.map((e) => e.on)) ?? msPerBeat;
+    const shift = Math.min(...played.map((e) => e.on)) - (tl[0]?.beat ?? 0) * msPerBeat;
+    played = played.map((e) => ({ ...e, on: e.on - shift, off: e.off == null ? null : e.off - shift }));
+    r.pedal = r.pedal.map((p) => ({ on: p.on - shift, off: p.off - shift }));
+  }
   lastNotes = { events: played.map((e) => ({ midi: e.midi, on: Math.round(e.on), off: e.off == null ? null : Math.round(e.off), velocity: e.velocity })), seconds: now / 1000 };
   lastTake = null;
   // Judge pedalling only when a pedal can be used: a MIDI keyboard is connected
   // (its pedal reports CC64) or Space was pressed on the computer keyboard.
   const pedalPossible = r.sawPedal || (r.source === 'midi' && midiStatus?.midi === 'connected');
-  finish({ played, source: r.source, msPerBeat: r.msPerBeat, pedalEvents: pedalPossible ? r.pedal : null });
+  finish({ played, source: r.source, msPerBeat, pedalEvents: pedalPossible ? r.pedal : null });
 }
 
 function runMic(args, record) {
@@ -357,7 +411,7 @@ function runMic(args, record) {
   const reported = lastMic?.args === args ? lastMic.reported : new Set();
   lastMic = { args, evidence: mic.evidence, record, reported };
   $('#mic-tune-status').textContent = describeTuning();
-  finish({ played: mic.played, source: 'mic', msPerBeat: args.msPerBeat, unclear: mic.unclear, spread: mic.spread, record });
+  finish({ played: mic.played, source: 'mic', msPerBeat: mic.msPerBeat ?? args.msPerBeat, unclear: mic.unclear, spread: mic.spread, record });
 }
 
 function finish({ played, source, msPerBeat, unclear = [], spread = [], pedalEvents = null, record = true }) {
@@ -365,6 +419,7 @@ function finish({ played, source, msPerBeat, unclear = [], spread = [], pedalEve
   const result = analyse({
     expected: timeline(piece), played, unclear, spread, msPerBeat, beatsPerBar: piece.beatsPerBar, source,
     strictness, score: piece, pedalEvents, dense: d.maxChord >= 4 || (d.twoHands && d.minDur <= 0.25),
+    targetMsPerBeat: drill ? null : 60000 / base.targetBpm,
   });
   const { board, type } = markingBoard();
   result.exam = examMark(result, board, type);
@@ -846,8 +901,9 @@ function setStatus(text, kind) {
 
 function setStartLabel(running) {
   const b = $('#check-start');
-  b.textContent = running ? 'Stop' : practice === 'learn' ? 'Start learning' : 'Start';
+  b.innerHTML = running ? 'Stop' : practice === 'learn' ? 'Start learning' : freeTempo() ? `${ICONS.mic} Start listening` : 'Start';
   b.classList.toggle('primary', !running);
+  b.classList.toggle('listening', running && freeTempo());
 }
 
 function showLevel(level) {
@@ -899,6 +955,7 @@ function syncPracticeButtons() {
   $('#learn-options').hidden = practice !== 'learn';
   $('#perform-options').hidden = practice !== 'perform';
   setStartLabel(false);
+  if (scoreView) drawScore();
 }
 
 function runCalibration() {
@@ -973,12 +1030,17 @@ export function mountCheck(el) {
         <button type="button" data-practice="learn" aria-pressed="false">${ICONS.book} Learn slowly</button>
       </div>
       <section class="card heat" id="heat" hidden></section>
+      <section class="music-hidden" id="music-hidden" hidden>
+        <span class="mh-icon" aria-hidden="true">${ICONS.mic}</span>
+        <p><b>Play it from memory, like the exam.</b> Stave listens, follows your speed and marks it like an examiner. The music appears afterwards with every note marked.</p>
+        <button class="btn small-btn" type="button" id="show-music">Show the music</button>
+      </section>
       <div class="score-scroll paper" id="check-score"></div>
       <section class="card drill" id="drill-banner" hidden></section>
       <button class="input-pill" id="input-pill" type="button"></button>
       <div class="row gap perf-actions">
-        <button class="btn" id="check-listen" type="button">${ICONS.play} Listen</button>
-        <button class="btn primary" id="check-start" type="button">Start</button>
+        <button class="btn primary start-big" id="check-start" type="button">Start</button>
+        <button class="btn" id="check-listen" type="button">${ICONS.play} Hear the piece</button>
       </div>
       <p class="status" id="check-status" aria-live="polite"></p>
       <section class="card result" id="check-result" hidden></section>
@@ -1012,6 +1074,7 @@ export function mountCheck(el) {
       </section>
       <div id="perform-options">
         <h4>While you play</h4>
+        <p class="muted small" id="free-note">In Perform you choose the speed: Stave follows you and compares it with the marked speed. These settings are for "Practise just some bars".</p>
         <label class="field">Speed (beats a minute) <span class="row gap"><input id="check-bpm" type="range" min="40" max="160" step="1"> <span id="check-bpm-label"></span></span></label>
         <p class="lock-note" id="tempo-lock" hidden><span id="tempo-lock-text"></span> <button class="linkish" id="tempo-unlock" type="button">Unlock (for teachers)</button></p>
         <label class="set-row"><span>Metronome<small>A click on every beat</small></span><input id="check-metro" type="checkbox" role="switch" checked></label>
@@ -1059,6 +1122,7 @@ export function mountCheck(el) {
   })));
   $('#check-bpm').addEventListener('input', updateBpmLabel);
   $('#check-listen').addEventListener('click', listen);
+  $('#show-music').addEventListener('click', () => { showMusic = true; drawScore(); });
   $('#check-start').addEventListener('click', start);
   $('#check-hands').addEventListener('change', (e) => {
     hands = e.target.value;

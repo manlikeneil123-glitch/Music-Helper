@@ -3,6 +3,14 @@
 // and the service worker, and writes CHANGELOG.md from this list.
 export const CHANGES = [
   {
+    version: '0.20.0', date: '2026-11-12', title: 'Play it your way',
+    items: [
+      'Perform is now played from memory, like the exam: the music stays hidden while you play and appears afterwards with every note marked. Tap "Show the music" if you need it.',
+      'No count-in and no set speed: tap the big Start listening button, start when you\'re ready and play at your own speed. Stave follows you, stops listening when you finish, and tells you how your speed compares with the marked one.',
+      '"Hear the piece" plays it to you at the marked speed.',
+    ],
+  },
+  {
     version: '0.19.0', date: '2026-11-12', title: 'More colour, more fun',
     items: [
       'The floating tab bar is back, with its sliding bubble and rising icon.',

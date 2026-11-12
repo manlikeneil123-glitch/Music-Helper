@@ -2,6 +2,13 @@
 
 What changed in each version of Stave, in plain words. Written from `app/js/changelog.js`.
 
+## 0.22.0: Perform, made simple (2026-11-13)
+
+- Perform is now three steps: open your music book, tap the big button, play.
+- Play the whole piece or just one part: Stave works out which bars you played and marks just those. Fixed: it used to think you always started at the beginning.
+- Your result is short: your mark, one thing you did well, one thing to try next time, and Play again. All the details are one tap away.
+- Hearing the piece, looking at the music, learning it slowly and adding pieces are under More, at the bottom.
+
 ## 0.21.0: A new Perform (2026-11-12)
 
 - Perform looks like a music player now: your piece's first line as the cover, the title big and clear, and one Start listening button.

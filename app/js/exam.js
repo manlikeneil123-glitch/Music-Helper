@@ -77,7 +77,8 @@ export const bandLabel = (b) => BAND_LABEL[b] ?? '';
  * old one doesn't linger.
  */
 export function pieceReadiness(runs, board = 'ABRSM', now = Date.now(), minRuns = 2, type = 'practical') {
-  const recent = runs.filter((r) => (r.hands ?? 'both') === 'both' && now - r.at < 21 * 86400000).slice(-3);
+  // Whole-piece runs only: a part played on its own says little about the exam.
+  const recent = runs.filter((r) => (r.hands ?? 'both') === 'both' && !r.part && now - r.at < 21 * 86400000).slice(-3);
   const spec = examSpec(board, type).piece;
   if (recent.length < minRuns) return { band: null, runs: recent.length, of: spec.marks, note: recent.length ? 'One more full run to get a reading.' : 'No full runs yet.' };
   const avg = (f) => recent.reduce((a, r) => a + f(r), 0) / recent.length;

@@ -13,7 +13,7 @@ const STEPS = [
   { tab: 'cards', at: '#card-deck', title: 'Choose what to practise', text: 'Notes, key signatures, intervals or chords, in treble or bass clef. You can also answer by playing the note on the keys.' },
   { tab: 'practice', at: '.timer-ring', title: 'Practise: the timer', text: 'Time a practice session and see your week. Pick what you\'re working on first, so your teacher can see where the time went.' },
   { tab: 'play', at: '#perf-empty .btn.primary', title: 'Perform: add your piece', text: 'Stave checks you against the real score. Take a photo of your music, or add a file from your teacher or MuseScore.' },
-  { tab: 'play', at: '.np', title: 'Perform: your piece', text: 'Tap the cover to see the score. "Change piece" switches pieces; "Add" brings in another from a photo or a file.' },
+  { tab: 'play', at: '.perf-actions', title: 'Perform: Stave listens and marks', text: 'Open your music book, tap the big button and play: the whole piece or just one part. Stave marks it like an examiner.' },
   { tab: 'play', at: '#input-pill', title: 'How Stave listens', text: 'Set up the microphone once for each piano (about 20 seconds), or plug in a MIDI keyboard. Tap this line any time to fix it.' },
   { tab: 'play', at: '.perf-actions', title: 'Play it through', text: 'Press Start, wait for four count-in clicks, then play. Afterwards every note is coloured: green right, red wrong, orange early or late, dashed missed.' },
   { tab: 'play', at: '#perf-options-open', title: 'Options', text: 'Tempo, metronome, exam conditions and how strict the checking is all live here.' },

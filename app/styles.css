@@ -1403,29 +1403,15 @@ button.card:active, .plan li > button:active, .stat-strip:active, .exam-chip:act
 .timer-ring { border-color: color-mix(in srgb, var(--tab-c) 40%, var(--edge)); }
 .timer-ring.running { border-color: var(--tab-c); }
 
-/* ---- Perform: played from memory, Stave listens ---- */
-.music-hidden { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; align-items: center; padding: 18px; margin: 12px 0; border: 2px dashed var(--edge); border-radius: var(--radius); }
-.music-hidden p { margin: 0; color: var(--text-2); font-size: 0.95rem; }
-.music-hidden .btn { grid-column: 2; justify-self: start; }
-.mh-icon { grid-row: span 2; display: grid; place-items: center; width: 52px; height: 52px; border-radius: 50%; background: color-mix(in srgb, var(--tab-c) 20%, transparent); color: var(--tab-c); }
-.mh-icon svg { width: 26px; height: 26px; }
-.perf-actions { display: grid !important; grid-template-columns: 1fr; gap: 10px; }
-.btn.start-big { min-height: 64px; font-size: 1.2rem; border-radius: 18px; }
-.btn.start-big svg { width: 22px; height: 22px; }
-#check-start.listening { background: var(--surface); color: var(--ink); border-color: var(--tab-c); animation: listening 1.6s ease-in-out infinite; }
-@keyframes listening { 50% { box-shadow: 0 0 0 8px color-mix(in srgb, var(--tab-c) 22%, transparent); } }
-:root.still #check-start.listening { animation: none; }
-@media (prefers-reduced-motion: reduce) { #check-start.listening { animation: none; } }
-
 /* ---- Perform while listening: one clear screen, nothing else to press ---- */
 .listen-panel { display: none; }
 body.perf-listening .listen-panel {
   display: grid; justify-items: center; text-align: center; gap: 6px; padding: 26px 18px 18px; margin: 8px 0 14px;
   border: 2px solid var(--edge); border-radius: 24px; background: var(--surface);
 }
-body.perf-listening #view-play .piece-bar, body.perf-listening #view-play .practice-switch, body.perf-listening #music-hidden,
-body.perf-listening #check-score, body.perf-listening #input-pill, body.perf-listening #check-listen, body.perf-listening #section,
-body.perf-listening #heat, body.perf-listening #perf-options-open, body.perf-listening #check-result { display: none !important; }
+body.perf-listening #view-play .pc, body.perf-listening #how, body.perf-listening #score-home, body.perf-listening #input-pill,
+body.perf-listening .more-h, body.perf-listening .more-list, body.perf-listening #section, body.perf-listening #heat,
+body.perf-listening #perf-options-open, body.perf-listening #check-result, body.perf-listening #learn-banner { display: none !important; }
 .lp-ring { display: grid; place-items: center; width: 108px; height: 108px; border-radius: 50%; color: var(--tab-c); background: color-mix(in srgb, var(--tab-c) 16%, transparent); border: 3px solid color-mix(in srgb, var(--tab-c) 50%, transparent); }
 .lp-ring svg { width: 44px; height: 44px; }
 .listen-panel.hearing .lp-ring { border-color: var(--tab-c); animation: lp-beat 0.9s ease-in-out infinite; }
@@ -1437,48 +1423,6 @@ body.perf-listening #heat, body.perf-listening #perf-options-open, body.perf-lis
 body.perf-listening #check-start { min-height: 64px; }
 :root.still .listen-panel.hearing .lp-ring { animation: none; }
 @media (prefers-reduced-motion: reduce) { .listen-panel.hearing .lp-ring { animation: none; } }
-.mode-hint { margin: -4px 2px 10px; color: var(--muted); font-size: 0.92rem; }
-body.perf-listening #mode-hint { display: none; }
-
-/* ================= Perform: "now playing" =================
-   After music players: the piece's own first line as a cover, the composer above a
-   big title, one main action, and three small controls. The score is a slide-up
-   sheet you open from the cover or the Score chip, so it never fills the page. */
-.np { display: grid; justify-items: center; text-align: center; gap: 6px; margin: 6px 0 14px; }
-.np-cover {
-  position: relative; width: min(54vw, 210px); aspect-ratio: 1; padding: 0; border: 0; border-radius: 22px; cursor: pointer;
-  background: #f7f3ea; overflow: hidden; display: grid; place-items: center;
-  box-shadow: 0 0 0 2px var(--edge), 0 22px 40px rgba(0, 0, 0, 0.45); transition: transform 0.2s var(--ease);
-}
-:root[data-theme='day'] .np-cover { box-shadow: 0 0 0 2px var(--edge), 0 18px 34px rgba(20, 24, 30, 0.16); }
-.np-cover::before { content: ''; position: absolute; inset: 0 0 auto; height: 10px; background: var(--tab-c); }
-.np-cover:active { transform: scale(0.97); }
-.np-page { display: block; width: 88%; background: transparent !important; }
-.np-page svg { width: 100%; height: auto; display: block; }
-.np-open { position: absolute; right: 10px; bottom: 10px; display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 999px; font-size: 0.78rem; font-weight: 750; color: #fff; background: rgba(15, 17, 20, 0.82); }
-.np-open svg { width: 15px; height: 15px; }
-.np-info { margin-top: 12px; }
-.np-kicker { margin: 0; font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.09em; color: var(--tab-c); }
-:root[data-theme='day'] .np-kicker { color: #6b2fa0; }
-#np-title { margin: 4px 0 2px; font-size: clamp(1.45rem, 6vw, 1.85rem); font-weight: 850; letter-spacing: -0.03em; line-height: 1.1; }
-.np-meta { margin: 0; color: var(--muted); font-size: 0.92rem; font-variant-numeric: tabular-nums; }
-.np-change { position: relative; display: inline-flex; align-items: center; gap: 6px; margin-top: 6px; padding: 6px 12px; border-radius: 999px; border: 2px solid var(--edge); font-size: 0.85rem; font-weight: 700; color: var(--muted); cursor: pointer; }
-.np-change::after { content: '▾'; font-size: 0.8rem; }
-.np-change select { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; min-height: 0; }
-.np-change:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
-.practice-switch { margin-top: 4px; }
-.mode-hint { text-align: center; }
-.perf-actions { margin-top: 4px; }
-.np-chips { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 12px 0 6px; }
-.chip-btn {
-  display: grid; justify-items: center; gap: 4px; padding: 12px 6px 10px; border-radius: 16px; cursor: pointer; font: inherit; font-size: 0.82rem; font-weight: 750;
-  color: var(--ink); background: var(--surface); border: 2px solid var(--edge); border-bottom-width: 4px; transition: transform 0.06s, border-width 0.06s;
-}
-.chip-btn:active { transform: translateY(2px); border-bottom-width: 2px; margin-bottom: 2px; }
-.chip-btn svg { width: 22px; height: 22px; color: var(--tab-c); }
-.plus-glyph { display: grid; place-items: center; width: 22px; height: 22px; font-size: 1.35rem; line-height: 1; color: var(--tab-c); }
-.chip-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.score-home[hidden] { display: none; }
 
 /* The score sheet slides up from the bottom. */
 dialog.score-sheet {
@@ -1494,5 +1438,76 @@ dialog.score-sheet[open] { animation: sheet-up 0.32s var(--ease) both; }
 :root.still dialog.score-sheet[open] { animation: none; }
 @media (prefers-reduced-motion: reduce) { dialog.score-sheet[open] { animation: none; } }
 
-/* While listening, only the listening panel and the finish button. */
-body.perf-listening .np, body.perf-listening .np-chips, body.perf-listening .practice-switch { display: none !important; }
+/* ================= Perform, made simple =================
+   Like the learning apps kids already use: one job per screen, three numbered steps,
+   one huge button, a short result (mark, one thing done well, one thing to fix,
+   Play again). Everything else waits under "More" at the bottom. */
+.pc { display: grid; grid-template-columns: 76px 1fr; grid-template-rows: auto auto; gap: 4px 14px; align-items: center; margin: 6px 0 16px; padding: 12px; border: 2px solid var(--edge); border-radius: 20px; background: var(--surface); }
+.pc-cover { grid-row: span 2; width: 76px; height: 76px; padding: 0; border: 0; border-radius: 14px; overflow: hidden; cursor: pointer; background: #f7f3ea; position: relative; box-shadow: inset 0 4px 0 var(--tab-c); }
+.pc-cover .np-page { display: block; width: 150%; margin: 10px 0 0 -6%; }
+.pc-cover .np-page svg { width: 100%; height: auto; display: block; }
+.pc-cover .np-open { display: none; }
+.pc-info { min-width: 0; }
+.np-kicker { margin: 0; font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; color: var(--tab-c); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+:root[data-theme='day'] .np-kicker { color: #6b2fa0; }
+#np-title { margin: 2px 0; font-size: 1.25rem; font-weight: 850; letter-spacing: -0.02em; line-height: 1.15; }
+.np-meta { margin: 0; color: var(--muted); font-size: 0.85rem; }
+.pc-change { position: relative; justify-self: start; display: inline-flex; align-items: center; gap: 4px; padding: 4px 12px; border-radius: 999px; border: 2px solid var(--edge); font-size: 0.82rem; font-weight: 750; color: var(--ink); cursor: pointer; }
+.pc-change::after { content: '▾'; font-size: 0.75rem; color: var(--muted); }
+.pc-change select { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; min-height: 0; }
+.pc-change:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.how { list-style: none; margin: 0 0 8px; padding: 0; display: grid; gap: 10px; }
+.how li { display: flex; align-items: center; gap: 12px; font-size: 1.05rem; font-weight: 650; }
+.how li span { flex: none; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; font-weight: 850; color: #14100e; background: var(--tab-c); }
+
+.perf-actions { display: grid; justify-items: center; margin: 18px 0 8px; }
+.rec-btn { display: grid; justify-items: center; gap: 10px; padding: 0; border: 0; background: none; font: inherit; color: var(--ink); cursor: pointer; }
+.rec-dot {
+  display: grid; place-items: center; width: 132px; height: 132px; border-radius: 50%; color: #1d0e08;
+  background: #ff6b4a; border-bottom: 7px solid #c94a2c; box-shadow: 0 0 0 8px color-mix(in srgb, #ff6b4a 16%, transparent);
+  transition: transform 0.08s, border-width 0.08s;
+}
+.rec-dot svg { width: 52px; height: 52px; }
+.rec-btn:active .rec-dot { transform: translateY(4px); border-bottom-width: 3px; }
+.rec-label { font-size: 1.25rem; font-weight: 850; letter-spacing: -0.01em; }
+.rec-btn:focus-visible { outline: none; }
+.rec-btn:focus-visible .rec-dot { outline: 3px solid var(--accent); outline-offset: 6px; }
+.rec-stop { display: block; width: 38px; height: 38px; border-radius: 8px; background: #fff; }
+.rec-btn.listening .rec-dot { background: #e5484d; border-bottom-color: #a32a2e; animation: rec-pulse 1.4s ease-in-out infinite; }
+@keyframes rec-pulse { 50% { box-shadow: 0 0 0 18px rgba(229, 72, 77, 0.18); } }
+:root.still .rec-btn.listening .rec-dot { animation: none; }
+@media (prefers-reduced-motion: reduce) { .rec-btn.listening .rec-dot { animation: none; } }
+.input-pill { margin: 6px auto 0; display: flex; }
+
+.learn-banner { display: grid; gap: 4px; padding: 14px; margin: 0 0 12px; border-radius: 16px; border: 2px solid var(--tab-c); background: color-mix(in srgb, var(--tab-c) 10%, transparent); }
+.learn-banner[hidden] { display: none; }
+.learn-banner b { display: inline-flex; align-items: center; gap: 8px; }
+.learn-banner b svg { width: 18px; height: 18px; }
+.learn-banner span { color: var(--text-2); font-size: 0.92rem; }
+.learn-banner .btn { justify-self: start; margin-top: 4px; }
+.score-home[hidden], .how[hidden] { display: none; }
+
+/* The result, short and kind. */
+.two-things { display: grid; gap: 10px; margin: 14px 0; }
+.two-things p { margin: 0; padding: 12px 14px; border-radius: 14px; background: var(--raised); color: var(--text-2); font-size: 0.98rem; }
+.two-things b { display: block; margin-bottom: 2px; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.06em; }
+.good-thing b { color: var(--good); } .next-thing b { color: var(--accent); }
+:root[data-theme='day'] .next-thing b { color: #9a3412; }
+.result-actions .btn.block { margin-top: 10px; }
+.why { margin-top: 14px; border-top: 2px solid var(--line); padding-top: 10px; }
+.why > summary { cursor: pointer; font-weight: 750; color: var(--muted); padding: 6px 0; }
+
+/* "More": the extras, quietly at the bottom. */
+.more-h { margin: 34px 0 8px; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+.more-list { display: grid; border: 2px solid var(--edge); border-radius: 18px; overflow: hidden; background: var(--surface); }
+.more-row { display: grid; grid-template-columns: 28px 1fr; gap: 12px; align-items: center; padding: 14px 16px; border: 0; border-top: 2px solid var(--line); background: none; color: var(--ink); font: inherit; text-align: left; cursor: pointer; }
+.more-row:first-child { border-top: 0; }
+.more-row:hover { background: var(--raised); }
+.more-row:focus-visible { outline: 2px solid var(--accent); outline-offset: -4px; }
+.more-row svg { width: 24px; height: 24px; color: var(--tab-c); }
+.more-row span { display: grid; gap: 1px; }
+.more-row small { color: var(--muted); font-size: 0.84rem; }
+.plus-glyph { display: grid; place-items: center; width: 24px; height: 24px; font-size: 1.5rem; line-height: 1; color: var(--tab-c); }
+#heat, #section { margin-top: 14px; }
+body.perf-result #how, body.perf-result .perf-actions, body.perf-result #input-pill { display: none; }

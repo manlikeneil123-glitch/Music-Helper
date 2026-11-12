@@ -8,7 +8,7 @@ import { PIECES } from './pieces.js';
 import { normalize, timeline, totalBeats, excerpt, density, barMap, barCount as barsIn } from './score.js';
 import { renderScore } from './render.js';
 import { readScoreFile, parseMusicXML } from './musicxml.js';
-import { analyse, STRICTNESS, guessBeatMs } from './analysis.js';
+import { analyse, STRICTNESS, guessBeatMs, locatePart } from './analysis.js';
 import { analyseAudio, firstOnsetSec, encodeWav, liveCheck } from './micanalysis.js';
 import { audio, click, scheduleNote, ctxToPerf, stopScheduled } from './audio.js';
 import { onNote, onStatus } from './input.js';
@@ -174,7 +174,7 @@ function refreshPiece() {
 function drawScore(result = lastResult) {
   const box = $('#check-score');
   const colours = new Map();
-  if (result) for (const n of result.notes) colours.set(`${n.beat}|${n.midi}|${n.staff ?? 1}`, STATUS_COLOR[n.status]);
+  if (result) for (const n of result.notes) colours.set(`${n.beat + (result.part?.offset ?? 0)}|${n.midi}|${n.staff ?? 1}`, STATUS_COLOR[n.status]);
   const shown = drill ? excerpt(base, drill.from, drill.to) : base;
   const inSheet = freeTempo(); // the sheet shows whole lines, like a page
   scoreView = renderScore(shown, {
@@ -185,8 +185,8 @@ function drawScore(result = lastResult) {
   });
   box.classList.toggle('page', inSheet || layout === 'page');
   box.replaceChildren(...scoreView.systems.map((s) => s.svg));
-  // Perform is played from memory, as in the exam: the music lives in the score sheet
-  // (the Score chip), not on the page. Learn and bar practice keep it on the page.
+  // Perform: the student reads from their printed book; the music here lives in the sheet
+  // ("Look at the music"), not on the page. Learn and bar practice keep it on the page.
   const home = freeTempo() ? $('#ss-body') : $('#score-home');
   if (box.parentElement !== home) home.append(box);
   $('#score-home').hidden = freeTempo();
@@ -221,7 +221,9 @@ function togglePlay() {
 }
 function playLabels() {
   $('#ss-play').innerHTML = playing ? 'Stop' : `${ICONS.play} Play`;
-  $('#check-listen').innerHTML = playing ? '<b class="plus-glyph" aria-hidden="true">■</b><span>Stop</span>' : `${ICONS.play}<span>Hear it</span>`;
+  $('#check-listen').innerHTML = playing
+    ? '<b class="plus-glyph" aria-hidden="true">■</b><span><b>Stop playing</b><small>Tap to stop</small></span>'
+    : `${ICONS.play}<span><b>Hear the piece</b><small>How it should sound</small></span>`;
 }
 
 function listen() {
@@ -424,8 +426,9 @@ function stop() {
   let played = r.events.filter((e) => r.free || e.on >= -0.75 * r.msPerBeat);
   let msPerBeat = r.msPerBeat;
   if (r.free && played.length) {
-    // Beat 0 is their first note; the speed is theirs.
-    const tl = timeline(piece);
+    // Beat 0 is their first note; the speed is theirs; the bars are whichever they played.
+    part = findPart(played);
+    const tl = timeline(part?.piece ?? piece);
     msPerBeat = guessBeatMs(tl, played.map((e) => e.on)) ?? msPerBeat;
     const shift = Math.min(...played.map((e) => e.on)) - (tl[0]?.beat ?? 0) * msPerBeat;
     played = played.map((e) => ({ ...e, on: e.on - shift, off: e.off == null ? null : e.off - shift }));
@@ -435,12 +438,28 @@ function stop() {
   lastTake = null;
   // Judge pedalling only when a pedal can be used: a MIDI keyboard is connected
   // (its pedal reports CC64) or Space was pressed on the computer keyboard.
+  if (!r.free) part = null;
   const pedalPossible = r.sawPedal || (r.source === 'midi' && midiStatus?.midi === 'connected');
   finish({ played, source: r.source, msPerBeat, pedalEvents: pedalPossible ? r.pedal : null });
 }
 
+// Perform: they may have played just one part. Find which bars, and mark those.
+let part = null; // { from, to, piece, offset } for the take being marked
+function findPart(played) {
+  const tl = timeline(piece);
+  const loc = locatePart(tl, played);
+  if (!loc || loc.share < 0.5 || (loc.from === tl[0].bar && loc.to === tl[tl.length - 1].bar)) return null;
+  const s = normalize(piece);
+  return { from: loc.from, to: loc.to, piece: excerpt(s, loc.from, loc.to), offset: barMap(s).starts[loc.from - 1 - (s.barOffset ?? 0)] };
+}
+
 function runMic(args, record) {
-  const mic = analyseAudio({ ...args, thresholds: micThresholds() });
+  let mic = analyseAudio({ ...args, thresholds: micThresholds() });
+  part = args.free ? findPart(mic.played) : null;
+  if (part) {
+    args = { ...args, expected: timeline(part.piece) };
+    mic = analyseAudio({ ...args, thresholds: micThresholds() });
+  }
   // A re-score of the same take keeps its list of corrections already made.
   const reported = lastMic?.args === args ? lastMic.reported : new Set();
   lastMic = { args, evidence: mic.evidence, record, reported };
@@ -449,14 +468,17 @@ function runMic(args, record) {
 }
 
 function finish({ played, source, msPerBeat, unclear = [], spread = [], pedalEvents = null, record = true }) {
-  const d = density(piece);
+  const marked = part?.piece ?? piece;
+  const d = density(marked);
   const result = analyse({
-    expected: timeline(piece), played, unclear, spread, msPerBeat, beatsPerBar: piece.beatsPerBar, source,
-    strictness, score: piece, pedalEvents, dense: d.maxChord >= 4 || (d.twoHands && d.minDur <= 0.25),
+    expected: timeline(marked), played, unclear, spread, msPerBeat, beatsPerBar: marked.beatsPerBar, source,
+    strictness, score: marked, pedalEvents, dense: d.maxChord >= 4 || (d.twoHands && d.minDur <= 0.25),
     targetMsPerBeat: drill ? null : 60000 / base.targetBpm,
   });
   const { board, type } = markingBoard();
   result.exam = examMark(result, board, type);
+  result.part = part ? { from: part.from, to: part.to, offset: part.offset } : null;
+  part = null;
   lastResult = result;
   if (played.length && record && !drill) {
     history.push({
@@ -465,6 +487,7 @@ function finish({ played, source, msPerBeat, unclear = [], spread = [], pedalEve
       pitch: +result.pitchAccuracy.toFixed(3), rhythm: +result.rhythmAccuracy.toFixed(3), targetBpm: base.targetBpm,
       exam: examMode || undefined,
       mark: result.exam.mark, of: result.exam.of, band: result.exam.band, board,
+      part: result.part ? [result.part.from, result.part.to] : undefined,
     });
     if (result.score >= 85) logWin('clean');
     save('checks', history.slice(-300));
@@ -481,7 +504,7 @@ function finish({ played, source, msPerBeat, unclear = [], spread = [], pedalEve
     done(result, history[history.length - 1]);
   }
   updateTempoLock();
-  setStatus('Done. See your feedback below.', '');
+  setStatus(freeTempo() ? '' : 'Done. See your feedback below.', '');
 }
 
 // Four steps, Below pass → Distinction, lit up to the band.
@@ -489,12 +512,18 @@ const LEVELS = ['below', 'pass', 'merit', 'distinction'];
 const meter = (band) => `<span class="meter ${band ? bandTone(band) : ''}" aria-hidden="true">${LEVELS.map((l, i) => `<i class="${band && i <= LEVELS.indexOf(band) ? 'on' : ''}" style="--n:${i}"></i>`).join('')}</span>`;
 
 // The examiner's sheet: an estimated mark for the board, then each criterion.
-function markSheet(m) {
+function markSheet(m, part = null) {
   return `<div class="mark-sheet">
       <div class="mark-head">
         <div class="score-badge ${bandTone(m.band)}"><b data-count="${m.mark}">${m.mark}</b><small>/${m.of}</small></div>
-        <div><p class="kicker">${m.board} estimated mark</p><b class="mark-band ${bandTone(m.band)}">${BAND_NAME[m.band]}</b></div>
+        <div><p class="kicker">${m.board} mark${part ? ` · bars ${part.from}–${part.to}` : ''}</p><b class="mark-band ${bandTone(m.band)}">${BAND_NAME[m.band]}</b></div>
       </div>
+    </div>`;
+}
+
+// Each thing the examiner listens for, with its band and a comment.
+function markCriteria(m) {
+  return `<div class="mark-sheet">
       <dl class="criteria">${m.criteria.map((c) => `<div><dt>${c.label}${c.max ? ` <span class="muted">${c.mark}/${c.max}</span>` : ''}</dt><dd><span class="crit-band">${meter(c.band)}<span class="band-chip ${c.band ? bandTone(c.band) : ''}">${c.band ? BAND_NAME[c.band] : 'Not heard'}</span></span><span class="crit-text">${c.comment}</span></dd></div>`).join('')}</dl>
       <p class="fine">An estimate, marked a little strictly so the real exam doesn't surprise you.${m.rough ? ' Tone and shape are rough with the microphone; a digital piano with a cable hears them exactly.' : ''} An examiner hears more than any app can.</p>
     </div>`;
@@ -503,10 +532,26 @@ function markSheet(m) {
 function showResult(r, source) {
   const box = $('#check-result');
   box.hidden = false;
+  // The result takes the place of the big button until they play again.
+  document.body.classList.toggle('perf-result', freeTempo());
   const pct = (x) => `${Math.round(x * 100)}%`;
   const canDrill = r.worstBar != null && !r.ready && r.counts.correct + r.counts.early + r.counts.late > 0;
+  const crits = r.exam.criteria.filter((c) => c.band);
+  const order = ['below', 'pass', 'merit', 'distinction'];
+  const top = [...crits].sort((a, b) => order.indexOf(b.band) - order.indexOf(a.band))[0];
+  const low = [...crits].sort((a, b) => order.indexOf(a.band) - order.indexOf(b.band))[0];
   box.innerHTML = `
-    ${markSheet(r.exam)}
+    ${markSheet(r.exam, r.part)}
+    <div class="two-things">
+      ${top ? `<p class="good-thing"><b>Well done</b>${top.comment}</p>` : ''}
+      <p class="next-thing"><b>Next time</b>${r.feedback.next}</p>
+    </div>
+    <div class="result-actions">
+      <button class="btn primary block" type="button" id="again">Play again</button>
+      ${freeTempo() ? '<button class="btn block" id="see-notes" type="button">See your notes on the music</button>' : ''}
+    </div>
+    <details class="why"><summary>See all the marks</summary>
+    ${markCriteria(r.exam)}
     <p class="muted small">${r.feedback.headline} Notes ${pct(r.pitchAccuracy)} · Rhythm ${pct(r.rhythmAccuracy)} · ${Math.round(r.playedBpm)} beats a minute${source === 'mic' ? ' · microphone' : ''} · ${STRICTNESS[r.strictness].label} marking</p>
     ${r.continuity || r.pulse ? `<div class="subscores">
       ${r.continuity ? `<span class="sub ${tone(r.continuity.score)}" title="Stops, restarts and hesitations"><b>${r.continuity.score}</b> Kept going</span>` : ''}
@@ -514,12 +559,13 @@ function showResult(r, source) {
       ${r.continuity?.slips ? `<span class="sub" title="Slips you played straight through"><b>${r.continuity.recovered}/${r.continuity.slips}</b> Slips recovered</span>` : ''}
     </div>` : ''}
     <ul class="feedback-list">${r.feedback.lines.map((l) => `<li class="${l.kind}">${l.text}</li>`).join('')}</ul>
-    <p class="next"><b>Next step:</b> ${r.feedback.next}</p>
     ${freeTempo() ? '<button class="btn block" id="see-notes" type="button">See your notes on the score</button>' : ''}
     ${canDrill ? `<button class="btn primary block" id="drill-start" type="button">Practise bar ${r.worstBar} until it's right ${DRILL_STREAK} times in a row</button>` : ''}
     <div class="legend"><span class="good">● correct</span><span class="warn">● timing</span><span class="bad">● wrong</span><span class="miss">● missed</span>${source === 'mic' ? '<span class="unclear">● unclear</span>' : ''}</div>
     ${sendHook && (lastTake?.compressed || lastNotes) ? `<button class="btn block" id="send-take" type="button">${ICONS.mic} Send this take to your teacher</button>` : ''}
-    ${source === 'mic' && lastMic ? verdictPanel(r) : ''}`;
+    ${source === 'mic' && lastMic ? verdictPanel(r) : ''}
+    </details>`;
+  box.querySelector('#again').addEventListener('click', () => { box.hidden = true; document.body.classList.remove('perf-result'); start(); });
   box.querySelector('#send-take')?.addEventListener('click', async (e) => {
     const btn = e.currentTarget;
     btn.disabled = true;
@@ -891,7 +937,7 @@ function showNowPlaying() {
     const first = 1 + (s.barOffset ?? 0);
     art = renderScore(excerpt(s, first, first + 1), { mode: 'page', width: 300 }).systems[0].svg.outerHTML;
   } catch { /* an odd score just gets the plain cover */ }
-  $('#np-cover').innerHTML = `<span class="paper np-page">${art}</span><span class="np-open">${ICONS.book} Score</span>`;
+  $('#np-cover').innerHTML = `<span class="paper np-page">${art}</span>`;
 }
 
 function selectPiece(id, { hidden = id === WARMUP } = {}) {
@@ -900,6 +946,7 @@ function selectPiece(id, { hidden = id === WARMUP } = {}) {
   showEmpty(!found);
   if (!found) return;
   base = found;
+  document.body.classList.remove('perf-result');
   save('checkPiece', base.id);
   fillPieceSelect();
   drill = null;
@@ -957,9 +1004,12 @@ function setStatus(text, kind) {
 
 function setStartLabel(running) {
   const b = $('#check-start');
-  b.innerHTML = running ? (freeTempo() ? 'I\'ve finished' : 'Stop') : practice === 'learn' ? 'Start learning' : freeTempo() ? `${ICONS.mic} Start listening` : 'Start';
-  b.classList.toggle('primary', !running);
-  b.classList.toggle('listening', running && freeTempo());
+  // One big round button: tap to start, tap again to finish.
+  const [icon, label] = running
+    ? ['<i class="rec-stop" aria-hidden="true"></i>', freeTempo() ? 'I\'ve finished' : 'Stop']
+    : [ICONS.mic, practice === 'learn' ? 'Start learning' : freeTempo() ? 'Tap to start' : 'Start'];
+  b.innerHTML = `<span class="rec-dot">${icon}</span><span class="rec-label">${label}</span>`;
+  b.classList.toggle('listening', running);
 }
 
 function showLevel(level) {
@@ -1013,9 +1063,8 @@ function syncPracticeButtons() {
   root.querySelectorAll('[data-practice]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.practice === practice)));
   $('#learn-options').hidden = practice !== 'learn';
   $('#perform-options').hidden = practice !== 'perform';
-  $('#mode-hint').textContent = practice === 'learn'
-    ? 'Stave waits on each note until you find it, then moves on. No rush, no marks.'
-    : 'Play the whole piece from memory at your own speed. Stave listens and marks it like an examiner.';
+  $('#learn-banner').hidden = practice !== 'learn';
+  $('#how').hidden = practice === 'learn';
   setStartLabel(false);
   if (scoreView) drawScore();
 }
@@ -1076,44 +1125,50 @@ export function mountCheck(el) {
     </section>
 
     <div id="perf-main">
-      <section class="np" aria-labelledby="np-title">
-        <button class="np-cover" type="button" id="np-cover" aria-label="Open the score"></button>
-        <div class="np-info">
+      <section class="pc" aria-labelledby="np-title">
+        <button class="pc-cover" type="button" id="np-cover" aria-label="Look at the music"></button>
+        <div class="pc-info">
           <p class="np-kicker" id="np-composer"></p>
           <h3 id="np-title"></h3>
           <p class="np-meta" id="check-level"></p>
         </div>
-        <label class="np-change"><span>Change piece</span><select id="check-piece" aria-label="Piece"></select></label>
+        <label class="pc-change"><span>Change</span><select id="check-piece" aria-label="Choose a piece"></select></label>
       </section>
       <p class="warn-note" id="check-warnings" hidden></p>
-      <div class="segmented practice-switch" role="group" aria-label="Practice mode">
-        <button type="button" data-practice="perform" aria-pressed="false">${ICONS.mic} Perform</button>
-        <button type="button" data-practice="learn" aria-pressed="false">${ICONS.book} Learn slowly</button>
-      </div>
-      <p class="mode-hint" id="mode-hint"></p>
-      <section class="card heat" id="heat" hidden></section>
-      <div class="score-home" id="score-home"><div class="score-scroll paper" id="check-score" tabindex="0" role="group" aria-label="The score"></div></div>
+      <section class="learn-banner" id="learn-banner" hidden>
+        <b>${ICONS.book} Learning slowly</b><span>Stave waits on each note until you find it.</span>
+        <button class="btn small-btn" type="button" data-practice="perform">Back to marking</button>
+      </section>
+      <ol class="how" id="how">
+        <li><span aria-hidden="true">1</span>Open your music book on the piano.</li>
+        <li><span aria-hidden="true">2</span>Tap the big button.</li>
+        <li><span aria-hidden="true">3</span>Play! The whole piece, or just one part.</li>
+      </ol>
+      <div class="score-home" id="score-home"><div class="score-scroll paper" id="check-score" tabindex="0" role="group" aria-label="The music"></div></div>
       <section class="card drill" id="drill-banner" hidden></section>
       <section class="listen-panel" id="listen-panel" aria-live="polite">
-        <div class="lp-ring" aria-hidden="true">${ICONS.mic}</div>
         <p class="lp-state" id="lp-state">Waiting for you to start</p>
         <p class="lp-time" id="lp-time" aria-hidden="true">0:00</p>
         <div class="lp-level" id="lp-level" aria-hidden="true"><i></i></div>
-        <p class="muted small">Play the whole piece at your own speed. Pauses are fine: Stave keeps listening until you tap <b>I've finished</b>.</p>
+        <p class="muted small">Play from your book at your own speed. Stopping for a moment is fine. Tap the button when you've finished.</p>
       </section>
-      <button class="input-pill" id="input-pill" type="button"></button>
       <div class="perf-actions">
-        <button class="btn primary start-big" id="check-start" type="button">Start</button>
+        <button class="rec-btn" id="check-start" type="button"></button>
       </div>
-      <div class="np-chips" role="group" aria-label="More">
-        <button class="chip-btn" type="button" id="open-score">${ICONS.book}<span>Score</span></button>
-        <button class="chip-btn" type="button" id="check-listen">${ICONS.play}<span>Hear it</span></button>
-        <button class="chip-btn" type="button" id="open-add"><b class="plus-glyph" aria-hidden="true">+</b><span>Add</span></button>
-      </div>
+      <button class="input-pill" id="input-pill" type="button"></button>
       <p class="status" id="check-status" aria-live="polite"></p>
       <section class="card result" id="check-result" hidden></section>
+
+      <h3 class="more-h">More</h3>
+      <div class="more-list" role="group" aria-label="More">
+        <button class="more-row" type="button" id="check-listen">${ICONS.play}<span><b>Hear the piece</b><small>How it should sound</small></span></button>
+        <button class="more-row" type="button" id="open-score">${ICONS.book}<span><b>Look at the music</b><small>And see your notes after you play</small></span></button>
+        <button class="more-row" type="button" data-practice="learn">${ICONS.metronome ?? ICONS.book}<span><b>Learn it slowly</b><small>Stave waits for each note</small></span></button>
+        <button class="more-row" type="button" id="open-add"><b class="plus-glyph" aria-hidden="true">+</b><span><b>Add a piece</b><small>From a photo or a file</small></span></button>
+      </div>
+      <section class="card heat" id="heat" hidden></section>
       <details class="card section" id="section">
-        <summary>Practise just some bars</summary>
+        <summary>Practise one tricky part over and over</summary>
         <div class="row gap wrap section-row">
           <label class="field inline">Bars <input id="sec-from" type="number" inputmode="numeric" step="1"> to <input id="sec-to" type="number" inputmode="numeric" step="1"></label>
           <select id="sec-kind" aria-label="How to practise it">

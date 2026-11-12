@@ -3,6 +3,15 @@
 // and the service worker, and writes CHANGELOG.md from this list.
 export const CHANGES = [
   {
+    version: '0.22.0', date: '2026-11-13', title: 'Perform, made simple',
+    items: [
+      'Perform is now three steps: open your music book, tap the big button, play.',
+      'Play the whole piece or just one part: Stave works out which bars you played and marks just those. Fixed: it used to think you always started at the beginning.',
+      'Your result is short: your mark, one thing you did well, one thing to try next time, and Play again. All the details are one tap away.',
+      'Hearing the piece, looking at the music, learning it slowly and adding pieces are under More, at the bottom.',
+    ],
+  },
+  {
     version: '0.21.0', date: '2026-11-12', title: 'A new Perform',
     items: [
       'Perform looks like a music player now: your piece\'s first line as the cover, the title big and clear, and one Start listening button.',

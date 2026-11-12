@@ -764,3 +764,42 @@ export function guessBeatMs(expected, onsets) {
   const gapMs = mid(times.slice(1).map((t, i) => t - times[i]));
   return gapBeats > 0 && gapMs > 0 ? gapMs / gapBeats : null;
 }
+
+/**
+ * Which bars did they play? Students often play one section, not the whole piece.
+ * Tries every bar as the start and follows the played notes through the score in
+ * order (allowing a few wrong or skipped notes), keeping the start that explains
+ * most of them. expected: timeline() notes (with .bar); played: [{ midi, on }].
+ * Returns { from, to, share } in printed bar numbers, or null with too few notes.
+ */
+export function locatePart(expected, played) {
+  const events = [];
+  for (const n of expected) {
+    const last = events[events.length - 1];
+    if (last && Math.abs(last.beat - n.beat) < 1e-6) last.pitches.add(n.midi);
+    else events.push({ beat: n.beat, bar: n.bar, pitches: new Set([n.midi]) });
+  }
+  const seq = [...played].sort((a, b) => a.on - b.on).map((p) => p.midi);
+  if (seq.length < 4 || events.length < 2) return null;
+  let best = null;
+  for (let i = 0; i < events.length; i++) {
+    if (i && events[i].bar === events[i - 1].bar) continue; // starts are bar starts
+    let k = i;
+    let hits = 0;
+    let skipped = 0; // chords jumped over: a start too early has to skip to the real notes
+    let lastHit = i;
+    for (const midi of seq) {
+      // The same chord again (its other notes), or one of the next few chords.
+      let found = -1;
+      for (let j = k; j < Math.min(events.length, k + 5); j++) if (events[j].pitches.has(midi)) { found = j; break; }
+      if (found < 0) continue;
+      hits++;
+      skipped += Math.max(0, found - k - 1);
+      k = found;
+      lastHit = found;
+    }
+    const score = hits - 0.5 * skipped;
+    if (!best || score > best.score) best = { score, hits, from: events[i].bar, to: events[lastHit].bar };
+  }
+  return { from: best.from, to: best.to, share: best.hits / seq.length };
+}

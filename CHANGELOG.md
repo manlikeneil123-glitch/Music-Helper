@@ -2,6 +2,12 @@
 
 What changed in each version of Stave, in plain words. Written from `app/js/changelog.js`.
 
+## 0.20.1: Listening that stays on (2026-11-12)
+
+- Fixed: Perform could stop listening by itself in a quiet passage, or not keep your take at all. Now it keeps listening until you tap "I've finished".
+- Your screen stays on while Stave is listening, so the phone can't lock half way through a piece.
+- While you play, Perform shows one simple screen: whether Stave can hear you, a timer and a sound meter.
+
 ## 0.20.0: Play it your way (2026-11-12)
 
 - Perform is now played from memory, like the exam: the music stays hidden while you play and appears afterwards with every note marked. Tap "Show the music" if you need it.

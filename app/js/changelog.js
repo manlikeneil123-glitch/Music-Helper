@@ -3,6 +3,14 @@
 // and the service worker, and writes CHANGELOG.md from this list.
 export const CHANGES = [
   {
+    version: '0.20.1', date: '2026-11-12', title: 'Listening that stays on',
+    items: [
+      'Fixed: Perform could stop listening by itself in a quiet passage, or not keep your take at all. Now it keeps listening until you tap "I\'ve finished".',
+      'Your screen stays on while Stave is listening, so the phone can\'t lock half way through a piece.',
+      'While you play, Perform shows one simple screen: whether Stave can hear you, a timer and a sound meter.',
+    ],
+  },
+  {
     version: '0.20.0', date: '2026-11-12', title: 'Play it your way',
     items: [
       'Perform is now played from memory, like the exam: the music stays hidden while you play and appears afterwards with every note marked. Tap "Show the music" if you need it.',

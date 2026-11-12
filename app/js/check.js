@@ -258,6 +258,7 @@ function animateCursor(t0, msPerBeat, done, cancelled = () => false) {
 async function start() {
   if (practice === 'learn') return learn ? stopLearn(true) : startLearn();
   if (rec) return stop();
+  keepAwake(true);
   let recorder = null;
   if (mode === 'mic') {
     try {
@@ -295,36 +296,47 @@ async function start() {
 }
 
 // Perform: no count-in, no metronome, no set speed. Stave listens from the moment
-// Start is pressed, the player starts when ready at their own speed, and the take
-// ends after a few seconds of quiet once they've played (or when they press Stop).
+// Start is pressed until the player taps "I've finished": pauses, quiet bars and
+// slow starts never end the take. The screen is kept awake while it listens.
 const freeTempo = () => practice === 'perform' && !drill;
-const QUIET_END_MS = 4000;
+const MAX_LISTEN_MS = 20 * 60000; // a safety net, far longer than any exam piece
 function startFree(recorder) {
   const t0 = performance.now();
   rec = { t0, beat0Ctx: audio().currentTime, msPerBeat: 60000 / base.targetBpm, events: [], open: new Map(), pedal: [], pedalDown: null, sawPedal: false, source: null, cancelled: false, recorder, free: true };
-  setStatus('Listening. Start whenever you\'re ready, at your own speed.', 'good');
+  setStatus('', '');
   setStartLabel(true);
   $('#check-result').hidden = true;
+  document.body.classList.add('perf-listening');
   const session = rec;
   const tick = () => {
     if (rec !== session) return;
-    const now = performance.now();
-    const lastNote = session.events.length ? session.t0 + Math.max(...session.events.map((e) => e.off ?? e.on)) : 0;
-    const last = Math.max(lastNote, session.lastLoud ?? 0);
-    const playing = session.events.length || session.lastLoud;
-    if (playing && now - last > QUIET_END_MS && !session.open.size) return stop();
-    if (!playing && now - t0 > 60000) { setStatus('Nothing heard for a minute, so Stave stopped listening.', 'warn'); return cancelFree(); }
-    session.timer = setTimeout(tick, 400);
+    const ms = performance.now() - t0;
+    $('#lp-time').textContent = `${Math.floor(ms / 60000)}:${String(Math.floor(ms / 1000) % 60).padStart(2, '0')}`;
+    const heard = session.events.length || session.lastLoud;
+    const now = session.lastHeard && performance.now() - session.lastHeard < 600;
+    $('#lp-state').textContent = now ? 'Hearing you' : heard ? 'Still listening' : 'Waiting for you to start';
+    $('#listen-panel').classList.toggle('hearing', Boolean(now));
+    if (ms > MAX_LISTEN_MS) return stop();
+    session.timer = setTimeout(tick, 250);
   };
-  session.timer = setTimeout(tick, 400);
+  tick();
 }
-function cancelFree() {
-  const r = rec;
-  rec = null;
-  r.recorder?.stop();
-  setBackgroundPaused(false);
-  setStartLabel(false);
+
+// Keep the phone's screen on while Stave listens: if it locks, the microphone stops.
+let wakeLock = null;
+async function keepAwake(on) {
+  try {
+    if (on && !wakeLock && navigator.wakeLock) {
+      wakeLock = await navigator.wakeLock.request('screen');
+      wakeLock.addEventListener('release', () => { wakeLock = null; });
+    } else if (!on && wakeLock) {
+      await wakeLock.release();
+      wakeLock = null;
+    }
+  } catch { /* not allowed right now (low battery, not visible): nothing to do */ }
 }
+// Coming back to the page drops the lock; take it again if still listening.
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && (rec || learn)) keepAwake(true); });
 
 // A student who paused or went back is still playing when the music "should" have
 // ended. Keep listening while notes are still coming (up to 16 extra beats), so the
@@ -349,13 +361,15 @@ function stop() {
   rec.cancelled = true;
   const r = rec;
   rec = null;
+  keepAwake(false);
+  document.body.classList.remove('perf-listening');
   setBackgroundPaused(false);
   setStartLabel(false);
   moveCursor(null);
 
-  if (r.free && !r.events.length && !r.lastLoud) {
+  if (r.free && !r.events.length && performance.now() - r.t0 < 2000) {
     r.recorder?.stop();
-    setStatus('Stopped before anything was played.', '');
+    setStatus('Stopped. Tap Start listening, then play.', '');
     return;
   }
 
@@ -708,6 +722,7 @@ async function startLearn() {
   const steps = learnSteps();
   if (!steps.length) return;
   learn = { steps, idx: 0, pressed: new Set(), tries: new Map(), started: performance.now(), recorder: null, hits: 0, wrongStreak: 0, lastWrong: null };
+  keepAwake(true);
   setStartLabel(true);
   $('#check-result').hidden = true;
   if (mode === 'mic') {
@@ -778,6 +793,7 @@ function learnHear(buf, cal) {
 function stopLearn(cancelled) {
   const l = learn;
   learn = null;
+  keepAwake(false);
   l.recorder?.stop();
   setBackgroundPaused(false);
   setStartLabel(false);
@@ -901,7 +917,7 @@ function setStatus(text, kind) {
 
 function setStartLabel(running) {
   const b = $('#check-start');
-  b.innerHTML = running ? 'Stop' : practice === 'learn' ? 'Start learning' : freeTempo() ? `${ICONS.mic} Start listening` : 'Start';
+  b.innerHTML = running ? (freeTempo() ? 'I\'ve finished' : 'Stop') : practice === 'learn' ? 'Start learning' : freeTempo() ? `${ICONS.mic} Start listening` : 'Start';
   b.classList.toggle('primary', !running);
   b.classList.toggle('listening', running && freeTempo());
 }
@@ -910,6 +926,9 @@ function showLevel(level) {
   // ~ -50 dB → 0%, ~ -6 dB → 100%
   const db = 20 * Math.log10(Math.max(level, 1e-5));
   if (rec && db > -38) rec.lastLoud = performance.now();
+  if (rec && db > -52) rec.lastHeard = performance.now();
+  const bar = $('#lp-level > i');
+  if (bar) bar.style.transform = `scaleX(${Math.max(0, Math.min(1, (db + 60) / 50))})`;
   $('#mic-level > div').style.width = `${Math.max(0, Math.min(100, ((db + 50) / 44) * 100))}%`;
 }
 
@@ -954,6 +973,9 @@ function syncPracticeButtons() {
   root.querySelectorAll('[data-practice]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.practice === practice)));
   $('#learn-options').hidden = practice !== 'learn';
   $('#perform-options').hidden = practice !== 'perform';
+  $('#mode-hint').textContent = practice === 'learn'
+    ? 'Stave waits on each note until you find it, then moves on. No rush, no marks.'
+    : 'Tap Start listening, then play the whole piece at your own speed. Stave marks it like an examiner.';
   setStartLabel(false);
   if (scoreView) drawScore();
 }
@@ -1025,18 +1047,26 @@ export function mountCheck(el) {
         </div>
       </section>
       <p class="warn-note" id="check-warnings" hidden></p>
-      <div class="segmented" role="group" aria-label="Practice mode">
+      <div class="segmented practice-switch" role="group" aria-label="Practice mode">
         <button type="button" data-practice="perform" aria-pressed="false">${ICONS.play} Play it through</button>
         <button type="button" data-practice="learn" aria-pressed="false">${ICONS.book} Learn slowly</button>
       </div>
+      <p class="mode-hint" id="mode-hint"></p>
       <section class="card heat" id="heat" hidden></section>
       <section class="music-hidden" id="music-hidden" hidden>
         <span class="mh-icon" aria-hidden="true">${ICONS.mic}</span>
-        <p><b>Play it from memory, like the exam.</b> Stave listens, follows your speed and marks it like an examiner. The music appears afterwards with every note marked.</p>
+        <p><b>The music is hidden</b> so you play from memory, like the exam. It comes back afterwards with every note marked.</p>
         <button class="btn small-btn" type="button" id="show-music">Show the music</button>
       </section>
       <div class="score-scroll paper" id="check-score"></div>
       <section class="card drill" id="drill-banner" hidden></section>
+      <section class="listen-panel" id="listen-panel" aria-live="polite">
+        <div class="lp-ring" aria-hidden="true">${ICONS.mic}</div>
+        <p class="lp-state" id="lp-state">Waiting for you to start</p>
+        <p class="lp-time" id="lp-time" aria-hidden="true">0:00</p>
+        <div class="lp-level" id="lp-level" aria-hidden="true"><i></i></div>
+        <p class="muted small">Play the whole piece at your own speed. Pauses are fine: Stave keeps listening until you tap <b>I've finished</b>.</p>
+      </section>
       <button class="input-pill" id="input-pill" type="button"></button>
       <div class="row gap perf-actions">
         <button class="btn primary start-big" id="check-start" type="button">Start</button>

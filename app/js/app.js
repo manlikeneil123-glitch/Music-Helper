@@ -179,6 +179,7 @@ function renderToday() {
     ${newsLine()}
     <div class="dash-head">
       <div>
+        <p class="date-kicker">${new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
         <h2>${greeting()}</h2>
         <p class="lede"><span class="muted">${p?.level ?? ''}${p?.board && p.board !== 'Not doing exams' ? ` · ${p.board}${p.examType === 'performance' ? ` ${typeName(p.board, 'performance')}` : ''}` : ''}</span></p>
         ${examChip()}

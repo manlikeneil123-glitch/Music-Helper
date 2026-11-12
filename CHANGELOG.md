@@ -2,6 +2,13 @@
 
 What changed in each version of Stave, in plain words. Written from `app/js/changelog.js`.
 
+## 0.19.0: More colour, more fun (2026-11-12)
+
+- The floating tab bar is back, with its sliding bubble and rising icon.
+- Each part of Stave has its own colour: coral Today, pink Read, gold Practise, violet Perform and blue Exam.
+- Your mark counts up, each part of the mark sheet fills bar by bar, and a Merit, Distinction or new best gets confetti.
+- Cards you can tap press down like buttons.
+
 ## 0.18.0: Marked like an examiner (2026-11-12)
 
 - After you play a piece, Stave now gives an estimated exam mark for your board: out of 30 for ABRSM (Pitch, Time, Tone, Shape, Performance) or out of 22 for Trinity (Accuracy and fluency, Technical facility, Communication and interpretation).

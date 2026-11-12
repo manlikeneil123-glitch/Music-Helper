@@ -23,7 +23,8 @@ import { logWin } from './quality.js';
 import { dayKey } from './store.js';
 import { tap } from './haptics.js';
 import { openScan } from './scan.js';
-import { examMark, markingBoard, BAND_NAME, bandTone } from './marking.js';
+import { examMark, markingBoard, BAND_NAME, bandTone, bestMark } from './marking.js';
+import { celebrate } from './celebrate.js';
 
 
 const COUNT_IN = 4;
@@ -394,14 +395,18 @@ function finish({ played, source, msPerBeat, unclear = [], spread = [], pedalEve
   setStatus('Done. See your feedback below.', '');
 }
 
+// Four steps, Below pass → Distinction, lit up to the band.
+const LEVELS = ['below', 'pass', 'merit', 'distinction'];
+const meter = (band) => `<span class="meter ${band ? bandTone(band) : ''}" aria-hidden="true">${LEVELS.map((l, i) => `<i class="${band && i <= LEVELS.indexOf(band) ? 'on' : ''}" style="--n:${i}"></i>`).join('')}</span>`;
+
 // The examiner's sheet: an estimated mark for the board, then each criterion.
 function markSheet(m) {
   return `<div class="mark-sheet">
       <div class="mark-head">
-        <div class="score-badge ${bandTone(m.band)}"><b>${m.mark}</b><small>/${m.of}</small></div>
+        <div class="score-badge ${bandTone(m.band)}"><b data-count="${m.mark}">${m.mark}</b><small>/${m.of}</small></div>
         <div><p class="kicker">${m.board} estimated mark</p><b class="mark-band ${bandTone(m.band)}">${BAND_NAME[m.band]}</b></div>
       </div>
-      <dl class="criteria">${m.criteria.map((c) => `<div><dt>${c.label}${c.max ? ` <span class="muted">${c.mark}/${c.max}</span>` : ''}</dt><dd><span class="band-chip ${c.band ? bandTone(c.band) : ''}">${c.band ? BAND_NAME[c.band] : 'Not heard'}</span> ${c.comment}</dd></div>`).join('')}</dl>
+      <dl class="criteria">${m.criteria.map((c) => `<div><dt>${c.label}${c.max ? ` <span class="muted">${c.mark}/${c.max}</span>` : ''}</dt><dd><span class="crit-band">${meter(c.band)}<span class="band-chip ${c.band ? bandTone(c.band) : ''}">${c.band ? BAND_NAME[c.band] : 'Not heard'}</span></span><span class="crit-text">${c.comment}</span></dd></div>`).join('')}</dl>
       <p class="fine">An estimate, marked a little strictly so the real exam doesn't surprise you.${m.rough ? ' Tone and shape are rough with the microphone; a digital piano with a cable hears them exactly.' : ''} An examiner hears more than any app can.</p>
     </div>`;
 }
@@ -448,6 +453,27 @@ function showResult(r, source) {
     if (key) correctVerdict('wrong', key);
   });
   box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  countMark(box.querySelector('.score-badge b'));
+  const earlier = history.filter((h) => h.pieceId === base.id && h !== history[history.length - 1]);
+  const prevBest = bestMark(earlier);
+  const newBest = prevBest && r.exam.mark / r.exam.of > prevBest.mark / prevBest.of;
+  if (['merit', 'distinction'].includes(r.exam.band) || newBest) {
+    setTimeout(() => celebrate(box.querySelector('.score-badge')), 350);
+    if (newBest) box.querySelector('.mark-head .kicker').textContent += ' · new best';
+  }
+}
+
+// The mark counts up, as on a scoreboard.
+function countMark(el) {
+  if (!el || matchMedia('(prefers-reduced-motion: reduce)').matches || document.documentElement.classList.contains('still')) return;
+  const to = Number(el.dataset.count);
+  const t0 = performance.now();
+  const step = (t) => {
+    const k = Math.min(1, (t - t0) / 700);
+    el.textContent = Math.round(to * (1 - (1 - k) ** 3));
+    if (k < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
 }
 
 // ---- Per-user mic tuning: "the app got that note wrong" -----------------------------

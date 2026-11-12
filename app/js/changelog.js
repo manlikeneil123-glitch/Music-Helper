@@ -3,6 +3,15 @@
 // and the service worker, and writes CHANGELOG.md from this list.
 export const CHANGES = [
   {
+    version: '0.19.0', date: '2026-11-12', title: 'More colour, more fun',
+    items: [
+      'The floating tab bar is back, with its sliding bubble and rising icon.',
+      'Each part of Stave has its own colour: coral Today, pink Read, gold Practise, violet Perform and blue Exam.',
+      'Your mark counts up, each part of the mark sheet fills bar by bar, and a Merit, Distinction or new best gets confetti.',
+      'Cards you can tap press down like buttons.',
+    ],
+  },
+  {
     version: '0.18.0', date: '2026-11-12', title: 'Marked like an examiner',
     items: [
       'After you play a piece, Stave now gives an estimated exam mark for your board: out of 30 for ABRSM (Pitch, Time, Tone, Shape, Performance) or out of 22 for Trinity (Accuracy and fluency, Technical facility, Communication and interpretation).',

@@ -20,7 +20,7 @@ export function openAssignDialog(ctx) {
       <label class="field">What <input name="title" type="text" maxlength="120" value="${esc(`${ctx.piece.title}${bars ? `, ${bars}` : ''}`)}"></label>
       <div class="row gap wrap">
         <label class="field inline">Bars <input name="from" type="number" min="1" value="${ctx.from ?? ''}"> to <input name="to" type="number" min="1" value="${ctx.to ?? ''}"></label>
-        <label class="field inline">Tempo <input name="bpm" type="number" min="20" max="300" value="${ctx.bpm ?? ''}"> bpm</label>
+        <label class="field inline">Tempo <input name="bpm" type="number" min="20" max="300" value="${ctx.bpm ?? ''}"> beats a minute</label>
       </div>
       <div class="row gap wrap">
         <label class="field inline">Due <input name="due" type="date"></label>

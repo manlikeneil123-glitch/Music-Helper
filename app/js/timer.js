@@ -2,6 +2,7 @@
 // survives the tab sleeping, the phone locking, or the app being closed.
 import { load, save, dayKey } from './store.js';
 import { tap } from './haptics.js';
+import { qualityStreak } from './quality.js';
 
 let goalBuzzed = false;
 
@@ -35,18 +36,6 @@ export const allSessions = () => sessions;
 
 export function minutesOn(day) {
   return sessions.filter((s) => s.day === day).reduce((a, s) => a + s.ms, 0) / 60000;
-}
-
-export function streak() {
-  let count = 0;
-  const d = new Date();
-  // Today counts if practised; if not, the streak is still alive from yesterday.
-  if (minutesOn(dayKey(d)) === 0) d.setDate(d.getDate() - 1);
-  while (minutesOn(dayKey(d)) > 0) {
-    count++;
-    d.setDate(d.getDate() - 1);
-  }
-  return count;
 }
 
 export function lastDays(n = 7) {
@@ -84,7 +73,7 @@ function render() {
   root.querySelector('#timer-week').innerHTML = days
     .map((d) => `<div class="bar-col" title="${Math.round(d.minutes)} min"><div class="bar" style="height:${(d.minutes / max) * 100}%"></div><span>${d.label}</span></div>`)
     .join('');
-  root.querySelector('#timer-streak').textContent = `${streak()} day streak`;
+  root.querySelector('#timer-streak').textContent = `${qualityStreak()} day streak`;
 
   root.querySelector('#timer-log').innerHTML =
     sessions
@@ -114,6 +103,14 @@ function finish() {
   state = { running: false, startedAt: 0, accumulated: 0, focus: state.focus };
   persist();
   render();
+  changeListeners.forEach((fn) => fn());
+}
+
+/** Time spent playing in Perform counts too, unless the practice timer is already counting it. */
+export function logPlaying(ms) {
+  if (state.running || ms < 10000) return;
+  sessions.push({ day: dayKey(), start: Date.now() - ms, ms, focus: 'Pieces' });
+  save('sessions', sessions);
   changeListeners.forEach((fn) => fn());
 }
 

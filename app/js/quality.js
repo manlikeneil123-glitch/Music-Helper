@@ -33,7 +33,9 @@ const REST_EVERY = 7;
 /** Quality days in the current streak, ending today (or yesterday, if today isn't done yet). */
 export function qualityStreak(all = load(KEY, {}), now = new Date()) {
   const d = new Date(now);
-  if (!isQualityDay(all[dayKey(d)])) d.setDate(d.getDate() - 1);
+  // Today not done yet: the streak is still alive, so start from yesterday, which may be the rest day.
+  const pending = !isQualityDay(all[dayKey(d)]);
+  if (pending) d.setDate(d.getDate() - 1);
   let n = 0;
   let lastRest = -Infinity; // days back from the start of the walk
   for (let back = 0; ; back++, d.setDate(d.getDate() - 1)) {
@@ -41,7 +43,7 @@ export function qualityStreak(all = load(KEY, {}), now = new Date()) {
     const prev = new Date(d);
     prev.setDate(prev.getDate() - 1);
     // A rest day needs a quality day either side and no other rest within a week.
-    if (n > 0 && isQualityDay(all[dayKey(prev)]) && back - lastRest >= REST_EVERY) { lastRest = back; continue; }
+    if ((n > 0 || (pending && back === 0)) && isQualityDay(all[dayKey(prev)]) && back - lastRest >= REST_EVERY) { lastRest = back; continue; }
     return n;
   }
 }

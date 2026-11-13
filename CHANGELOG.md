@@ -2,6 +2,18 @@
 
 What changed in each version of Stave, in plain words. Written from `app/js/changelog.js`.
 
+## 0.24.0: Lots of fixes from testing (2026-11-13)
+
+- Stave works offline again once it has loaded. It had stopped saving itself for offline use.
+- If Stave hears no notes, it now says so instead of giving a mark.
+- "Well done" now always tells you something you did well, and every mark says it is an estimate.
+- Playing in Perform now counts towards your practice minutes, and every screen shows the same streak. The day after a rest day, your streak no longer shows 0 before you play.
+- The Exam tab agrees with your marks, and changing your board there changes it everywhere.
+- Wrong notes on your music get a cross and timing slips a ring, not just a colour.
+- The Back button closes pop-ups instead of leaving the app. A Performance Grade video you have not saved asks before it is thrown away.
+- Phones that block saving (some school iPads) can now get past setup.
+- Smaller fixes: tapping flashcards quickly skips to the next card, the keyboard on Read shows the whole clef, Grade 4 to 5 and Grade 6 to 8 in setup, and "beats a minute" everywhere.
+
 ## 0.23.0: Swipe between pieces (2026-11-13)
 
 - On Perform, swipe your piece left or right to get to your other pieces, like flicking through album covers. The dots underneath show where you are; you can tap them or the arrows too.

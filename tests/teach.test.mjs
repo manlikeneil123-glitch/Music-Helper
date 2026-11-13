@@ -38,7 +38,7 @@ ok(daysToLesson(3, wed) === 0 && daysToLesson(4, wed) === 1 && daysToLesson(2, w
 // The plan puts the teacher's work first and notes the lesson.
 const pieces = [{ id: 'c-scale', title: 'C major scale' }, { id: 'ode', title: 'Ode' }, { id: 'b', title: 'Study' }];
 const plan = buildPlan({ profile: { level: 'Grade 2 – 3', board: 'ABRSM' }, goal: 30, pieces, bpmFor: () => 70, assignments: [{ ...bars, title: 'Bars 5–8 hands together' }], lessonIn: 1, teacher: 'miss_t' });
-ok(plan[0].assignment && /From @miss_t/.test(plan[0].title) && /Bars 5–8 at 80 bpm/.test(plan[0].detail), 'teacher work leads the plan');
+ok(plan[0].assignment && /From @miss_t/.test(plan[0].title) && /Bars 5–8 at 80 beats a minute/.test(plan[0].detail), 'teacher work leads the plan');
 ok(!plan.slice(1).some((x) => x.piece === 'ode' && !x.assignment), 'the same piece is not listed twice');
 ok(/Lesson tomorrow/.test(plan.note), 'the day before a lesson gets a note');
 ok(Math.abs(plan.reduce((a, x) => a + x.mins, 0) - 30) <= 2, 'the plan still fits the daily goal');

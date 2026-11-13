@@ -140,8 +140,10 @@ export function cardStats(kind = 'notes') {
 }
 
 let grading = false; // one grade per card, however it was given
+let reveal = null; // the answer showing before the card leaves: a tap skips the wait
 
 function grade(correct, message, { swiped = false } = {}) {
+  if (reveal) { clearTimeout(reveal.timer); const d = reveal.dir; reveal = null; flyOut(d); return; }
   if (!current || grading) return;
   grading = true;
   tap(correct ? 'success' : 'error');
@@ -166,7 +168,7 @@ function grade(correct, message, { swiped = false } = {}) {
   const dir = correct ? 1 : -1;
   if (swiped) return flyOut(dir, text, correct);
   flip(true);
-  setTimeout(() => flyOut(dir), correct ? 700 : 1700);
+  reveal = { dir, timer: setTimeout(() => { reveal = null; flyOut(dir); }, correct ? 700 : 1700) };
 }
 
 // The card leaves to the right (got it) or left (missed it); the next one rises in.
@@ -258,6 +260,10 @@ function next() {
   const kind = root.querySelector('#card-deck').value;
   const clef = root.querySelector('#card-clef').value;
   current = pick(deck(kind, clef));
+  // Show this card's clef range on the keyboard (C4 up for treble, E2 up for bass), not the answer.
+  const kb = document.getElementById('keyboard');
+  const from = kb?.querySelector(`[data-midi="${current.clef === 'bass' ? 40 : 60}"]`);
+  if (from) kb.scrollLeft = from.offsetLeft - 4;
   flipped = false;
   pressed = [];
   const f = face(current);

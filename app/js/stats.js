@@ -2,7 +2,7 @@
 // split by what was practised, check scores over time, and this week's goal ring.
 import { runMark, bestMark, markText, bandTone, BAND_NAME } from './marking.js';
 import { allSessions, goalMinutes, FOCUSES } from './timer.js';
-import { checkHistory, findPiece, allPieces } from './check.js';
+import { checkHistory, findPiece, allPieces, shortTitle } from './check.js';
 import { cardStats, DECKS } from './flashcards.js';
 import { dayKey } from './store.js';
 import { ICONS } from './icons.js';
@@ -157,10 +157,10 @@ export function renderStats(root, { back, report }) {
       <ul class="log">${pieces.map((x) => {
         const runs = history.filter((h) => h.pieceId === x.id);
         const best = bestMark(runs);
-        return `<li><span>${esc(x.title)}<small class="muted"> · played ${runs.length} time${runs.length === 1 ? '' : 's'}</small></span><b>${best ? `best ${markText(best)} ${BAND_NAME[best.band]}` : '–'}</b></li>`;
+        return `<li><span>${esc(shortTitle(x.title))}<small class="muted"> · played ${runs.length} time${runs.length === 1 ? '' : 's'}</small></span><b>${best ? `best ${markText(best)} ${BAND_NAME[best.band]}` : '–'}</b></li>`;
       }).join('')}</ul>
     </section>` : ''}
-    ${history.length ? `<section class="card"><h3>Recent play-throughs</h3><ul class="log recent">${history.slice(-5).reverse().map((h) => `<li><span class="who"><span class="mini-badge ${bandTone(runMark(h).band)}">${markText(runMark(h))}</span><span>${esc(findPiece(h.pieceId)?.title ?? 'A removed piece')}</span></span><small class="muted">${ago(h.at)}</small></li>`).join('')}</ul></section>` : ''}
+    ${history.length ? `<section class="card"><h3>Recent play-throughs</h3><ul class="log recent">${history.slice(-5).reverse().map((h) => `<li><span class="who"><span class="mini-badge ${bandTone(runMark(h).band)}">${markText(runMark(h))}</span><span>${esc(shortTitle(findPiece(h.pieceId)?.title ?? 'A removed piece'))}</span></span><small class="muted">${ago(h.at)}</small></li>`).join('')}</ul></section>` : ''}
     <button class="btn block" id="stats-report" type="button">${ICONS.trophy} This week's report card</button>`;
 
   root.querySelector('#stats-back').addEventListener('click', back);

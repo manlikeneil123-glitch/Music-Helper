@@ -3,7 +3,7 @@
 import { ICONS } from './icons.js';
 import { load, save } from './store.js';
 
-const LEVELS = ['Just starting', 'Initial – Grade 1', 'Grade 2 – 3', 'Grade 4 and above'];
+const LEVELS = ['Just starting', 'Initial – Grade 1', 'Grade 2 – 3', 'Grade 4 – 5', 'Grade 6 – 8'];
 // Board and kind of exam in one choice, so setup stays short. Pieces-only exams have no
 // scales or sight-reading, and the plan follows that.
 const BOARDS = [
@@ -73,7 +73,7 @@ export function mountWelcome(el, onDone) {
         <div class="choice-row">${GOALS.map((g) => `<button type="button" class="choice" data-goal="${g}">${g} min</button>`).join('')}</div>
       </fieldset>
       <button class="btn primary block" type="submit">Get started</button>
-      ${profile() ? '' : '<button class="btn ghost link" type="button" id="w-skip">Skip for now (uses the usual settings)</button>'}
+      ${profile() ? '' : '<button class="btn ghost link" type="button" id="w-skip">Skip for now (marks as ABRSM until you change it)</button>'}
       <p class="fine">Your progress stays on this device unless you make an account.</p>
       <nav class="legal-links" aria-label="About Stave"><a href="privacy.html">Privacy</a><a href="terms.html">Terms</a><a href="help.html">Help</a><a href="accessibility.html">Accessibility</a></nav>
     </form>
@@ -99,7 +99,7 @@ export function mountWelcome(el, onDone) {
   };
   form.querySelectorAll('[data-teacher]').forEach((b) => b.addEventListener('click', () => setTeacher(b.dataset.teacher === 'yes')));
   form.querySelectorAll('[data-goal]').forEach((b) => b.addEventListener('click', () => setGoal(Number(b.dataset.goal))));
-  form.querySelector('#w-level').value = p.level;
+  form.querySelector('#w-level').value = p.level === 'Grade 4 and above' ? 'Grade 4 – 5' : p.level;
   form.querySelector('#w-board').value = p.examType === 'performance' && p.board !== 'Not doing exams' ? `${p.board}|performance` : p.board;
   form.querySelector('#w-strict').value = p.strictness ?? 'standard';
   form.querySelector('#w-lesson').value = p.lessonDay ?? '';

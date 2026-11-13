@@ -31,7 +31,7 @@ export function assignmentText(a) {
   const piece = PIECES.find((p) => p.id === a.piece_id)?.title;
   return [
     a.from_bar ? `bar${a.to_bar && a.to_bar !== a.from_bar ? `s ${a.from_bar}–${a.to_bar}` : ` ${a.from_bar}`}` : null,
-    a.target_bpm ? `${a.target_bpm} bpm` : null,
+    a.target_bpm ? `${a.target_bpm} beats a minute` : null,
     a.strictness ? STRICT[a.strictness] : null,
     a.due ? `due ${dateLabel(a.due)}` : null,
     piece && piece !== a.title ? piece : null,
@@ -52,7 +52,7 @@ function workForm(id, scores) {
         <label class="field">Piece <select name="piece">${pieceOptions(scores)}</select></label>
         <div class="row gap wrap">
           <label class="field inline">Bars <input name="from" type="number" min="1" inputmode="numeric"> to <input name="to" type="number" min="1" inputmode="numeric"></label>
-          <label class="field inline">Tempo <input name="bpm" type="number" min="20" max="300" inputmode="numeric"> bpm</label>
+          <label class="field inline">Tempo <input name="bpm" type="number" min="20" max="300" inputmode="numeric"> beats a minute</label>
         </div>
         <div class="row gap wrap">
           <label class="field inline">Checking <select name="strict"><option value="">Student's choice</option>${Object.entries(STRICT).map(([k, v]) => `<option value="${k}">${v}</option>`).join('')}</select></label>

@@ -7,13 +7,16 @@ const STAMPS = 'mh:meta:stamps'; // name -> last local change (ms), for merging 
 // open tab, a running timer) stay local.
 const LOCAL_ONLY = new Set(['tab', 'inputMode', 'micCal', 'micTuning', 'timer', 'mockRun', 'readAhead', 'examConditions', 'teacherWork', 'seenVersion', 'installCoach']);
 const listeners = new Set();
+// Storage blocked or full: keep this session's data here so setup and everything else still work.
+const memory = new Map();
 
 export function load(name, fallback) {
   try {
+    if (memory.has(name)) return structuredClone(memory.get(name));
     const raw = localStorage.getItem(PREFIX + name);
     return raw ? JSON.parse(raw) : fallback;
   } catch {
-    return fallback;
+    return memory.has(name) ? structuredClone(memory.get(name)) : fallback;
   }
 }
 
@@ -28,11 +31,13 @@ function stamps() {
 function write(name, value, at) {
   try {
     localStorage.setItem(PREFIX + name, JSON.stringify(value));
+    memory.delete(name);
     const s = stamps();
     s[name] = at;
     localStorage.setItem(STAMPS, JSON.stringify(s));
   } catch {
-    // Storage full or blocked (private mode) — the app still works in memory.
+    // Storage full or blocked (private mode): the app still works, from memory, for this session.
+    if (value === undefined) memory.delete(name); else memory.set(name, structuredClone(value));
   }
 }
 
@@ -135,6 +140,7 @@ export function importSynced(remote) {
 
 /** Forget this device's synced progress (sign-out on a shared phone). Device settings stay. */
 export function clearSynced() {
+  [...memory.keys()].filter((n) => !LOCAL_ONLY.has(n)).forEach((n) => memory.delete(n));
   try {
     const names = Object.keys(exportSynced());
     names.forEach((name) => localStorage.removeItem(PREFIX + name));

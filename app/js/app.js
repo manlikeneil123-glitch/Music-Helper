@@ -331,6 +331,22 @@ startSync();
 document.getElementById('top-avatar').addEventListener('click', () => show('account'));
 addEventListener('mh:account', updateTopbar);
 
+// Back (Android, or a swipe back) closes the open pop-up instead of leaving the app.
+// It goes through 'cancel', like Escape, so pop-ups that ask before closing still ask.
+const showModal = HTMLDialogElement.prototype.showModal;
+let backPending = 0; // our own history.back() calls, whose popstate isn't a Back press
+HTMLDialogElement.prototype.showModal = function () {
+  showModal.call(this);
+  history.pushState({ dialog: true }, '');
+  this.addEventListener('close', () => { if (history.state?.dialog) { backPending++; history.back(); } }, { once: true });
+};
+addEventListener('popstate', () => {
+  if (backPending) { backPending--; return; }
+  const d = [...document.querySelectorAll('dialog[open]')].pop();
+  if (!d) return;
+  if (d.dispatchEvent(new Event('cancel', { cancelable: true }))) d.close();
+  else history.pushState({ dialog: true }, ''); // it asked to stay open
+});
 document.querySelectorAll('.tabbar button').forEach((b) => b.addEventListener('click', () => show(b.dataset.tab)));
 // A light tick when a selection changes (tabs, switches, choice chips). Presses that
 // start something give their own feedback where they finish.
@@ -341,7 +357,8 @@ function takeAssignmentLink() {
   const linked = acceptAssignmentLink(location.hash);
   if (!linked) return null;
   history.replaceState(null, '', location.pathname + location.search);
-  setTimeout(() => alert(`New work${linked.from ? ` from ${linked.from}` : ''}: ${linked.title}. It's at the top of Today's plan.`), 600);
+  const have = allPieces().some((p) => p.id === linked.piece_id);
+  setTimeout(() => alert(`New work${linked.from ? ` from ${linked.from}` : ''}: ${linked.title}. ${have ? "It's at the top of Today's plan." : "First add the same music file your teacher used (Perform, More, Add a piece); then it shows at the top of Today's plan."}`), 600);
   return linked;
 }
 const linked = takeAssignmentLink();

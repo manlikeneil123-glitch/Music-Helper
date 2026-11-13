@@ -444,6 +444,8 @@ body[data-tab='welcome'] .orbs { display: block; animation: fade-in 1.2s ease bo
 .note-warn .stem, .note-warn .flag { stroke: var(--warn); }
 .note-miss .head { fill: none; stroke: var(--miss); stroke-dasharray: 2 2; }
 .note-miss .stem, .note-miss .flag { stroke: var(--miss); }
+.note-bad .cue { stroke: var(--bad); stroke-width: 1.8; fill: none; stroke-linecap: round; }
+.note-warn .cue.ring { stroke: var(--warn); stroke-width: 1.4; fill: none; }
 .note-unclear .head { fill: none; stroke: var(--unclear); stroke-width: 1.8; }
 .note-unclear .stem, .note-unclear .flag { stroke: var(--unclear); }
 .note-good .head.open, .note-bad .head.open, .note-warn .head.open { fill: var(--surface-solid); }
@@ -543,7 +545,7 @@ body[data-tab='welcome'] .orbs { display: block; animation: fade-in 1.2s ease bo
 .recent li { align-items: center; }
 .recent .who { display: flex; gap: 10px; align-items: center; min-width: 0; }
 .recent .who span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.mini-badge { width: 32px; height: 32px; flex: none; border-radius: 50%; display: grid; place-items: center; font-size: 0.78rem; font-weight: 800; color: #fff; }
+.mini-badge { min-width: 32px; width: auto; padding: 0 8px; border-radius: 999px !important; height: 32px; flex: none; border-radius: 50%; display: grid; place-items: center; font-size: 0.78rem; font-weight: 800; color: #fff; }
 .mini-badge.good { background: rgba(95, 214, 143, 0.3); color: var(--t-green); } .mini-badge.warn { background: rgba(242, 180, 90, 0.3); color: var(--t-gold); } .mini-badge.bad { background: rgba(255, 122, 122, 0.3); color: var(--t-red); }
 .empty { color: var(--muted); font-size: 0.9rem; padding: 6px 0; }
 
@@ -612,6 +614,8 @@ body[data-tab='welcome'] .orbs { display: block; animation: fade-in 1.2s ease bo
 }
 .keyboard[hidden] { display: none; }
 .keys { --w: 38px; position: relative; display: flex; height: 128px; width: calc(var(--whites) * var(--w)); margin: 0 auto; }
+/* Phones: a whole clef's range (13 white keys) fits without scrolling. */
+@media (max-width: 520px) { .keys { --w: 28px; } }
 .key { border: 0; padding: 0; font: inherit; cursor: pointer; touch-action: none; user-select: none; -webkit-user-select: none; }
 .key.white {
   width: var(--w); height: 100%; flex: none; background: var(--key-white); border: 1px solid var(--key-white-edge); border-radius: 0 0 7px 7px;
@@ -882,6 +886,8 @@ input[type='date'] { font: inherit; color: var(--ink); background: var(--raised)
 .pg-frame { position: relative; border-radius: 14px; overflow: hidden; background: #000; aspect-ratio: 16 / 9; margin: 8px 0; }
 .pg-frame video, .pg-review { width: 100%; height: 100%; object-fit: cover; display: block; border-radius: 14px; }
 .pg-review { height: auto; aspect-ratio: 16 / 9; background: #000; margin: 8px 0; }
+/* Phones on their side: keep Start and Stop on screen under the camera. */
+@media (orientation: landscape) and (max-height: 520px) { .pg-frame, .pg-review { height: 52dvh; width: auto; margin: 6px auto; } }
 .pg-guide { position: absolute; inset: 0; pointer-events: none; }
 .pg-guide span { position: absolute; left: 50%; transform: translateX(-50%); border: 2px dashed rgba(255, 255, 255, 0.7); border-radius: 12px; color: rgba(255, 255, 255, 0.85); font-size: 0.75rem; display: grid; place-items: start center; padding-top: 4px; }
 .pg-guide .face { top: 6%; width: 22%; height: 34%; }
@@ -1452,7 +1458,7 @@ dialog.score-sheet[open] { animation: sheet-up 0.32s var(--ease) both; }
 .pc-info { min-width: 0; }
 .np-kicker { margin: 0; font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; color: var(--tab-c); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 :root[data-theme='day'] .np-kicker { color: #6b2fa0; }
-#np-title { margin: 2px 0; font-size: 1.25rem; font-weight: 850; letter-spacing: -0.02em; line-height: 1.15; }
+#np-title { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; overflow-wrap: anywhere; margin: 2px 0; font-size: 1.25rem; font-weight: 850; letter-spacing: -0.02em; line-height: 1.15; }
 .np-meta { margin: 0; color: var(--muted); font-size: 0.85rem; }
 .pc { touch-action: pan-y; user-select: none; -webkit-user-select: none; }
 .pc-nav { display: flex; align-items: center; justify-content: center; gap: 6px; margin: -8px 0 14px; }

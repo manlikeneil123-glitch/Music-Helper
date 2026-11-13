@@ -26,6 +26,7 @@ import { openScan } from './scan.js';
 import { examMark, markingBoard, BAND_NAME, bandTone, bestMark } from './marking.js';
 import { celebrate } from './celebrate.js';
 import { still } from './settings.js';
+import { logPlaying } from './timer.js';
 import { expressivePlan } from './expressive.js';
 
 
@@ -74,6 +75,8 @@ let fromTeacher = []; // scores the teacher shared with their studio
 export const allPieces = () => [...fromTeacher, ...imported];
 /** Any piece by id, including the hidden built-ins (warm-up, test kit, old history). */
 export const findPiece = (id) => allPieces().find((p) => p.id === id) ?? library.find((p) => p.id === id);
+/** The piece's own name, without the composer imports put first ("Composer: Title"). */
+export const shortTitle = (t) => { const i = t.indexOf(': '); return i > 0 ? t.slice(i + 2) : t; };
 export const pieceTitle = (id) => findPiece(id)?.title ?? 'A removed piece';
 /** Everything, hidden built-ins included: for titles of old checks. */
 export const everyPiece = () => [...library, ...allPieces()];
@@ -124,7 +127,7 @@ export function practiseAssignment(a) {
     updateTempoLock();
     $('#check-bpm').value = a.target_bpm;
     updateBpmLabel();
-    setStatus(`Your teacher set ${a.target_bpm} bpm. Press Start when you're ready.`, '');
+    setStatus(`Your teacher set ${a.target_bpm} beats a minute. Press Start when you're ready.`, '');
   }
   return true;
 }
@@ -154,7 +157,6 @@ export function performPiece(pieceId, { exam = true, bpm: tempo = null, onDone =
 
 const bpm = () => Number(root.querySelector('#check-bpm').value);
 const $ = (sel) => root.querySelector(sel);
-const tone = (score) => (score >= 85 ? 'good' : score >= 60 ? 'warn' : 'bad');
 
 // ---- Which notes are being practised ----------------------------------------------
 function applyHands(score, which) {
@@ -307,7 +309,7 @@ async function start() {
   const beat0Ctx = begin + COUNT_IN * spb;
   const t0 = ctxToPerf(beat0Ctx);
   const msPerBeat = spb * 1000;
-  rec = { t0, beat0Ctx, msPerBeat, events: [], open: new Map(), pedal: [], pedalDown: null, sawPedal: false, source: null, cancelled: false, recorder };
+  rec = { t0, beat0Ctx, msPerBeat, events: [], open: new Map(), pedal: [], pedalDown: null, sawPedal: false, source: null, cancelled: false, recorder, wall: Date.now() };
   setStatus('Count-in: 1 2 3 4', 'warn');
   setStartLabel(true);
   $('#check-result').hidden = true;
@@ -325,7 +327,7 @@ const freeTempo = () => practice === 'perform' && !drill;
 const MAX_LISTEN_MS = 20 * 60000; // a safety net, far longer than any exam piece
 function startFree(recorder) {
   const t0 = performance.now();
-  rec = { t0, beat0Ctx: audio().currentTime, msPerBeat: 60000 / base.targetBpm, events: [], open: new Map(), pedal: [], pedalDown: null, sawPedal: false, source: null, cancelled: false, recorder, free: true };
+  rec = { t0, beat0Ctx: audio().currentTime, msPerBeat: 60000 / base.targetBpm, events: [], open: new Map(), pedal: [], pedalDown: null, sawPedal: false, source: null, cancelled: false, recorder, free: true, wall: Date.now() };
   setStatus('', '');
   setStartLabel(true);
   $('#check-result').hidden = true;
@@ -384,6 +386,7 @@ function stop() {
   rec.cancelled = true;
   const r = rec;
   rec = null;
+  logPlaying(Math.min(Date.now() - r.wall, 20 * 60000));
   keepAwake(false);
   document.body.classList.remove('perf-listening');
   setBackgroundPaused(false);
@@ -469,6 +472,12 @@ function runMic(args, record) {
 }
 
 function finish({ played, source, msPerBeat, unclear = [], spread = [], pedalEvents = null, record = true }) {
+  // Nothing (or next to nothing) heard: no mark, no history, just say so.
+  if (played.length < Math.min(4, timeline(part?.piece ?? piece).length)) {
+    part = null;
+    setStatus(source === 'mic' ? "Stave didn't hear enough notes to mark. Put the phone near the piano and try again." : "Stave didn't get enough notes to mark. Play a little more and try again.", 'bad');
+    return;
+  }
   const marked = part?.piece ?? piece;
   const d = density(marked);
   const result = analyse({
@@ -478,6 +487,12 @@ function finish({ played, source, msPerBeat, unclear = [], spread = [], pedalEve
   });
   const { board, type } = markingBoard();
   result.exam = examMark(result, board, type);
+  // "Ready" in notes and rhythm isn't the whole mark: don't call it ready below Distinction.
+  if (result.feedback?.headline?.startsWith('Excellent') && result.exam.band !== 'distinction') {
+    const low = result.exam.criteria.filter((c) => c.band).sort((a, b) => LEVELS.indexOf(a.band) - LEVELS.indexOf(b.band))[0];
+    result.feedback.headline = 'Notes and rhythm are secure.';
+    if (low) result.feedback.next = `To lift the mark, work on ${low.label.toLowerCase()}. ${low.comment}`;
+  }
   result.part = part ? { from: part.from, to: part.to, offset: part.offset } : null;
   part = null;
   lastResult = result;
@@ -517,7 +532,7 @@ function markSheet(m, part = null) {
   return `<div class="mark-sheet">
       <div class="mark-head">
         <div class="score-badge ${bandTone(m.band)}"><b data-count="${m.mark}">${m.mark}</b><small>/${m.of}</small></div>
-        <div><p class="kicker">${m.board} mark${part ? ` · bars ${part.from}–${part.to}` : ''}</p><b class="mark-band ${bandTone(m.band)}">${BAND_NAME[m.band]}</b></div>
+        <div><p class="kicker">Estimated ${m.board} mark${part ? ` · bars ${part.from}–${part.to}` : ''}</p><b class="mark-band ${bandTone(m.band)}">${BAND_NAME[m.band]}</b></div>
       </div>
     </div>`;
 }
@@ -526,7 +541,7 @@ function markSheet(m, part = null) {
 function markCriteria(m) {
   return `<div class="mark-sheet">
       <dl class="criteria">${m.criteria.map((c) => `<div><dt>${c.label}${c.max ? ` <span class="muted">${c.mark}/${c.max}</span>` : ''}</dt><dd><span class="crit-band">${meter(c.band)}<span class="band-chip ${c.band ? bandTone(c.band) : ''}">${c.band ? BAND_NAME[c.band] : 'Not heard'}</span></span><span class="crit-text">${c.comment}</span></dd></div>`).join('')}</dl>
-      <p class="fine">An estimate, marked a little strictly so the real exam doesn't surprise you.${m.rough ? ' Tone and shape are rough with the microphone; a digital piano with a cable hears them exactly.' : ''} An examiner hears more than any app can.</p>
+      <p class="fine">An estimate, marked a little strictly so the real exam doesn't surprise you.${m.rough ? ' Loudness and expression are rough with the microphone; a digital piano with a cable hears them exactly.' : ''} An examiner hears more than any app can.</p>
     </div>`;
 }
 
@@ -535,7 +550,6 @@ function showResult(r, source) {
   box.hidden = false;
   // The result takes the place of the big button until they play again.
   document.body.classList.toggle('perf-result', freeTempo());
-  const pct = (x) => `${Math.round(x * 100)}%`;
   const canDrill = r.worstBar != null && !r.ready && r.counts.correct + r.counts.early + r.counts.late > 0;
   const crits = r.exam.criteria.filter((c) => c.band);
   const order = ['below', 'pass', 'merit', 'distinction'];
@@ -544,7 +558,7 @@ function showResult(r, source) {
   box.innerHTML = `
     ${markSheet(r.exam, r.part)}
     <div class="two-things">
-      ${top ? `<p class="good-thing"><b>Well done</b>${top.comment}</p>` : ''}
+      <p class="good-thing"><b>Well done</b>${praise(top, r)}</p>
       <p class="next-thing"><b>Next time</b>${r.feedback.next}</p>
     </div>
     <div class="result-actions">
@@ -553,16 +567,10 @@ function showResult(r, source) {
     </div>
     <details class="why"><summary>See all the marks</summary>
     ${markCriteria(r.exam)}
-    <p class="muted small">${r.feedback.headline} Notes ${pct(r.pitchAccuracy)} · Rhythm ${pct(r.rhythmAccuracy)} · ${Math.round(r.playedBpm)} beats a minute${source === 'mic' ? ' · microphone' : ''} · ${STRICTNESS[r.strictness].label} marking</p>
-    ${r.continuity || r.pulse ? `<div class="subscores">
-      ${r.continuity ? `<span class="sub ${tone(r.continuity.score)}" title="Stops, restarts and hesitations"><b>${r.continuity.score}</b> Kept going</span>` : ''}
-      ${r.pulse ? `<span class="sub ${tone(r.pulse.score)}" title="How evenly you kept the beat${examMode ? ', with no metronome' : ''}"><b>${r.pulse.score}</b> Pulse${examMode ? ' (no metronome)' : ''}</span>` : ''}
-      ${r.continuity?.slips ? `<span class="sub" title="Slips you played straight through"><b>${r.continuity.recovered}/${r.continuity.slips}</b> Slips recovered</span>` : ''}
-    </div>` : ''}
+    <p class="muted small">${r.feedback.headline} ${Math.round(r.playedBpm)} beats a minute${source === 'mic' ? ' · microphone' : ''} · ${STRICTNESS[r.strictness].label} marking</p>
     <ul class="feedback-list">${r.feedback.lines.map((l) => `<li class="${l.kind}">${l.text}</li>`).join('')}</ul>
-    ${freeTempo() ? '<button class="btn block" id="see-notes" type="button">See your notes on the score</button>' : ''}
     ${canDrill ? `<button class="btn primary block" id="drill-start" type="button">Practise bar ${r.worstBar} until it's right ${DRILL_STREAK} times in a row</button>` : ''}
-    <div class="legend"><span class="good">● correct</span><span class="warn">● timing</span><span class="bad">● wrong</span><span class="miss">● missed</span>${source === 'mic' ? '<span class="unclear">● unclear</span>' : ''}</div>
+    <div class="legend"><span class="good">● correct</span><span class="warn">◯ timing</span><span class="bad">× wrong</span><span class="miss">◌ missed</span>${source === 'mic' ? '<span class="unclear">● unclear</span>' : ''}</div>
     ${sendHook && (lastTake?.compressed || lastNotes) ? `<button class="btn block" id="send-take" type="button">${ICONS.mic} Send this take to your teacher</button>` : ''}
     ${source === 'mic' && lastMic ? verdictPanel(r) : ''}
     </details>`;
@@ -716,7 +724,7 @@ function renderDrillBanner(note = '') {
   const need = drill.kind === 'add' && drill.to < drill.end ? ADD_STREAK : DRILL_STREAK;
   const dots = Array.from({ length: need }, (_, i) => `<span class="streak-dot${i < drill.streak ? ' on' : ''}"></span>`).join('');
   const title = drill.kind === 'add' ? `Building bars ${drill.from}–${drill.end}: now ${span(drill)}` : `Practising ${span(drill)}`;
-  b.innerHTML = `<div class="row between"><b>${title} · ${drill.bpm} bpm</b><span class="dots" role="img" aria-label="${drill.streak} of ${need} clean">${dots}</span></div>
+  b.innerHTML = `<div class="row between"><b>${title} · ${drill.bpm} beats a minute</b><span class="dots" role="img" aria-label="${drill.streak} of ${need} clean">${dots}</span></div>
     ${note ? `<p class="small">${note}</p>` : ''}
     <button class="btn block" id="drill-stop" type="button">Stop</button>`;
   b.querySelector('#drill-stop').addEventListener('click', () => {
@@ -940,7 +948,7 @@ function wireSwipe() {
   let sx = null, sy = 0, dx = 0, dragging = false, swiped = false;
   card.addEventListener('pointerdown', (e) => {
     if (rec || learn || swipeList().length < 2) return;
-    sx = e.clientX; sy = e.clientY; dx = 0; dragging = false;
+    sx = e.clientX; sy = e.clientY; dx = 0; dragging = false; swiped = false;
   });
   card.addEventListener('pointermove', (e) => {
     if (sx == null) return;
@@ -981,6 +989,18 @@ function showEmpty(on) {
 const escapeHtml = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 
 /** hidden: allow a built-in (the warm-up scale, or a piece the app itself asks for). */
+// "Well done" is always praise: the best criterion if it earned Merit or better, otherwise the effort.
+const PRAISE = {
+  pitch: 'Your notes were secure.', time: 'You kept a steady beat.', tone: 'A good range of loud and soft.',
+  shape: 'You shaped the music with the dynamics.', performance: 'You kept going like a real performance.',
+  accuracy: 'Accurate, fluent playing.', technical: 'Steady, controlled playing.', communication: 'You brought the music to life.',
+};
+function praise(top, r) {
+  if (top && ['merit', 'distinction'].includes(top.band) && PRAISE[top.id]) return PRAISE[top.id];
+  if (r.part) return `You played bars ${r.part.from} to ${r.part.to}. Every play-through helps.`;
+  return 'You played it through, and now you have a mark to beat.';
+}
+
 // The piece as a "now playing" card: its own first line of music as the cover,
 // the composer above the title (imports title pieces "Composer: Title").
 function showNowPlaying() {
@@ -1004,6 +1024,7 @@ function selectPiece(id, { hidden = id === WARMUP } = {}) {
   showEmpty(!found);
   if (!found) return;
   base = found;
+  setStatus('', '');
   document.body.classList.remove('perf-result');
   save('checkPiece', base.id);
   fillPieceSelect();
@@ -1147,7 +1168,7 @@ async function analyseFile(file) {
       samples, sampleRate: buf.sampleRate, expected: timeline(piece), msPerBeat,
       beat0Sec: firstOnsetSec(samples, buf.sampleRate), latencyMs: 0, tuningCents: cal?.tuningCents ?? 0,
     }, false);
-    setStatus(`Scored ${file.name} against “${piece.title}” at ${labBpm} bpm (not saved to your progress).`, '');
+    setStatus(`Scored ${file.name} against “${piece.title}” at ${labBpm} beats a minute (not saved to your progress).`, '');
   } catch {
     setStatus("Couldn't read that file. Try a WAV, MP3 or M4A recording.", 'bad');
   }
@@ -1164,7 +1185,7 @@ function downloadTake() {
 }
 
 function updateBpmLabel() {
-  $('#check-bpm-label').textContent = `${bpm()} bpm`;
+  $('#check-bpm-label').textContent = `${bpm()} beats a minute`;
 }
 
 export function mountCheck(el) {
@@ -1305,7 +1326,7 @@ export function mountCheck(el) {
       <details class="lab">
         <summary>Advanced: test the microphone</summary>
         <p class="muted small">Score a recording of the selected piece, starting on beat 1, to check how well the microphone works on your piano.</p>
-        <label class="field inline">Recorded at <input id="lab-bpm" type="number" min="30" max="240" step="1" inputmode="numeric"> bpm</label>
+        <label class="field inline">Recorded at <input id="lab-bpm" type="number" min="30" max="240" step="1" inputmode="numeric"> beats a minute</label>
         <input id="lab-file" type="file" accept="audio/*" aria-label="Choose a recording to analyse">
         <button class="btn block" id="lab-download" type="button" hidden>Save last mic take (.wav)</button>
         <button class="btn block" id="lab-kit" type="button">Recording kit: tune checking to real pianos</button>

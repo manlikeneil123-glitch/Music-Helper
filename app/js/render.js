@@ -238,6 +238,9 @@ export function renderScore(piece, opts = {}) {
         const colour = opts.statusOf?.(n);
         const hg = el('g', { class: colour ? `note-${colour}` : '' });
         hg.append(el('ellipse', { cx: hx, cy: hy, rx, ry, transform: `rotate(-20 ${hx} ${hy})`, class: open ? 'head open' : 'head' }));
+        // Not by colour alone: a cross on a wrong note, a ring round a timing slip.
+        if (colour === 'bad') { const c = hx + rx + 5, d = ry; hg.append(el('path', { d: `M${c - d} ${hy - d}L${c + d} ${hy + d}M${c + d} ${hy - d}L${c - d} ${hy + d}`, class: 'cue' })); }
+        if (colour === 'warn') hg.append(el('ellipse', { cx: hx, cy: hy, rx: rx + 3, ry: ry + 3, class: 'cue ring' }));
         const acc = accidentalFor(st, n);
         if (acc) hg.append(accidental(acc, x - rx - GAP * 1.4 * scale, hy, scale));
         if (dotted) {

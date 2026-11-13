@@ -1,5 +1,5 @@
 // Offline-first app shell. Bump VERSION when shipping changes.
-const VERSION = 'stave-0.23.0';
+const VERSION = 'stave-0.24.0';
 const SHELL = [
   './',
   'index.html',
@@ -10,8 +10,8 @@ const SHELL = [
   'icons/icon.svg',
   'icons/icon-192.png',
   'icons/maskable-512.png',
-  'icons/icon-192.png',
   'js/app.js',
+  'js/zip.js',
   'js/background.js',
   'js/icons.js',
   'js/welcome.js',

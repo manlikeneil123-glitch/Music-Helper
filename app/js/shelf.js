@@ -1,6 +1,6 @@
 // The shelf on Today: each piece stands in its own lit niche. Tapping one zooms into
 // it and the details slide in, with Perform (play it through) and Learn (learn slowly).
-import { allPieces, checkHistory, troubleBars } from './check.js';
+import { allPieces, checkHistory, troubleBars, shortTitle } from './check.js';
 import { ICONS } from './icons.js';
 import { bestMark, markText, BAND_NAME } from './marking.js';
 import { still } from './settings.js';
@@ -21,7 +21,7 @@ function cover(p, i) {
     }
   }
   const art = covers.get(p.id);
-  return art ? `<div class="piece-page cover paper" aria-hidden="true" style="--tint:${TINTS[i % TINTS.length]}"><span class="cover-title">${esc(p.title)}</span>${art}</div>` : page(i);
+  return art ? `<div class="piece-page cover paper" aria-hidden="true" style="--tint:${TINTS[i % TINTS.length]}"><span class="cover-title">${esc(shortTitle(p.title))}</span>${art}</div>` : page(i);
 }
 
 const TINTS = ['#ff8a5c', '#ff4f8b', '#c06bff', '#ffb35c', '#ff6b8b'];
@@ -47,7 +47,7 @@ export function shelfHtml() {
   const pieces = allPieces();
   const niches = pieces.map((p, i) => `
     <li><button type="button" class="niche" data-piece="${esc(p.id)}" style="--tint:${TINTS[i % TINTS.length]}" aria-label="${esc(p.title)}: open">
-      ${cover(p, i)}<span class="ledge" aria-hidden="true"></span><span class="niche-name">${esc(p.title)}</span>
+      ${cover(p, i)}<span class="ledge" aria-hidden="true"></span><span class="niche-name">${esc(shortTitle(p.title))}</span>
     </button></li>`);
   if (!pieces.length) niches.push(`<li><button type="button" class="niche add" data-add><span class="plus" aria-hidden="true">+</span><span class="ledge" aria-hidden="true"></span><span class="niche-name">Add a piece</span></button></li>`);
   while (niches.length < MIN_NICHES) niches.push('<li aria-hidden="true"><span class="niche empty"><span class="ledge"></span></span></li>');

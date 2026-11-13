@@ -118,10 +118,12 @@ export function openPerformanceRecorder(exam) {
         <p class="muted small">Tick what you're happy with. Anything unticked is this week's practice.</p>
         <ul class="pg-criteria">${CRITERIA.map((c, i) => `<li><label><input type="checkbox" data-c="${i}"> ${c}</label></li>`).join('')}</ul>
         <ul class="pg-list"><li>Face, hands, feet and keyboard visible all the way through?</li><li>No cuts or pauses in the recording?</li>${grade >= 6 ? '<li>ID shown clearly at the start?</li>' : ''}</ul>`);
+      saved = false;
+      dlg.querySelector('a[download]').addEventListener('click', () => { saved = true; });
       const share = dlg.querySelector('[data-share]');
       if (!navigator.canShare?.({ files: [file] })) share.hidden = true;
       share.addEventListener('click', async () => {
-        try { await navigator.share({ files: [file], title: 'Performance Grade recording' }); } catch { /* dismissed */ }
+        try { await navigator.share({ files: [file], title: 'Performance Grade recording' }); saved = true; } catch { /* dismissed */ }
       });
       dlg.querySelector('[data-again]').addEventListener('click', () => {
         if (!confirm('Record a new take? Save this one first if you might want it.')) return;
@@ -133,8 +135,10 @@ export function openPerformanceRecorder(exam) {
     rec.stop();
   }
 
+  let saved = true;
   const close = () => {
     if (rec && !confirm('You are still recording. Stop and throw this take away?')) return;
+    if (!rec && url && !saved && !confirm('You haven\'t saved this video. Close and lose it?')) return;
     clearInterval(tick);
     if (rec) { rec.onstop = null; rec.stop(); rec = null; }
     stream?.getTracks().forEach((t) => t.stop());

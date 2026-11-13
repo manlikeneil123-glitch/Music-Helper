@@ -162,8 +162,8 @@ function render() {
   const perf = isPerformance(e.type);
   const recorder = `
     <section class="card${perf ? ' pg-lead' : ''}">
-      <h3>${perf ? 'Film your exam' : 'Performance Grade recorder'}</h3>
-      <p class="muted small">${perf ? 'Record the whole programme in one continuous take, with a framing guide and the checklist. Practise filming before the real one.' : 'Doing a Performance Grade or Digital Grade instead? Record your whole programme in one continuous video take, with a framing guide and a checklist.'} The video stays on your phone.</p>
+      <h3>${perf ? 'Film your exam' : 'Film a performance'}</h3>
+      <p class="muted small">${perf ? 'Record the whole programme in one continuous take, with a framing guide and the checklist. Practise filming before the real one.' : `Doing a digital exam instead (${e.board === 'Trinity' ? 'Trinity digital' : 'ABRSM Performance Grade'})? Record your whole programme in one continuous video take, with a framing guide and a checklist.`} The video stays on your phone.</p>
       <button class="btn ${perf ? 'primary' : ''} block" type="button" id="pg-open">${ICONS.camera} Record a performance</button>
     </section>`;
   root.innerHTML = `
@@ -209,6 +209,8 @@ function wireSetup(e) {
     if (!date) return alert('Pick a date, even a rough one: the plan counts back from it.');
     const board = root.querySelector('#ex-board').value;
     save('exam', { ...e, board, type, grade: root.querySelector('#ex-grade').value, date, pieces: fitPieces(e.pieces ?? [], examSpec(board, type).piece.count) });
+    // One board everywhere: Today, the plan and the marks read the setup too.
+    if (profile()) save('profile', { ...profile(), board, examType: type });
     editing = false;
     render();
     changed();

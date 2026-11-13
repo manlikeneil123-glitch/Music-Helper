@@ -25,7 +25,7 @@ export const BOARDS = {
       grade >= 6
         ? { id: 'sight', label: 'Sight reading', marks: 10 }
         : { id: 'test1', label: 'Supporting test 1', marks: 10, choose: ['Sight reading', 'Aural', 'Improvisation', 'Musical knowledge'] },
-      { id: 'test2', label: 'Supporting test 2', marks: 10, choose: grade >= 6 ? ['Aural', 'Improvisation'] : ['Sight reading', 'Aural', 'Improvisation', 'Musical knowledge'] },
+      { id: 'test2', label: 'Supporting test 2', marks: 10, choose: grade >= 6 ? ['Aural', 'Improvisation'] : ['Aural', 'Sight reading', 'Improvisation', 'Musical knowledge'] },
     ],
   },
 };
@@ -93,7 +93,13 @@ export function pieceReadiness(runs, board = 'ABRSM', now = Date.now(), minRuns 
   // Well under tempo can't be better than Pass: the music isn't there yet.
   if (tempo < 0.85) composite = Math.min(composite, 0.86);
   else if (tempo < 0.95) composite = Math.min(composite, 0.93);
-  const band = composite >= 0.95 ? 'distinction' : composite >= 0.88 ? 'merit' : composite >= 0.78 ? 'pass' : 'below';
+  let band = composite >= 0.95 ? 'distinction' : composite >= 0.88 ? 'merit' : composite >= 0.78 ? 'pass' : 'below';
+  // Runs marked like an examiner: readiness is their average mark, so the Exam tab agrees with Perform.
+  const marked = recent.filter((r) => r.mark != null && r.of === spec.marks);
+  if (marked.length >= minRuns) {
+    const mean = Math.round(marked.reduce((a, r) => a + r.mark, 0) / marked.length);
+    band = ['distinction', 'merit', 'pass'].find((b) => mean >= spec.bands[b][0]) ?? 'below';
+  }
   const [lo, hi] = spec.bands[band];
   const weakest = [['notes', pitch], ['rhythm', rhythm], ['keeping going', kept], ['pulse', pulse], ['tempo', tempo]].sort((a, b) => a[1] - b[1])[0][0];
   return { band, label: bandLabel(band), range: band === 'below' ? `under ${spec.bands.pass[0]}` : `${lo}–${hi}`, of: spec.marks, runs: recent.length, pitch, rhythm, kept, pulse, tempo, weakest };

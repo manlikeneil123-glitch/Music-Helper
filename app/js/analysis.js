@@ -659,7 +659,7 @@ function feedback(r, S) {
   const missed = r.notes.filter((n) => n.status === 'missed' && !n.notReached);
 
   if (r.counts.correct + r.counts.early + r.counts.late === 0) {
-    return { headline: "I didn't hear the piece. Make sure your keyboard or microphone is working, then try again.", lines: [], next: 'Press Listen first to hear how it goes.' };
+    return { headline: "I didn't hear the piece. Make sure your keyboard or microphone is working, then try again.", lines: [], next: 'Tap "Hear the piece" (under More) to hear how it goes.' };
   }
 
   // Dense textures on the mic: only say what we're confident about, and say so.
@@ -674,12 +674,12 @@ function feedback(r, S) {
   if (r.counts.extra) lines.push({ kind: 'warn', text: `${r.counts.extra} extra note${r.counts.extra > 1 ? 's' : ''}, usually a slip or a restart. Keep going through mistakes instead of fixing them mid-piece.` });
 
   const pct = Math.round((r.tempoRatio - 1) * 100);
-  if (Math.abs(r.tempoRatio - 1) >= S.tempo) lines.push({ kind: 'warn', text: `You played at about ${Math.round(r.playedBpm)} bpm; the target was ${Math.round(r.targetBpm)} (${pct > 0 ? `${pct}% too fast` : `${-pct}% too slow`}).` });
-  else lines.push({ kind: 'good', text: `Tempo was on target (~${Math.round(r.playedBpm)} bpm).` });
+  if (Math.abs(r.tempoRatio - 1) >= S.tempo) lines.push({ kind: 'warn', text: `You played at about ${Math.round(r.playedBpm)} beats a minute; the target was ${Math.round(r.targetBpm)} (${pct > 0 ? `${pct}% too fast` : `${-pct}% too slow`}).` });
+  else lines.push({ kind: 'good', text: `Tempo was on target (~${Math.round(r.playedBpm)} beats a minute).` });
 
   for (const c of r.tempoChanges.slice(0, 2)) {
     const span = c.from === c.to ? `bar ${c.from}` : `bars ${c.from}–${c.to}`;
-    const what = c.kind === 'slower' ? `slowed to ~${c.extreme} bpm` : `sped up to ~${c.extreme} bpm`;
+    const what = c.kind === 'slower' ? `slowed to ~${c.extreme} beats a minute` : `sped up to ~${c.extreme} beats a minute`;
     lines.push({
       kind: S.expressive ? 'warn' : 'bad',
       text: S.expressive
@@ -687,7 +687,7 @@ function feedback(r, S) {
         : `You ${what} in ${span} (you started at ~${c.median}). For an exam, hold the tempo steady.`,
     });
   }
-  if (!r.tempoChanges.length && r.drift != null && Math.abs(r.drift) >= 6) lines.push({ kind: 'warn', text: r.drift > 0 ? `You sped up by ~${Math.round(r.drift)} bpm in the second half, a classic sign of rushing the parts you know.` : `You slowed down by ~${Math.round(-r.drift)} bpm in the second half, so the end may need extra practice.` });
+  if (!r.tempoChanges.length && r.drift != null && Math.abs(r.drift) >= 6) lines.push({ kind: 'warn', text: r.drift > 0 ? `You sped up by ~${Math.round(r.drift)} beats a minute in the second half, a classic sign of rushing the parts you know.` : `You slowed down by ~${Math.round(-r.drift)} beats a minute in the second half, so the end may need extra practice.` });
 
   const off = r.notes.filter((n) => n.status === 'early' || n.status === 'late');
   if (off.length) {
@@ -711,7 +711,7 @@ function feedback(r, S) {
     if (c.slips && c.recovered === c.slips) lines.push({ kind: 'good', text: `You kept going after every slip (${c.slips}). That's exactly what examiners want to hear.` });
     else if (c.slips >= 2) lines.push({ kind: 'warn', text: `You recovered from ${c.recovered} of ${c.slips} slips without losing your place.` });
   }
-  if (r.pulse && r.pulse.score < 65) lines.push({ kind: 'warn', text: `Your pulse wandered (${r.pulse.score}/100). Tap your foot or count in your head; practise once without the metronome to test it.` });
+  if (r.pulse && r.pulse.score < 65) lines.push({ kind: 'warn', text: `Your beat wasn't steady. Tap your foot or count in your head as you play.` });
   for (const m of r.musicality) lines.push(m);
   if (r.dense) lines.push({ kind: 'warn', text: "This piece is dense for the microphone, so I've only flagged notes I'm fairly sure about. For full note-by-note checking, use a MIDI keyboard." });
 
@@ -719,23 +719,23 @@ function feedback(r, S) {
   const slower = Math.max(40, Math.round((Math.min(r.playedBpm, r.targetBpm) * 0.8) / 4) * 4);
   if (r.stoppedAtBar) {
     headline = 'Keep going to the end.';
-    next = `Play the whole piece at ${slower} bpm without stopping. Fix mistakes afterwards, not mid-piece.`;
+    next = `Play the whole piece at ${slower} beats a minute without stopping. Fix mistakes afterwards, not mid-piece.`;
   } else if (r.pitchAccuracy < 0.8) {
     headline = 'Notes first, speed later.';
-    next = `Practise ${r.worstBar ? `bar ${r.worstBar}` : 'the tricky bars'} on its own, slowly, 3 times correctly in a row, then play the whole piece at ${slower} bpm.`;
+    next = `Practise ${r.worstBar ? `bar ${r.worstBar}` : 'the tricky bars'} on its own, slowly, 3 times correctly in a row, then play the whole piece at ${slower} beats a minute.`;
   } else if (r.rhythmAccuracy < 0.8) {
     headline = 'Right notes. Now lock in the rhythm.';
-    next = `Turn the metronome on and play at ${slower} bpm. Count out loud.`;
+    next = `Play at ${slower} beats a minute, counting out loud to keep the beat steady.`;
   } else if (r.continuity && (r.continuity.stops || r.continuity.restarts.length)) {
     headline = 'Right notes. Now play it without stopping.';
-    next = `Play it through at ${slower} bpm. If you slip, keep going and fix it afterwards. Examiners mark the whole performance, and stopping costs more than a slip.`;
+    next = `Play it through at ${slower} beats a minute. If you slip, keep going and fix it afterwards. Examiners mark the whole performance, and stopping costs more than a slip.`;
   } else if (r.tempoChanges.some((c) => c.kind === 'faster' && c.extreme / c.median >= 1.15)) {
     const c = r.tempoChanges.find((x) => x.kind === 'faster');
     headline = 'Keep a steady pulse.';
-    next = `Play with the metronome on at ${Math.round(r.targetBpm)} bpm and don't let it pull ahead from bar ${c.from}.`;
+    next = `Count steadily at about ${Math.round(r.targetBpm)} beats a minute and don't let it run ahead from bar ${c.from}.`;
   } else if (r.tempoRatio < 1 - S.tempo) {
     headline = 'Accurate and steady. Time to build speed.';
-    next = `Next run: ${Math.min(Math.round(r.targetBpm), Math.round(r.playedBpm / 4) * 4 + 8)} bpm.`;
+    next = `Next time, try it a little faster: about ${Math.min(Math.round(r.targetBpm), Math.round(r.playedBpm / 4) * 4 + 8)} beats a minute.`;
   } else if (r.ready && r.musicality.length) {
     headline = 'Notes and rhythm are secure. Now the music.';
     next = r.musicality[0].text;

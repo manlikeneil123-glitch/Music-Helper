@@ -38,6 +38,8 @@ ok(qualityStreak({ [d(0)]: { clean: 1 }, [d(2)]: { bars: 1 } }, new Date('2026-1
 ok(qualityStreak({ [d(0)]: { clean: 1 }, [d(3)]: { bars: 1 } }, new Date('2026-10-30T12:00')) === 1, 'two missed days in a row break it');
 ok(qualityStreak({ [d(0)]: { clean: 1 }, [d(2)]: { clean: 1 }, [d(4)]: { clean: 1 } }, new Date('2026-10-30T12:00')) === 2, 'only one rest day a week');
 ok(qualityStreak({ [d(0)]: { clean: 1 }, [d(2)]: { clean: 1 }, [d(3)]: { clean: 1 }, [d(4)]: { clean: 1 }, [d(5)]: { clean: 1 }, [d(6)]: { clean: 1 }, [d(7)]: { clean: 1 }, [d(8)]: { clean: 1 }, [d(10)]: { clean: 1 } }, new Date('2026-10-30T12:00')) === 9, 'a rest day a week apart is fine again');
+ok(qualityStreak({ [d(2)]: { clean: 1 }, [d(3)]: { clean: 1 } }, new Date('2026-10-30T12:00')) === 2, 'the morning after a rest day, before playing, the streak still shows');
+ok(qualityStreak({ [d(3)]: { clean: 1 }, [d(4)]: { clean: 1 } }, new Date('2026-10-30T12:00')) === 0, 'two missed days, nothing yet today: broken');
 
 // Pieces-only exam: no scales or sight-reading anywhere in the day.
 for (const [goal, board] of [[20, 'ABRSM'], [45, 'ABRSM'], [30, 'Trinity']]) {

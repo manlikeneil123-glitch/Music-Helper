@@ -1,8 +1,9 @@
 // Today's plan: what a teacher would set between lessons, shaped by the student's
 // stage, exam board and daily goal, and pointed at whatever went wrong this week.
 // Pure: app.js passes in the data, tests call it directly.
+import { bestMark, markText } from './marking.js';
 
-export const LEVEL_TIER = { 'Just starting': 0, 'Initial – Grade 1': 1, 'Grade 2 – 3': 2, 'Grade 4 and above': 3 };
+export const LEVEL_TIER = { 'Just starting': 0, 'Initial – Grade 1': 1, 'Grade 2 – 3': 2, 'Grade 4 – 5': 3, 'Grade 6 – 8': 3, 'Grade 4 and above': 3 };
 
 // Share of the session per part, by stage: beginners read more; later grades spend
 // longer on pieces and technique, where most exam marks are.
@@ -23,18 +24,18 @@ const PERF_SPLIT = [
 ];
 
 function warmUp(tier, board, bpm) {
-  if (tier === 0) return { title: 'Warm-up: C major scale', detail: `Right hand, one octave, at ${bpm} bpm. Thumb tucks under on F.` };
+  if (tier === 0) return { title: 'Warm-up: C major scale', detail: `Right hand, one octave, at ${bpm} beats a minute. Thumb tucks under on F.` };
   if (board === 'Trinity') {
     return tier === 1
-      ? { title: 'Technical work: scales', detail: `C major hands separately at ${bpm} bpm, then your Trinity exercise once, slowly. Technical work is 14 marks.` }
-      : { title: 'Technical work', detail: `Two scales or arpeggios from your Trinity list, then your exercise. Check evenness here on C major at ${bpm} bpm.` };
+      ? { title: 'Technical work: scales', detail: `C major hands separately at ${bpm} beats a minute, then your Trinity exercise once, slowly. Technical work is 14 marks.` }
+      : { title: 'Technical work', detail: `Two scales or arpeggios from your Trinity list, then your exercise. Check evenness here on C major at ${bpm} beats a minute.` };
   }
   if (board === 'ABRSM') {
     return tier === 1
-      ? { title: 'Scales, ABRSM style', detail: `C major hands together, then G or F major hands separately, at ${bpm} bpm. From memory: the examiner won't show you the notes.` }
-      : { title: 'Scales & arpeggios', detail: `Two from your grade's list, from memory, hands together. Check evenness here on C major at ${bpm} bpm. Scales are 21 of the 150 marks.` };
+      ? { title: 'Scales, ABRSM style', detail: `C major hands together, then G or F major hands separately, at ${bpm} beats a minute. From memory: the examiner won't show you the notes.` }
+      : { title: 'Scales & arpeggios', detail: `Two from your grade's list, from memory, hands together. Check evenness here on C major at ${bpm} beats a minute. Scales are 21 of the 150 marks.` };
   }
-  return { title: 'Warm-up: scales', detail: `Scales in the keys of your pieces. Check evenness here on C major at ${bpm} bpm.` };
+  return { title: 'Warm-up: scales', detail: `Scales in the keys of your pieces. Check evenness here on C major at ${bpm} beats a minute.` };
 }
 
 function reading(tier, board, cards, perf) {
@@ -72,7 +73,7 @@ export function buildPlan({ profile, goal = 20, history = [], cards = { weak: 0,
 
   const states = pieces.filter((p) => p.id !== scale.id).map((p) => {
     const runs = history.filter((h) => h.pieceId === p.id);
-    return { p, runs, best: Math.max(0, ...runs.map((x) => x.score)), ready: runs.some((x) => x.ready), last: runs[runs.length - 1] };
+    return { p, runs, ready: runs.some((x) => x.ready), last: runs[runs.length - 1] };
   });
   // The piece in progress comes first; untouched pieces only once nothing is in progress.
   const order = [...states.filter((s) => !s.ready && s.runs.length), ...states.filter((s) => !s.runs.length), ...states.filter((s) => s.ready)];
@@ -87,7 +88,7 @@ export function buildPlan({ profile, goal = 20, history = [], cards = { weak: 0,
     plan.unshift({
       tab: 'play', piece: a.piece_id, assignment: a, mins: m,
       title: `${teacher ? `From @${teacher}` : a.from ? `From ${a.from}` : 'From your teacher'}: ${a.title}`,
-      detail: `${bars[0].toUpperCase()}${bars.slice(1)}${a.target_bpm ? ` at ${a.target_bpm} bpm` : ''}${a.due ? `, due ${a.due}` : ''}. ${a.from_bar ? `Ticks off when it's clean ${3}× in a row.` : 'Ticks off with a run of 85+.'}${a.note ? ` “${a.note}”` : ''}`,
+      detail: `${bars[0].toUpperCase()}${bars.slice(1)}${a.target_bpm ? ` at ${a.target_bpm} beats a minute` : ''}${a.due ? `, due ${a.due}` : ''}. ${a.from_bar ? `Ticks off when it's clean ${3}× in a row.` : 'Ticks off with a run of 85+.'}${a.note ? ` “${a.note}”` : ''}`,
     });
   });
   // A pieces-only exam is judged as one performance: practise the whole programme in order.
@@ -106,10 +107,10 @@ export function buildPlan({ profile, goal = 20, history = [], cards = { weak: 0,
     const { runs: weekRuns, perRun } = trouble(s.p.id);
     const worst = Object.entries(perRun).filter(([, v]) => v >= 0.5).sort((a, b) => b[1] - a[1]).slice(0, 2).map(([b]) => Number(b)).sort((a, b) => a - b);
     let detail;
-    if (!s.last) detail = `New piece! Listen once, then play slowly at ${bpm} bpm.`;
-    else if (s.ready && board !== 'Not doing exams') detail = `Ready. Keep it fresh: one run in Exam conditions (no metronome) at ${bpm} bpm.`;
-    else if (weekRuns >= 2 && worst.length) detail = `This week's trouble: bar${worst.length > 1 ? 's' : ''} ${worst.join(' and ')}. Practise ${worst.length > 1 ? 'them' : 'it'} with "Add a bar at a time", then one full run at ${bpm} bpm.`;
-    else detail = `${s.last.worstBar ? `Fix bar ${s.last.worstBar} first, then ` : ''}full run at ${bpm} bpm. Best so far: ${s.best}.`;
+    if (!s.last) detail = `New piece! Listen once, then play slowly at ${bpm} beats a minute.`;
+    else if (s.ready && board !== 'Not doing exams') detail = `Ready. Keep it fresh: one run in Exam conditions (no metronome) at ${bpm} beats a minute.`;
+    else if (weekRuns >= 2 && worst.length) detail = `This week's trouble: bar${worst.length > 1 ? 's' : ''} ${worst.join(' and ')}. Practise ${worst.length > 1 ? 'them' : 'it'} with "Add a bar at a time", then one full run at ${bpm} beats a minute.`;
+    else detail = `${s.last.worstBar ? `Fix bar ${s.last.worstBar} first, then ` : ''}full run at ${bpm} beats a minute. Best so far: ${markText(bestMark(s.runs))}.`;
     plan.push({ tab: 'play', piece: s.p.id, mins: two ? Math.round(pieceMins * (i ? 0.4 : 0.6)) : pieceMins, title: `Piece: ${s.p.title}`, detail, bars: worst });
   });
   if (perf) {

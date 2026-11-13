@@ -35,6 +35,7 @@ export function readAssignmentLink(hash) {
       source: 'link',
       title: a.title.slice(0, 120),
       piece_id: a.piece_id.slice(0, 80),
+      piece_title: typeof a.piece_title === 'string' ? a.piece_title.slice(0, 200) : null,
       from_bar: n(a.from_bar, 1, 999),
       to_bar: n(a.to_bar, 1, 999),
       target_bpm: n(a.target_bpm, 20, 300),

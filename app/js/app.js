@@ -99,6 +99,15 @@ function show(tab) {
     const c4 = keyboard.querySelector('[data-midi="60"]');
     if (c4) keyboard.scrollLeft = c4.offsetLeft - 8;
   }
+  // Short screens: scroll the card and its Got it / Missed it buttons to just above the keys.
+  if (!keyboard.hidden && innerHeight <= 740) {
+    setTimeout(() => {
+      const hit = document.getElementById('card-hit');
+      if (!hit) return;
+      const gap = hit.getBoundingClientRect().bottom - keyboard.getBoundingClientRect().top + 8;
+      if (gap > 0) scrollBy({ top: gap, behavior: 'instant' });
+    }, 450);
+  }
   if (!['welcome', 'account', 'stats'].includes(tab)) save('tab', tab);
   updateTopbar();
   const token = ++switchToken;
@@ -118,7 +127,7 @@ function updateTopbar() {
   const pill = document.getElementById('top-streak');
   pill.hidden = !p || s === 0;
   pill.innerHTML = `${ICONS.flame} ${s} day${s === 1 ? '' : 's'}`;
-  pill.title = 'Streak: days when you played a piece well (85 or more), fixed a bar or read 20 notes right';
+  pill.setAttribute('aria-label', `${s} day streak. Open your stats`);
   const avatar = document.getElementById('top-avatar');
   avatar.hidden = !p;
   const user = currentUser();
@@ -246,7 +255,7 @@ function examChip() {
   const days = e ? daysUntil(e.date) : null;
   if (days == null || days < 0) return p_noExam();
   const bands = e.pieces.filter((x) => x.readiness?.band).map((x) => x.readiness.band);
-  return `<button class="exam-chip" type="button" data-go="exam">${ICONS.trophy}<span><b>${examTitle(e)} in ${days} day${days === 1 ? '' : 's'}</b><small>${phaseFor(days, e.type).title}${bands.length ? ` · ${bands.filter((b) => b === 'below').length ? `${bands.filter((b) => b === 'below').length} piece${bands.filter((b) => b === 'below').length > 1 ? 's' : ''} below pass` : 'all pieces at pass or above'}` : ''}</small></span></button>`;
+  return `<button class="exam-chip" type="button" data-go="exam">${ICONS.trophy}<span><b>${examTitle(e)} in ${days} day${days === 1 ? '' : 's'}</b><small>${phaseFor(days, e.type).title}${bands.length ? ` · ${bands.filter((b) => b === 'below').length ? `${bands.filter((b) => b === 'below').length} piece${bands.filter((b) => b === 'below').length > 1 ? 's' : ''} below pass` : bands.length === e.pieces.length ? 'all pieces at pass or above' : `${bands.length} of ${e.pieces.length} pieces at pass or above`}` : ''}</small></span></button>`;
 }
 function p_noExam() {
   const p = profile();
@@ -329,6 +338,7 @@ onTeachChange(() => { refreshToday(); canSend(); });
 setPieceTitles(() => Object.fromEntries(everyPiece().map((x) => [x.id, x.title])));
 startSync();
 document.getElementById('top-avatar').addEventListener('click', () => show('account'));
+document.getElementById('top-streak').addEventListener('click', () => show('stats'));
 addEventListener('mh:account', updateTopbar);
 
 // Back (Android, or a swipe back) closes the open pop-up instead of leaving the app.
@@ -357,7 +367,7 @@ function takeAssignmentLink() {
   const linked = acceptAssignmentLink(location.hash);
   if (!linked) return null;
   history.replaceState(null, '', location.pathname + location.search);
-  const have = allPieces().some((p) => p.id === linked.piece_id);
+  const have = allPieces().some((p) => p.id === linked.piece_id || (linked.piece_title && p.title === linked.piece_title));
   setTimeout(() => alert(`New work${linked.from ? ` from ${linked.from}` : ''}: ${linked.title}. ${have ? "It's at the top of Today's plan." : "First add the same music file your teacher used (Perform, More, Add a piece); then it shows at the top of Today's plan."}`), 600);
   return linked;
 }

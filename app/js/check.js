@@ -23,7 +23,7 @@ import { logWin } from './quality.js';
 import { dayKey } from './store.js';
 import { tap } from './haptics.js';
 import { openScan } from './scan.js';
-import { examMark, markingBoard, BAND_NAME, bandTone, bestMark } from './marking.js';
+import { examMark, markingBoard, BAND_NAME, bandTone, bestMark, markText } from './marking.js';
 import { celebrate } from './celebrate.js';
 import { still } from './settings.js';
 import { logPlaying } from './timer.js';
@@ -151,7 +151,8 @@ export function performPiece(pieceId, { exam = true, bpm: tempo = null, onDone =
     updateBpmLabel();
   }
   pendingTake = onDone;
-  setTimeout(() => !rec && start(), 700);
+  // Like the exam room: nothing starts until the student is ready.
+  setStatus(`Mock exam: ${shortTitle(base.title)}. When you're ready, tap the big button and play it as if the examiner is listening.`, '');
   return true;
 }
 
@@ -224,6 +225,8 @@ function togglePlay() {
 }
 function playLabels() {
   $('#ss-play').innerHTML = playing ? 'Stop' : `${ICONS.play} Play`;
+  $('#pc-hear').innerHTML = playing ? '<b aria-hidden="true">■</b>' : ICONS.play;
+  $('#pc-hear').setAttribute('aria-label', playing ? 'Stop playing' : 'Hear the piece');
   $('#check-listen').innerHTML = playing
     ? '<b class="plus-glyph" aria-hidden="true">■</b><span><b>Stop playing</b><small>Tap to stop</small></span>'
     : `${ICONS.play}<span><b>Hear the piece</b><small>How it should sound</small></span>`;
@@ -505,8 +508,9 @@ function finish({ played, source, msPerBeat, unclear = [], spread = [], pedalEve
       mark: result.exam.mark, of: result.exam.of, band: result.exam.band, board,
       part: result.part ? [result.part.from, result.part.to] : undefined,
     });
-    if (result.score >= 85) logWin('clean');
+    if (result.exam.band && result.exam.band !== 'below') logWin('clean'); // a Pass or better counts as a streak day
     save('checks', history.slice(-300));
+    showNowPlaying(); // the best mark may have changed
     changeListeners.forEach((fn) => fn());
   }
   drawScore(result);
@@ -541,7 +545,7 @@ function markSheet(m, part = null) {
 function markCriteria(m) {
   return `<div class="mark-sheet">
       <dl class="criteria">${m.criteria.map((c) => `<div><dt>${c.label}${c.max ? ` <span class="muted">${c.mark}/${c.max}</span>` : ''}</dt><dd><span class="crit-band">${meter(c.band)}<span class="band-chip ${c.band ? bandTone(c.band) : ''}">${c.band ? BAND_NAME[c.band] : 'Not heard'}</span></span><span class="crit-text">${c.comment}</span></dd></div>`).join('')}</dl>
-      <p class="fine">An estimate, marked a little strictly so the real exam doesn't surprise you.${m.rough ? ' Loudness and expression are rough with the microphone; a digital piano with a cable hears them exactly.' : ''} An examiner hears more than any app can.</p>
+      <p class="fine">An estimate, marked a little strictly so the real exam doesn't surprise you.${m.rough ? ' Loudness and expression are rough with the microphone; a digital piano with a cable hears them exactly.' : ''} An examiner hears more than any app can. <a href="help.html#marking">How Stave marks</a></p>
     </div>`;
 }
 
@@ -1007,7 +1011,7 @@ function showNowPlaying() {
   const cut = base.title.indexOf(': ');
   const [composer, title] = cut > 0 ? [base.title.slice(0, cut), base.title.slice(cut + 2)] : ['', base.title];
   $('#np-title').textContent = title;
-  $('#np-composer').textContent = composer || 'Your piece';
+  $('#np-composer').textContent = composer || (library.some((p) => p.id === base.id) ? 'Warm-up' : 'Your piece');
   $('#score-sheet-title').textContent = title;
   let art = '';
   try {
@@ -1016,9 +1020,24 @@ function showNowPlaying() {
     art = renderScore(excerpt(s, first, first + 1), { mode: 'page', width: 300 }).systems[0].svg.outerHTML;
   } catch { /* an odd score just gets the plain cover */ }
   $('#np-cover').innerHTML = `<span class="paper np-page">${art}</span>`;
+  // A score to beat, like the learning games: the best whole play-through so far.
+  const best = bestMark(history.filter((h) => h.pieceId === base.id && !h.part));
+  $('#np-best').hidden = !best;
+  if (best) $('#np-best').innerHTML = `Your best: <b>${markText(best)} ${BAND_NAME[best.band]}</b>. Can you beat it?`;
+}
+
+// The three steps, in words that fit the player: plainer for Grade 4 and up.
+const older = () => /Grade (4|6)/.test(load('profile', null)?.level ?? '');
+function fillSteps() {
+  const steps = older()
+    ? ['Put your music on the stand.', 'Start listening.', 'Play the whole piece or any passage. Stave finds the bars.']
+    : ['Open your music book on the piano.', 'Tap the big button.', 'Play! The whole piece, or just one part.'];
+  $('#how').innerHTML = steps.map((t, i) => `<li><span aria-hidden="true">${i + 1}</span>${t}</li>`).join('');
+  if (!rec) setStartLabel(false);
 }
 
 function selectPiece(id, { hidden = id === WARMUP } = {}) {
+  fillSteps();
   if (rec || learn) return;
   const found = allPieces().find((p) => p.id === id) ?? (hidden ? library.find((p) => p.id === id) : null) ?? allPieces()[0];
   showEmpty(!found);
@@ -1085,7 +1104,7 @@ function setStartLabel(running) {
   // One big round button: tap to start, tap again to finish.
   const [icon, label] = running
     ? ['<i class="rec-stop" aria-hidden="true"></i>', freeTempo() ? 'I\'ve finished' : 'Stop']
-    : [ICONS.mic, practice === 'learn' ? 'Start learning' : freeTempo() ? 'Tap to start' : 'Start'];
+    : [ICONS.mic, practice === 'learn' ? 'Start learning' : freeTempo() ? (older() ? 'Start listening' : 'Tap to start') : 'Start'];
   b.innerHTML = `<span class="rec-dot">${icon}</span><span class="rec-label">${label}</span>`;
   b.classList.toggle('listening', running);
 }
@@ -1189,17 +1208,31 @@ function updateBpmLabel() {
 }
 
 export function mountCheck(el) {
+  // Listening carries on if the student switches tab: say so, with a way back.
+  const away = document.createElement('button');
+  away.type = 'button';
+  away.className = 'listening-away';
+  away.innerHTML = '<span class="dot" aria-hidden="true"></span> Still listening · back to Perform';
+  away.addEventListener('click', () => document.querySelector('.tabbar [data-tab="play"]')?.click());
+  document.body.append(away);
   root = el;
   root.innerHTML = `
     <div class="perf-head"><h2>Perform</h2><button class="btn small-btn" id="perf-options-open" type="button">${ICONS.sliders} Options</button></div>
     <input id="import-file" type="file" accept=".musicxml,.xml,.mxl,application/vnd.recordare.musicxml+xml,application/vnd.recordare.musicxml" hidden>
 
     <section class="card perf-empty" id="perf-empty" hidden>
-      <h3>Add your first piece</h3>
-      <p>Stave listens to you play and checks every note against your music.</p>
-      <button class="btn primary block" type="button" data-scan>Take a photo of the music</button>
-      <label class="btn block" for="import-file">Add a file from your teacher or MuseScore</label>
-      <p class="fine">Files are MusicXML (.musicxml or .mxl). <a href="help.html#scores">How to get one</a></p>
+      <h3>Try it now: one minute</h3>
+      <p>Play a C major scale with your right hand and get your first mark. No music needed.</p>
+      <button class="btn primary block" type="button" id="try-scale">Try a C major scale</button>
+      <h3 class="add-h">Then add your own piece</h3>
+      <ol class="add-routes">
+        <li><b>Ask your teacher</b><span>The easiest way. They can send the piece as a file, or share it from Stave.</span>
+          <button class="btn small-btn" type="button" id="copy-ask">Copy a message for your teacher</button><span class="fine" id="copy-ask-done" role="status"></span></li>
+        <li><b>Take a photo of the music</b><span>An AI chat app turns it into music Stave can read. You check it bar by bar.</span>
+          <button class="btn small-btn" type="button" data-scan>Take a photo</button></li>
+        <li><b>Add a file</b><span>A MusicXML file (.musicxml or .mxl), for example from MuseScore. <a href="help.html#scores">How to get one</a></span>
+          <label class="btn small-btn" for="import-file">Choose a file</label></li>
+      </ol>
     </section>
 
     <div id="perf-main">
@@ -1209,7 +1242,9 @@ export function mountCheck(el) {
           <p class="np-kicker" id="np-composer"></p>
           <h3 id="np-title"></h3>
           <p class="np-meta" id="check-level"></p>
+          <p class="np-best" id="np-best" hidden></p>
         </div>
+        <button class="pc-hear" type="button" id="pc-hear" aria-label="Hear the piece">${ICONS.play}</button>
       </section>
       <nav class="pc-nav" id="pc-nav" aria-label="Your pieces: swipe the card or tap a dot" hidden>
         <button class="pc-arrow" id="pc-prev" type="button" aria-label="Previous piece"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
@@ -1221,11 +1256,7 @@ export function mountCheck(el) {
         <b>${ICONS.book} Learning slowly</b><span>Stave waits on each note until you find it.</span>
         <button class="btn small-btn" type="button" data-practice="perform">Back to marking</button>
       </section>
-      <ol class="how" id="how">
-        <li><span aria-hidden="true">1</span>Open your music book on the piano.</li>
-        <li><span aria-hidden="true">2</span>Tap the big button.</li>
-        <li><span aria-hidden="true">3</span>Play! The whole piece, or just one part.</li>
-      </ol>
+      <ol class="how" id="how"></ol>
       <div class="score-home" id="score-home"><div class="score-scroll paper" id="check-score" tabindex="0" role="group" aria-label="The music"></div></div>
       <section class="card drill" id="drill-banner" hidden></section>
       <section class="listen-panel" id="listen-panel" aria-live="polite">
@@ -1334,6 +1365,13 @@ export function mountCheck(el) {
     </dialog>`;
 
   wireSwipe();
+  $('#try-scale').addEventListener('click', () => selectPiece(WARMUP, { hidden: true }));
+  $('#copy-ask').addEventListener('click', async () => {
+    const msg = "Hi! I'm practising with Stave, an app that listens and gives an estimated exam mark. Could you send me my pieces as MusicXML files? In MuseScore or Sibelius it's File, then Export, then MusicXML. Thank you!";
+    let done = 'Copied. Paste it into a message to your teacher.';
+    try { await navigator.clipboard.writeText(msg); } catch { done = msg; }
+    $('#copy-ask-done').textContent = done;
+  });
   $('#import-file').addEventListener('change', (e) => {
     if (e.target.files[0]) importFile(e.target.files[0]);
     e.target.value = '';
@@ -1345,6 +1383,7 @@ export function mountCheck(el) {
   })));
   $('#check-bpm').addEventListener('input', updateBpmLabel);
   $('#check-listen').addEventListener('click', togglePlay);
+  $('#pc-hear').addEventListener('click', togglePlay);
   // The score sheet, Hear it and Add.
   const sheet = $('#score-sheet');
   const openScore = () => { sheet.showModal(); drawScore(); };

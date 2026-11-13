@@ -1,5 +1,5 @@
 // Offline-first app shell. Bump VERSION when shipping changes.
-const VERSION = 'stave-0.24.0';
+const VERSION = 'stave-0.25.0';
 const SHELL = [
   './',
   'index.html',
@@ -12,6 +12,7 @@ const SHELL = [
   'icons/maskable-512.png',
   'js/app.js',
   'js/zip.js',
+  'js/reminder.js',
   'js/background.js',
   'js/icons.js',
   'js/welcome.js',
@@ -31,8 +32,6 @@ const SHELL = [
   'js/mic.js',
   'js/micanalysis.js',
   'js/tuning.js', 'js/config.js', 'js/cloud.js', 'js/sync.js', 'js/account.js', 'js/quality.js', 'js/plan.js', 'js/exam.js', 'js/examview.js', 'js/teach.js', 'js/studio.js', 'js/reportcard.js', 'js/assignlink.js', 'js/qr.js', 'js/work.js', 'js/pgrade.js', 'js/kit.js', 'js/kiteval.js', 'js/parent.js', 'js/settings.js', 'js/haptics.js', 'js/theme-boot.js', 'js/version.js', 'js/changelog.js', 'js/whatsnew.js', 'js/pwa.js', 'js/micsetup.js', 'js/tour.js', 'js/getstarted.js', 'js/shelf.js', 'js/stats.js', 'js/scan.js', 'js/scnformat.js', 'js/scanprompt.js', 'js/age.js', 'js/marking.js', 'js/celebrate.js', 'js/expressive.js', 'js/consent.js', 'parent.html', 'consent.html', 'privacy.html', 'terms.html', 'copyright.html', 'help.html', 'accessibility.html',
-  'img/piano-room-1920.webp',
-  'img/piano-room-900.webp',
 ];
 
 self.addEventListener('install', (e) => {

@@ -3,7 +3,7 @@
 // them, and a read-only link for a parent.
 import { load, save, dayKey } from './store.js';
 import { cloudReady, currentUser, rest, rpc } from './cloud.js';
-import { setTeacherScores, onTakeDone } from './check.js';
+import { setTeacherScores, onTakeDone, allPieces } from './check.js';
 import { completes, assignmentLink, readAssignmentLink, daysToLesson } from './work.js';
 
 export { completes, assignmentLink, readAssignmentLink, daysToLesson };
@@ -21,8 +21,12 @@ const doneMap = () => load('assignmentDone', {});
 export function assignments() {
   const done = doneMap();
   const all = [...cached().assignments, ...load('linkAssignments', [])];
+  // A link names the teacher's file; the student's copy of the same piece may differ
+  // (another export, another size), so fall back to the same title.
+  const pieces = allPieces();
+  const local = (a) => (pieces.some((p) => p.id === a.piece_id) ? a.piece_id : pieces.find((p) => a.piece_title && p.title === a.piece_title)?.id ?? a.piece_id);
   return all
-    .map((a) => ({ ...a, doneAt: done[a.id] ?? null }))
+    .map((a) => ({ ...a, piece_id: local(a), doneAt: done[a.id] ?? null }))
     .sort((a, b) => Boolean(a.doneAt) - Boolean(b.doneAt) || (a.due ?? '9999').localeCompare(b.due ?? '9999'));
 }
 

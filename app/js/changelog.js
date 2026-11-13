@@ -3,6 +3,19 @@
 // and the service worker, and writes CHANGELOG.md from this list.
 export const CHANGES = [
   {
+    version: '0.25.0', date: '2026-11-13', title: 'Try it in a minute, streak freezes and reminders',
+    items: [
+      'New to Stave? Try a C major scale straight away and get your first mark, before you add any music.',
+      'Adding a piece is clearer: ask your teacher (with a message ready to send), take a photo, or add a file.',
+      'Streak freezes: you have 2, and earn 1 more for every 30 days. A freeze covers a missed day by itself. Tap your streak at the top to see it.',
+      'A daily reminder: in Settings, pick a time and Stave adds a practice event with an alert to your phone\'s calendar.',
+      'Your piece shows your best mark to beat, and a play button to hear it.',
+      'A mock exam now waits until you\'re ready, shows your total at the end, and has no pop-up boxes.',
+      'Help explains how Stave marks, and has a part for teachers. Settings are now at the top of the Account page.',
+      'Fixed: the on-screen piano covered flashcards on small phones and sideways; pop-up messages after big or cut-off files; a blank screen on slow phones; Stave still listening on other tabs without saying so.',
+    ],
+  },
+  {
     version: '0.24.0', date: '2026-11-13', title: 'Lots of fixes from testing',
     items: [
       'Stave works offline again once it has loaded. It had stopped saving itself for offline use.',

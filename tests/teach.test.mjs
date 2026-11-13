@@ -24,6 +24,7 @@ ok(!completes(whole, { pieceId: 'ode', hands: 'rh', score: 99, playedBpm: 60 }),
 // Links round-trip, and junk is rejected or cleaned.
 const url = assignmentLink({ title: 'Minuet — bars 5–8 ♪', piece_id: 'ode', from_bar: 5, to_bar: 8, target_bpm: 72, strictness: 'exam', due: '2026-11-06', note: 'Listen to the left hand', from: 'Miss T' }, 'https://x.io/app/');
 const back = readAssignmentLink(new URL(url).hash);
+ok(readAssignmentLink(new URL(assignmentLink({ title: 'x', piece_id: 'import:a.xml:1', piece_title: 'Minuet in G' }, 'https://x.io/')).hash).piece_title === 'Minuet in G', 'links carry the piece title, so another copy of the file still matches');
 ok(back.title === 'Minuet — bars 5–8 ♪' && back.from_bar === 5 && back.target_bpm === 72 && back.strictness === 'exam' && back.from === 'Miss T', 'link round-trips, including non-ASCII text');
 ok(url.length < 400, `assignment links stay short enough for a small QR code (${url.length})`);
 const evil = assignmentLink({ title: 'x', piece_id: 'ode', target_bpm: 99999, strictness: 'nonsense', due: 'tomorrow', from_bar: -3 }, 'https://x.io/');

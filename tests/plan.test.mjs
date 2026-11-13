@@ -1,7 +1,7 @@
 // Today's plan: node tests/plan.test.mjs
 import assert from 'node:assert/strict';
 import { buildPlan } from '../app/js/plan.js';
-import { qualityStreak, isQualityDay } from '../app/js/quality.js';
+import { qualityStreak, isQualityDay, streakInfo } from '../app/js/quality.js';
 
 let n = 0;
 const ok = (cond, what) => { assert.ok(cond, what); n++; };
@@ -35,11 +35,17 @@ const d = (o) => { const x = new Date('2026-10-30T12:00'); x.setDate(x.getDate()
 ok(!isQualityDay({ clean: 0, bars: 0, cards: 19 }) && isQualityDay({ cards: 20 }) && isQualityDay({ bars: 1 }), 'what makes a quality day');
 ok(qualityStreak({ [d(1)]: { clean: 1 }, [d(2)]: { bars: 1 } }, new Date('2026-10-30T12:00')) === 2, 'streak survives until today is done');
 ok(qualityStreak({ [d(0)]: { clean: 1 }, [d(2)]: { bars: 1 } }, new Date('2026-10-30T12:00')) === 2, 'one rest day keeps the streak (and does not add to it)');
-ok(qualityStreak({ [d(0)]: { clean: 1 }, [d(3)]: { bars: 1 } }, new Date('2026-10-30T12:00')) === 1, 'two missed days in a row break it');
-ok(qualityStreak({ [d(0)]: { clean: 1 }, [d(2)]: { clean: 1 }, [d(4)]: { clean: 1 } }, new Date('2026-10-30T12:00')) === 2, 'only one rest day a week');
-ok(qualityStreak({ [d(0)]: { clean: 1 }, [d(2)]: { clean: 1 }, [d(3)]: { clean: 1 }, [d(4)]: { clean: 1 }, [d(5)]: { clean: 1 }, [d(6)]: { clean: 1 }, [d(7)]: { clean: 1 }, [d(8)]: { clean: 1 }, [d(10)]: { clean: 1 } }, new Date('2026-10-30T12:00')) === 9, 'a rest day a week apart is fine again');
-ok(qualityStreak({ [d(2)]: { clean: 1 }, [d(3)]: { clean: 1 } }, new Date('2026-10-30T12:00')) === 2, 'the morning after a rest day, before playing, the streak still shows');
-ok(qualityStreak({ [d(3)]: { clean: 1 }, [d(4)]: { clean: 1 } }, new Date('2026-10-30T12:00')) === 0, 'two missed days, nothing yet today: broken');
+const NOW = new Date('2026-10-30T12:00');
+const S = (days) => streakInfo(Object.fromEntries(days.map((o) => [d(o), { clean: 1 }])), NOW);
+ok(S([0, 3]).days === 2 && S([0, 3]).freezesLeft === 0, 'two missed days in a row: both freezes cover them');
+ok(S([0, 4]).days === 1, 'three missed days in a row break it (two freezes, and a rest needs practice either side)');
+ok(S([0, 2, 4]).days === 3 && S([0, 2, 4]).freezesUsed === 1, 'a second rest day in a week uses a freeze');
+ok(S([0, 2, 3, 4, 5, 6, 7, 8, 10]).days === 9 && S([0, 2, 3, 4, 5, 6, 7, 8, 10]).freezesUsed === 0, 'a rest day a week apart is free again');
+ok(S([2, 3]).days === 2 && S([2, 3]).freezesUsed === 0, 'the morning after a rest day, before playing, the streak still shows');
+ok(S([3, 4]).days === 2 && S([3, 4]).freezesLeft === 0, 'two missed days, nothing yet today: freezes keep it');
+ok(S([5]).days === 0, 'three missed days, nothing yet today: broken');
+ok(S([]).days === 0 && S([]).freezesLeft === 2, 'a new student has 2 freezes');
+ok(S(Array.from({ length: 30 }, (_, i) => i)).freezesLeft === 3, '30 days of streak earns a third freeze');
 
 // Pieces-only exam: no scales or sight-reading anywhere in the day.
 for (const [goal, board] of [[20, 'ABRSM'], [45, 'ABRSM'], [30, 'Trinity']]) {

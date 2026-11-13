@@ -5,6 +5,7 @@ import { currentUser } from './cloud.js';
 import { hapticsOn, setHaptics, hapticsSupport, tap } from './haptics.js';
 import { VERSION } from './version.js';
 import { openWhatsNew } from './whatsnew.js';
+import { addReminder } from './reminder.js';
 
 const THEME_KEY = 'stave:theme';
 const STILL_KEY = 'stave:still';
@@ -62,7 +63,10 @@ export function settingsCard() {
           <button type="button" data-theme-pick="day" aria-pressed="${t === 'day'}">Day</button>
         </div>
       </div>
-      <label class="set-row"><span>Still scenery<small>No moving background or animations${motionQuery.matches ? '. Your device already asks for less motion' : ''}</small></span>
+      <div class="set-row reminder-row"><span>Daily reminder<small>Adds a "Piano practice" event with an alert to your phone's calendar, every day at this time</small></span>
+        <span class="row gap"><input type="time" id="set-remind-time" value="${load('remindAt', '17:00')}" aria-label="Reminder time"><button class="btn small-btn" type="button" id="set-remind">Add</button></span></div>
+      <p class="fine" id="set-remind-note" role="status"></p>
+      <label class="set-row"><span>Less motion<small>No animations or confetti${motionQuery.matches ? '. Your device already asks for less motion' : ''}</small></span>
         <input type="checkbox" role="switch" id="set-still" ${stillChosen() || motionQuery.matches ? 'checked' : ''} ${motionQuery.matches ? 'disabled' : ''}></label>
       ${hapticsSupport() ? `<label class="set-row"><span>Vibration<small>A buzz for right and wrong answers</small></span>
         <input type="checkbox" role="switch" id="set-haptics" ${hapticsOn() ? 'checked' : ''}></label>` : ''}
@@ -82,6 +86,14 @@ export function wireSettings(root) {
   root.querySelector('#set-still')?.addEventListener('change', (e) => { local(STILL_KEY, e.target.checked ? 'on' : 'off'); applyStill(); });
   root.querySelector('#set-haptics')?.addEventListener('change', (e) => setHaptics(e.target.checked));
   root.querySelector('#set-export')?.addEventListener('click', downloadMyData);
+  root.querySelector('#set-remind')?.addEventListener('click', async () => {
+    const time = root.querySelector('#set-remind-time').value || '17:00';
+    save('remindAt', time);
+    const how = await addReminder({ time, minutes: load('goal', 20), url: location.origin + location.pathname });
+    root.querySelector('#set-remind-note').textContent = how === 'shared'
+      ? 'Choose your Calendar app to add it.'
+      : 'Open the downloaded file and tap "Add" to put it in your calendar. To stop it, delete the event in your calendar.';
+  });
   root.querySelector('#set-news')?.addEventListener('click', () => openWhatsNew());
   root.querySelector('#set-tour')?.addEventListener('click', () => dispatchEvent(new Event('stave:tour')));
 }

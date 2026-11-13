@@ -29,11 +29,6 @@ export function mountBackground() {
   shade.setAttribute('aria-hidden', 'true');
   photo.after(shade);
 
-  // Start the load sequence once the photo is decoded, so it doesn't pop in late.
-  const src = matchMedia('(max-width: 700px) and (orientation: portrait)').matches ? 'img/piano-room-900.webp' : 'img/piano-room-1920.webp';
-  const img = new Image();
-  const go = () => requestAnimationFrame(() => document.body.classList.remove('booting'));
-  img.onload = img.onerror = go;
-  img.src = src;
-  setTimeout(go, 1200); // never hold the app on a slow image
+  // The clean design has no photo (it's hidden in CSS), so don't download it: show the app now.
+  requestAnimationFrame(() => document.body.classList.remove('booting'));
 }

@@ -36,7 +36,7 @@ export function mountWelcome(el, onDone) {
         <ul class="pitch">
           <li><span class="chip blue">${ICONS.book}</span><span><b>Read</b><small>Note flashcards that learn what you miss</small></span></li>
           <li><span class="chip green">${ICONS.metronome}</span><span><b>Practise</b><small>A daily plan built from your grade and your weak bars</small></span></li>
-          <li><span class="chip gold">${ICONS.piano}</span><span><b>Perform</b><small>Play into the mic and see every note you got right</small></span></li>
+          <li><span class="chip gold">${ICONS.piano}</span><span><b>Perform</b><small>Play from your book and get an estimated exam mark</small></span></li>
         </ul>
         <button class="btn primary block big" type="button" id="w-start">Get started</button>
         <p class="fine">Free while we're testing. No adverts.</p>

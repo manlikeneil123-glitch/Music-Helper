@@ -4,9 +4,10 @@ import { runMark, bestMark, markText, bandTone, BAND_NAME } from './marking.js';
 import { allSessions, goalMinutes, FOCUSES } from './timer.js';
 import { checkHistory, findPiece, allPieces, shortTitle } from './check.js';
 import { cardStats, DECKS } from './flashcards.js';
-import { dayKey } from './store.js';
+import { dayKey, load } from './store.js';
 import { ICONS } from './icons.js';
 import { still } from './settings.js';
+import { streakInfo, qualityWeek } from './quality.js';
 
 // One colour per focus, in this fixed order (checked for colour-blind separation).
 export const FOCUS_COLOURS = ['var(--viz-1)', 'var(--viz-2)', 'var(--viz-3)', 'var(--viz-4)', 'var(--viz-5)'];
@@ -27,6 +28,18 @@ function ago(t) {
 const fmtDay = (d) => d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
 
 /** Minutes per bucket (a day, or a week for 3 months), split by focus. */
+// The streak, its freezes and the rule, in words (phones can't show a tooltip).
+function streakCard() {
+  const s = streakInfo();
+  const week = qualityWeek();
+  const names = Array.from({ length: 7 }, (_, i) => { const d = new Date(); d.setDate(d.getDate() - (6 - i)); return d.toLocaleDateString(undefined, { weekday: 'narrow' }); });
+  return `<section class="card streak-card">
+      <div class="row between"><h3>${ICONS.flame} ${s.days} day streak</h3><span class="freeze-chip" title="Streak freezes">${s.freezesLeft} freeze${s.freezesLeft === 1 ? '' : 's'} left</span></div>
+      <ol class="streak-week" aria-label="This week">${week.map((on, i) => `<li class="${on ? 'on' : ''}"><span>${names[i]}</span><i aria-hidden="true"></i><span class="sr-only">${on ? 'practised' : 'not yet'}</span></li>`).join('')}</ol>
+      <p class="muted small">A streak day is a day you play a piece through to a Pass or better, get a tricky bar right, or read 20 notes right. One rest day a week is free. A freeze covers any other missed day by itself; you start with 2 and earn 1 more for every 30 days.</p>
+    </section>`;
+}
+
 export function buckets(sessions, days, now = new Date()) {
   const size = days > 30 ? 7 : 1;
   const out = Array.from({ length: Math.ceil(days / size) }, (_, i) => {
@@ -114,7 +127,9 @@ export function renderStats(root, { back, report }) {
   const fromKey = dayKey(from);
   const inRange = sessions.filter((s) => s.day >= fromKey);
   const minutes = inRange.reduce((a, s) => a + s.ms, 0) / 60000;
-  const practised = new Set(inRange.map((s) => s.day)).size;
+  // Any day with timed practice, a play-through or a streak day (flashcards count too).
+  const qDays = Object.entries(load('quality', {})).filter(([d, q]) => d >= fromKey && (q.clean || q.bars || q.cards)).map(([d]) => d);
+  const practised = new Set([...inRange.map((s) => s.day), ...qDays, ...checkHistory().map((c) => dayKey(new Date(c.at))).filter((d) => d >= fromKey)]).size;
   const checks = checkHistory().filter((c) => c.at >= from.setHours(0, 0, 0, 0));
   const marks = checks.map((c) => runMark(c)).filter(Boolean);
   const avg = marks.length ? Math.round(marks.reduce((a, m) => a + m.mark, 0) / marks.length) : 0;
@@ -132,6 +147,7 @@ export function renderStats(root, { back, report }) {
       <h2>Your stats</h2>
       <div class="segmented" role="group" aria-label="Time range">${Object.entries(RANGES).map(([d, l]) => `<button type="button" data-range="${d}" aria-pressed="${Number(d) === range}">${l}</button>`).join('')}</div>
     </div>
+    ${streakCard()}
     <section class="stat-tiles" aria-label="Totals for this ${RANGES[range].toLowerCase()}">
       ${tile(Math.round(minutes), 'minutes practised')}
       ${tile(practised, `day${practised === 1 ? '' : 's'} practised`)}

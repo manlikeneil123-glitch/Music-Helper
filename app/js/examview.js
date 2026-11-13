@@ -63,7 +63,7 @@ function setupForm(e) {
 function readinessChip(r) {
   if (!r) return '<span class="band none">Not in the app</span>';
   if (!r.band) return `<span class="band none" title="${esc(r.note)}">${r.runs ? '1 run' : 'No runs yet'}</span>`;
-  return `<span class="band ${r.band}" title="Pitch & Time from your last ${r.runs} full runs: around ${r.range} of ${r.of}. Weakest: ${r.weakest}.">${r.label}</span>`;
+  return `<span class="band ${r.band}" title="From your last ${r.runs} whole play-throughs: around ${r.range} of ${r.of}. Weakest: ${r.weakest}.">${r.label}</span>`;
 }
 
 function piecesCard(e) {
@@ -77,13 +77,13 @@ function piecesCard(e) {
           <div class="row between"><b class="small">${spec.labels[i]}</b>${readinessChip(p.readiness)}</div>
           <input type="text" data-title="${i}" value="${esc(p.title)}" placeholder="Piece title" maxlength="80" aria-label="${spec.labels[i]} title">
           <select data-link="${i}" aria-label="Score for ${spec.labels[i]}">
-            <option value="">Score not in the app yet</option>
-            ${options.map((o) => `<option value="${o.id}" ${o.id === p.pieceId ? 'selected' : ''}>Check with: ${esc(o.title)}</option>`).join('')}
+            <option value="">Not linked to a piece in Stave</option>
+            ${options.map((o) => `<option value="${o.id}" ${o.id === p.pieceId ? 'selected' : ''}${e.pieces.some((q, j) => j !== i && q.pieceId === o.id) ? ' disabled' : ''}>${esc(o.title)}</option>`).join('')}
           </select>
-          ${p.readiness?.band ? `<p class="muted small">Pitch & Time around <b>${p.readiness.range}</b> of ${p.readiness.of}. Weakest: ${p.readiness.weakest}.</p>` : ''}
+          ${p.readiness?.band ? `<p class="muted small">Around <b>${p.readiness.range}</b> of ${p.readiness.of}. Weakest: ${p.readiness.weakest}.</p>` : ''}
         </li>`).join('')}
       </ul>
-      <p class="muted small">Readiness bands use your last 3 full runs in Perform and measure <b>pitch and time only</b> (right notes, rhythm, tempo, keeping going, pulse). Tone, shape and performance aren't measured, so this isn't a mark. Import a score in Perform to link it here.</p>
+      <p class="muted small">Readiness comes from your estimated marks for your last 3 whole play-throughs of the linked piece in Perform. Add the piece in Perform first, then link it here.</p>
     </section>`;
 }
 
@@ -168,6 +168,7 @@ function render() {
     </section>`;
   root.innerHTML = `
     <h2>Exam</h2>
+    ${notice ? `<div class="mock-notice" role="status"><p>${notice}</p><button class="btn small-btn" type="button" id="notice-ok">OK</button></div>` : ''}
     <section class="card exam-head">
       <div>
         <span class="muted small">${examTitle(e)} · ${new Date(e.date).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'long' })}</span>
@@ -246,6 +247,7 @@ function wire(e) {
   root.querySelector('#mock-quit')?.addEventListener('click', () => { if (confirm('Stop this mock exam? Results so far are discarded.')) { save('mockRun', null); prep = null; render(); } });
   root.querySelectorAll('[data-mock-rate]').forEach((b) => b.addEventListener('click', () => record({ rating: Number(b.dataset.mockRate), summary: RATINGS[Number(b.dataset.mockRate)] })));
   root.querySelector('#mock-go')?.addEventListener('click', () => runStep(e));
+  root.querySelector('#notice-ok')?.addEventListener('click', () => { notice = ''; render(); });
 }
 
 function currentStep(e) {
@@ -262,7 +264,7 @@ function runStep(e) {
     performPiece(step.pieceId, { exam: true, bpm: piece?.targetBpm, onDone: (r, entry) => pieceDone(e, r, entry) });
   } else if (step.kind === 'scales') {
     goTo('play');
-    performPiece('c-scale', { exam: true, onDone: (r) => { goTo('exam'); setTimeout(() => alert(`C major: notes ${Math.round(r.pitchAccuracy * 100)}% right, evenness ${r.pulse?.score ?? '–'}/100. Now rate your scales overall.`), 400); } });
+    performPiece('c-scale', { exam: true, onDone: (r) => { notice = `C major scale: ${Math.round(r.pitchAccuracy * 100)}% of notes right${(r.pulse?.score ?? 100) < 80 ? ', a bit uneven' : ', nice and even'}. Now rate your scales overall.`; goTo('exam'); render(); } });
   } else if (step.kind === 'sight') {
     startPrep(e);
   }
@@ -271,7 +273,7 @@ function runStep(e) {
 function pieceDone(e, r, entry) {
   const m = r.exam;
   const slow = entry?.targetBpm && entry.playedBpm < entry.targetBpm * 0.95 ? `, ${entry.playedBpm} of ${entry.targetBpm} beats a minute` : '';
-  record({ score: r.score, band: m?.band ?? null, summary: m ? `${m.mark}/${m.of} ${BAND_NAME[m.band]}${slow}` : `${r.score}/100${slow}` });
+  record({ score: r.score, band: m?.band ?? null, mark: m?.mark ?? null, of: m?.of ?? null, summary: m ? `${m.mark}/${m.of} ${BAND_NAME[m.band]}${slow}` : `${r.score}/100${slow}` });
   goTo('exam');
 }
 
@@ -284,7 +286,7 @@ function sightPiece(e) {
 
 function startPrep(e) {
   const piece = sightPiece(e);
-  if (!piece) return record({ summary: 'skipped (no piece)' });
+  if (!piece) { notice = 'Sight-reading skipped: Stave needs one piece that isn\'t an exam piece to use for it. Add any other piece in Perform.'; return record({ summary: 'skipped: add a piece that isn\'t an exam piece' }); }
   prep = { left: 30, piece };
   render();
   const box = root.querySelector('#prep-score');
@@ -303,6 +305,24 @@ function startPrep(e) {
   }, 1000);
 }
 
+let notice = ''; // shown at the top of the Exam page instead of a pop-up box
+
+/** "Mock exam finished: pieces 74 of 90 (Merit level)". Performance Grades add the whole-performance mark. */
+function mockTotal(e, results) {
+  const marked = results.filter((x) => x.mark != null);
+  if (!marked.length) return 'Mock exam finished.';
+  const sum = marked.reduce((a, x) => a + x.mark, 0);
+  const max = marked.reduce((a, x) => a + x.of, 0);
+  if (isPerformance(e.type) && e.board === 'ABRSM' && marked.length === results.length) {
+    // The fifth mark, for the performance as a whole, estimated from the pieces' average.
+    const whole = Math.round(sum / marked.length);
+    const total = sum + whole;
+    const band = total >= 130 ? 'Distinction' : total >= 120 ? 'Merit' : total >= 100 ? 'Pass' : 'below a pass';
+    return `Mock exam finished: about ${total} of 150 (${band}), counting about ${whole} of 30 for the performance as a whole.`;
+  }
+  return `Mock exam finished: pieces ${sum} of ${max}.`;
+}
+
 function record(result) {
   const e = examWithReadiness();
   const mock = load('mockRun', null);
@@ -311,7 +331,7 @@ function record(result) {
   if (mock.results.length >= mockSteps(e).length) {
     save('mocks', [...load('mocks', []), { at: mock.at, board: e.board, type: e.type ?? 'practical', grade: e.grade, results: mock.results }].slice(-10));
     save('mockRun', null);
-    setTimeout(() => alert(isPerformance(e.type) ? 'Mock exam finished. Your results are under "Past mocks". Next step: film the whole programme in one take with "Record a performance".' : 'Mock exam finished. Your results are under "Past mocks". The weakest part is where this week\'s practice should go.'), 300);
+    notice = mockTotal(e, mock.results) + (isPerformance(e.type) ? ' Next step: film the whole programme in one take with "Record a performance".' : ' The weakest part is where this week\'s practice should go. Results are under "Past mocks".');
   } else {
     save('mockRun', mock);
   }

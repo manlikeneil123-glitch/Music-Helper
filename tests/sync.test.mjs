@@ -70,7 +70,7 @@ const s = summarise({
   profile: { v: { level: 'Grade 4 and above', board: 'Trinity' } },
   quality: { v: { [day(0)]: { clean: 1 }, [day(1)]: { cards: 25 }, [day(2)]: { bars: 1 }, [day(3)]: { cards: 5 }, [day(4)]: { cards: 4 }, [day(5)]: { clean: 2 } } },
 }, { p: 'Minuet' }, now);
-ok(s.streak === 3, 'quality streak counts consecutive quality days (5 cards is not one)');
+ok(s.streak === 4, 'quality streak counts quality days (5 cards is not one), and two freezes cover the missed days');
 ok(s.week === 30 && s.days.length === 14, 'week minutes from the last 7 days only');
 ok(s.notesKnown === 1, 'notes known counts box 3+');
 ok(s.recent[0].score === 88 && s.recent[0].title === 'Minuet' && s.recent[0].worstBar === 4, 'recent checks newest first, titled');

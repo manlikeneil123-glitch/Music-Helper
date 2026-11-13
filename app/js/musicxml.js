@@ -96,6 +96,10 @@ const STEP_SEMIS = [0, 2, 4, 5, 7, 9, 11];
 const DYNAMICS = ['ppp', 'pp', 'p', 'mp', 'mf', 'f', 'ff', 'fff', 'sf', 'sfz', 'fp'];
 
 export function parseMusicXML(text, { id = 'imported' } = {}) {
+  // A real exam piece is well under 2 MB; bigger files freeze phones.
+  if (text.length > 5e6) throw new Error('This file is too big to read (over 5 MB). Export just this one piece and try again.');
+  // A half-downloaded file would import as a shorter piece, so refuse it.
+  if (/<score-(partwise|timewise)[\s>]/.test(text) && !/<\/score-(partwise|timewise)>\s*$/.test(text)) throw new Error('This file is cut off part-way through. Download or export it again.');
   const doc = parseXml(text);
   const root = doc.children.find((c) => c.name === 'score-partwise' || c.name === 'score-timewise');
   if (!root) throw new Error("This doesn't look like a MusicXML file.");

@@ -42,7 +42,7 @@ export function openAssignDialog(ctx) {
     const v = (n) => form.elements[n].value.trim();
     const num = (n) => (v(n) ? Number(v(n)) : null);
     url = assignmentLink({
-      title: v('title') || ctx.piece.title, piece_id: ctx.piece.id,
+      title: v('title') || ctx.piece.title, piece_id: ctx.piece.id, piece_title: ctx.piece.title,
       from_bar: num('from'), to_bar: num('to') ?? num('from'), target_bpm: num('bpm'),
       strictness: ctx.strictness, due: v('due') || null, note: v('note') || null, from: v('from_name') || null,
     });

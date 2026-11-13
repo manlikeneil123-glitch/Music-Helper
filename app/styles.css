@@ -1524,3 +1524,61 @@ dialog.score-sheet[open] { animation: sheet-up 0.32s var(--ease) both; }
 .plus-glyph { display: grid; place-items: center; width: 24px; height: 24px; font-size: 1.5rem; line-height: 1; color: var(--tab-c); }
 #heat, #section { margin-top: 14px; }
 body.perf-result #how, body.perf-result .perf-actions, body.perf-result #input-pill { display: none; }
+
+/* Short screens (iPhone SE, a phone on its side, 200% zoom): a smaller keyboard and
+   card, so the card, its buttons and the keys all fit without anything covering. */
+@media (max-height: 740px) {
+  .keyboard { height: 112px; padding-top: 6px; }
+  .keys { height: 98px; }
+  body[data-tab='cards'] { padding-bottom: calc(var(--tabbar-h) + 136px + env(safe-area-inset-bottom)); }
+  .flashcard { height: 210px; }
+}
+@media (max-height: 500px) {
+  .keyboard { height: 84px; }
+  .keys { height: 72px; }
+  body[data-tab='cards'] { padding-bottom: calc(var(--tabbar-h) + 108px + env(safe-area-inset-bottom)); }
+  .flashcard { height: 105px; }
+}
+
+/* Shown on other tabs while Perform is still listening. */
+.listening-away { display: none; position: fixed; z-index: 30; left: 50%; transform: translateX(-50%); top: calc(env(safe-area-inset-top, 0px) + 12px); align-items: center; gap: 8px; padding: 10px 16px; min-height: 44px; border: 2px solid #c06bff; border-radius: 999px; background: var(--surface); color: var(--ink); font: inherit; font-weight: 700; cursor: pointer; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35); }
+.listening-away .dot { width: 10px; height: 10px; border-radius: 50%; background: #ff6b4a; animation: pulse-dot 1.2s ease-in-out infinite; }
+@keyframes pulse-dot { 50% { opacity: 0.35; } }
+body.perf-listening:not([data-tab='play']) .listening-away { display: inline-flex; }
+@media (prefers-reduced-motion: reduce) { .listening-away .dot { animation: none; } }
+
+/* Shown from the first paint until the app has started (slow phones, slow networks). */
+.boot { display: none; }
+body.booting .boot { display: grid; position: fixed; inset: 0; place-content: center; justify-items: center; gap: 14px; color: var(--muted); font-weight: 700; background: var(--bg); z-index: 50; }
+.boot-mark { width: 56px; height: 56px; border-radius: 16px; background: #ff6b4a; box-shadow: inset 0 -5px 0 #c94a2c; animation: boot-pulse 1.1s ease-in-out infinite; }
+@keyframes boot-pulse { 50% { transform: scale(0.9); opacity: 0.7; } }
+@media (prefers-reduced-motion: reduce) { .boot-mark { animation: none; } }
+
+/* iPhone SE and other short screens: Get started stays on the first screen. */
+@media (max-height: 700px) {
+  .splash { min-height: 0; padding-top: max(12px, env(safe-area-inset-top)); }
+  .splash .stave-anim { display: none; }
+  .splash .glass-hero { padding-block: 16px; }
+  .splash .pitch { gap: 6px; }
+}
+
+button.top-pill { font: inherit; cursor: pointer; }
+.freeze-chip { font-size: 0.8rem; font-weight: 750; padding: 4px 10px; border-radius: 999px; border: 2px solid #5aa9ff; color: var(--ink); }
+.streak-week { list-style: none; display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin: 12px 0; padding: 0; text-align: center; }
+.streak-week span { display: block; font-size: 0.75rem; color: var(--muted); }
+.streak-week i { display: block; width: 26px; height: 26px; margin: 4px auto 0; border-radius: 50%; border: 2px solid var(--edge); }
+.streak-week .on i { background: #ff6b4a; border-color: #ff6b4a; }
+
+.mock-notice { display: flex; gap: 12px; align-items: center; justify-content: space-between; margin: 0 0 14px; padding: 12px 14px; border: 2px solid #5aa9ff; border-radius: 16px; background: var(--surface); font-weight: 600; }
+.mock-notice p { margin: 0; }
+
+.perf-empty .add-h { margin-top: 18px; }
+.add-routes { margin: 8px 0 0; padding-left: 22px; display: grid; gap: 14px; }
+.add-routes li { display: grid; gap: 6px; justify-items: start; }
+.add-routes li span { color: var(--muted); font-size: 0.92rem; }
+
+.pc { grid-template-columns: 76px 1fr auto; }
+.pc-hear { grid-row: span 2; align-self: center; display: grid; place-items: center; width: 48px; height: 48px; padding: 0; border: 2px solid var(--edge); border-radius: 50%; background: var(--raised, var(--surface)); color: var(--ink); cursor: pointer; }
+.pc-hear svg { width: 22px; height: 22px; }
+.np-best { margin: 4px 0 0; font-size: 0.85rem; color: var(--muted); }
+.np-best b { color: var(--ink); }

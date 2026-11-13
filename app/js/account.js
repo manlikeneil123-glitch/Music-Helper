@@ -244,11 +244,11 @@ function render() {
   dispatchEvent(new Event('mh:account')); // the top bar shows who's signed in
   const open = [...root.querySelectorAll('.student details[open] [data-remove]')].map((b) => b.dataset.remove);
   root.innerHTML = `
-    <h2>Account</h2>
-    <p class="lede">${currentUser() ? 'Your progress, backed up.' : 'Back up your progress and connect with your teacher.'}</p>
-    ${!cloudReady() ? notReady() : currentUser() ? signedIn() : signedOut()}
-    ${!currentUser() ? `<button class="btn ghost link" id="acct-setup" type="button">Change your setup</button>` : ''}
-    ${settingsCard()}`;
+    <h2>Settings and account</h2>
+    ${!currentUser() ? `<button class="btn ghost link" id="acct-setup" type="button">Change your setup (level, board, goal)</button>` : ''}
+    ${settingsCard()}
+    <p class="lede">${currentUser() ? 'Your progress, backed up.' : 'An account backs up your progress, connects you with your teacher and lets a parent follow along with a private link. You don\'t need one to use Stave. Teachers: <a href="help.html#teachers">what Stave does for you</a>.'}</p>
+    ${!cloudReady() ? notReady() : currentUser() ? signedIn() : signedOut()}`;
   open.forEach((id) => root.querySelector(`[data-remove="${id}"]`)?.closest('details')?.setAttribute('open', ''));
   wire();
 }

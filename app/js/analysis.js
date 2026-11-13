@@ -331,7 +331,7 @@ const matchAnchors = (ops, expected, played) => ops
 // tempo changes, so notes are judged against where the player's own pulse was.
 // Anchors that sit far off the curve (slips, mis-paired notes) are dropped and the
 // curve refitted, so they can't bend it.
-function localTempo(points, fit, beatsPerBar) {
+export function localTempo(points, fit, beatsPerBar) {
   if (points.length < 6) return null;
   let curve = buildLocal(points, fit, beatsPerBar);
   for (let iter = 0; iter < 2; iter++) {

@@ -1,5 +1,5 @@
 // Offline-first app shell. Bump VERSION when shipping changes.
-const VERSION = 'stave-0.25.0';
+const VERSION = 'stave-0.26.0';
 const SHELL = [
   './',
   'index.html',

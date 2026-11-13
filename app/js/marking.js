@@ -61,7 +61,8 @@ function measure(r) {
   const pitch = clamp((r.pitchAccuracy ?? 0) - 0.5 * ((r.counts?.extra ?? 0) / total));
 
   const ratio = r.tempoRatio ?? 1;
-  const tempoQ = ratio <= 1 ? clamp((ratio - 0.6) / 0.4) : clamp(1 - (ratio - 1) * 2);
+  // Examiners accept a little under the marked speed; well under, or too fast, costs.
+  const tempoQ = ratio <= 1 ? clamp((ratio - 0.6) / 0.3) : clamp(1 - (ratio - 1.08) * 2.5);
   const rushed = (r.tempoChanges ?? []).some((c) => c.kind === 'faster' && c.extreme / c.median >= 1.15);
   let time = 0.4 * (r.rhythmAccuracy ?? 0) + 0.3 * ((r.pulse?.score ?? (r.rhythmAccuracy ?? 0) * 100) / 100) + 0.3 * tempoQ;
   if (rushed) time = Math.min(time, 0.87);
@@ -99,21 +100,19 @@ function comments(r, m) {
   return {
     pitch: wrong ? `${wrong} wrong, missed or extra note${wrong === 1 ? '' : 's'}${r.worstBar ? `, most in bar ${r.worstBar}` : ''}.` : 'All the notes were right.',
     time: m.rushed && rush ? `You rushed from bar ${rush.from}.` : ratio < 0.9 ? `Slower than the marked speed (${Math.round(r.playedBpm)} of ${Math.round(r.targetBpm)}).` : ratio > 1.1 ? 'Faster than the marked speed, so control slipped.' : (r.pulse?.score ?? 100) < 80 ? 'The pulse wobbled in places.' : 'Steady pulse at a good speed.',
-    tone: m.tone == null ? 'The microphone couldn\'t hear this clearly, so it counts as Pass level.' : m.flat ? 'Little difference between loud and soft.' : m.tone >= 0.9 ? 'A good range of sound.' : 'Some contrast; make loud and soft more different.',
-    shape: m.shape == null ? 'The microphone couldn\'t hear this clearly, so it counts as Pass level.' : m.marked ? `${m.followed} of ${m.marked} changes of dynamic came through.` : m.shape >= 0.88 ? 'Phrases had some shape.' : 'Shape the phrases more: grow towards the high points.',
+    tone: m.tone == null ? 'The microphone couldn\'t hear this clearly, so it follows the rest of your playing.' : m.flat ? 'Little difference between loud and soft.' : m.tone >= 0.9 ? 'A good range of sound.' : 'Some contrast; make loud and soft more different.',
+    shape: m.shape == null ? 'The microphone couldn\'t hear this clearly, so it follows the rest of your playing.' : m.marked ? `${m.followed} of ${m.marked} changes of dynamic came through.` : m.shape >= 0.88 ? 'Phrases had some shape.' : 'Shape the phrases more: grow towards the high points.',
     performance: stops.length ? `Stopped at bar ${stops[0].bar}. Keep going whatever happens.` : r.continuity?.slips ? `Kept going after ${r.continuity.recovered} of ${r.continuity.slips} slip${r.continuity.slips === 1 ? '' : 's'}.` : m.reached < 0.9 ? 'Didn\'t reach the end.' : 'Kept going confidently to the end.',
   };
 }
 
-// The overall band can't be more than one above the weakest criterion, and
-// Distinction needs every measured criterion at Merit or better.
+// Close to a real examiner: the mark follows the whole performance. Two limits only:
+// most of the piece unplayed can't pass, and Distinction needs every heading it
+// could hear at Pass or better.
 function strict(q, parts, reached = 1) {
-  if (reached < 0.75) q = Math.min(q, 0.7); // most of the piece unplayed can't pass
-  const bands = parts.map((x) => bandOf(x ?? 0.86));
-  const weakest = Math.min(...bands.map((b) => BANDS.indexOf(b)));
-  let cap = Math.min(3, weakest + 1);
-  if (weakest < 2) cap = Math.min(cap, 2);
-  return Math.min(q, [0.779, 0.879, 0.949, 1][cap]);
+  if (reached < 0.75) q = Math.min(q, 0.7);
+  if (parts.some((x) => x != null && bandOf(x) === 'below')) q = Math.min(q, 0.949);
+  return q;
 }
 
 /**
@@ -125,8 +124,10 @@ export function examMark(r, board = 'ABRSM', type = 'practical') {
   const say = comments(r, m);
   const spec = examSpec(board, type).piece;
   const rough = r.source === 'mic' || m.tone == null;
-  // What couldn't be heard counts as Pass level: strict, so it can't hand out marks.
-  const UNHEARD = 0.86;
+  // What couldn't be heard takes the level of what could, up to the bottom of
+  // Distinction: it neither drags a good performance down nor hands out top marks.
+  const heard = [m.pitch, m.time, m.tone, m.shape, m.performance].filter((x) => x != null);
+  const UNHEARD = Math.min(0.95, heard.reduce((a, x) => a + x, 0) / Math.max(1, heard.length));
   const weighted = (pairs) => {
     const live = pairs.map(([q, k]) => [q ?? UNHEARD, k]);
     const w = live.reduce((a, [, k]) => a + k, 0);

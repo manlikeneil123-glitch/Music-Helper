@@ -15,7 +15,8 @@ import { unzipStored } from '../app/js/zip.js';
 import { scoreTake, summariseTakes } from '../app/js/kiteval.js';
 import { analyseAudio, THRESHOLDS } from '../app/js/micanalysis.js';
 import { analyse } from '../app/js/analysis.js';
-import { timeline } from '../app/js/score.js';
+import { timeline, normalize } from '../app/js/score.js';
+import { examMark } from '../app/js/marking.js';
 import { PIECES } from '../app/js/pieces.js';
 import { parseMusicXML } from '../app/js/musicxml.js';
 
@@ -65,13 +66,15 @@ export function loadKit(source) {
   const byName = new Map(files.map((f) => [f.name, f.data]));
   const labels = JSON.parse(new TextDecoder().decode(byName.get('labels.json')));
   const pieces = library();
-  const takes = labels.takes.filter((t) => t.piece).map((t) => {
+  const mine = labels.ownPiece && byName.get(labels.ownPiece) ? normalize(JSON.parse(new TextDecoder().decode(byName.get(labels.ownPiece)))) : null;
+  const own = labels.takes.filter((t) => t.own && mine).map((t) => ({ ...t, piece: mine, tl: timeline(mine), audio: decodeWav(byName.get(t.file)) }));
+  const takes = labels.takes.filter((t) => t.piece && !t.own).map((t) => {
     const piece = pieces.find((p) => p.id === t.piece);
     if (!piece) throw new Error(`Unknown piece ${t.piece}`);
     return { ...t, piece, tl: timeline(piece), audio: decodeWav(byName.get(t.file)) };
   });
   const silence = labels.takes.find((t) => t.step === 'silence');
-  return { labels, takes, silence: silence ? decodeWav(byName.get(silence.file)) : null };
+  return { labels, takes, own, silence: silence ? decodeWav(byName.get(silence.file)) : null };
 }
 
 export function evaluate(kit, thresholds = THRESHOLDS) {
@@ -119,6 +122,20 @@ export function tune(kit, { rounds = 2, keys = Object.keys(SEARCH) } = {}) {
   return { thresholds: best, objective: bestScore, start };
 }
 
+/** The student's own piece at their own speed, marked as Perform would mark it now. */
+export function evaluateOwn(kit, thresholds = THRESHOLDS) {
+  const cal = kit.labels.calibration ?? {};
+  return (kit.own ?? []).map((t) => {
+    const target = 60000 / t.piece.targetBpm;
+    const mic = analyseAudio({ samples: t.audio.samples, sampleRate: t.audio.sampleRate, expected: t.tl, msPerBeat: target, beat0Sec: 0, latencyMs: cal.latencyMs ?? 120, tuningCents: cal.tuningCents ?? 0, thresholds, free: true, beatsPerBar: t.piece.beatsPerBar });
+    const r = analyse({ expected: t.tl, played: mic.played, unclear: mic.unclear, spread: mic.spread, msPerBeat: mic.msPerBeat ?? target, targetMsPerBeat: target, beatsPerBar: t.piece.beatsPerBar, source: 'mic', score: t.piece });
+    const m = examMark(r, 'ABRSM', 'practical');
+    const flagged = Object.entries(r.barErrors ?? {}).filter(([, n]) => n > 0).map(([b]) => Number(b));
+    const said = String(t.mistakeBars ?? '').split(/[^\d]+/).filter(Boolean).map(Number);
+    return { step: t.step, notes: t.tl.length, counts: r.counts, mark: `${m.mark}/30 ${m.band}`, then: t.stave, flagged, said, playedBpm: Math.round(r.playedBpm) };
+  });
+}
+
 const pct = (x) => `${Math.round(x * 100)}%`;
 function report(kit, ev, title) {
   const lines = [`## ${title}`, '', '| Take | Right notes accepted | False alarms | Mistakes caught |', '|---|---|---|---|'];
@@ -141,7 +158,13 @@ async function main() {
     const rms = Math.sqrt(s.reduce((a, x) => a + x * x, 0) / Math.max(1, s.length));
     console.log(`Room noise: ${(20 * Math.log10(Math.max(rms, 1e-9))).toFixed(1)} dBFS`);
   }
-  console.log(`\n${report(kit, evaluate(kit), 'With the current thresholds')}`);
+  if (kit.takes.length) console.log(`\n${report(kit, evaluate(kit), 'With the current thresholds')}`);
+  for (const o of evaluateOwn(kit)) {
+    const c = o.counts;
+    console.log(`\n## Own piece: ${o.step}\n\nNow: ${c.wrong} wrong, ${c.missed} missed, ${c.extra} extra of ${o.notes} notes, ${o.mark}, ${o.playedBpm} beats a minute.`);
+    if (o.then) console.log(`On the phone: ${o.then.counts.wrong} wrong, ${o.then.counts.missed} missed, ${o.then.counts.extra} extra, ${o.then.mark}/${o.then.of} ${o.then.band}.`);
+    console.log(`Bars Stave flagged: ${o.flagged.join(', ') || 'none'}${o.said.length ? `. Bars the player said: ${o.said.join(', ')}` : ''}.`);
+  }
   if (flags.includes('--tune')) {
     const t = tune(kit, { rounds: 3 });
     console.log(`\n${report(kit, evaluate(kit, t.thresholds), 'With tuned thresholds')}\n\nSuggested THRESHOLDS (objective ${t.start.toFixed(3)} → ${t.objective.toFixed(3)}):\n\n${JSON.stringify(t.thresholds, null, 2)}`);

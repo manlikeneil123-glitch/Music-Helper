@@ -31,6 +31,7 @@ BAR
 - Before a BAR, write KEY or TIME again if it changes there. If the lower stave uses the treble clef from the start, add CLEF L G after TIME.
 - Leave out fingering and ornaments.
 - Each R: and L: line must add up to the time signature (except a pickup bar).
+- Before you reply, go through every bar once more against the photo: count each hand's note and rest lengths (they must add up), check every accidental, tie, dot and rest, and check the slurs, dynamics, hairpins, accents, staccatos and pedal marks are all copied. Fix anything wrong, then reply.
 - If a photo isn't printed music, output exactly: SCN1 NONE`;
 
 export const SCAN_ASK = 'Transcribe these pages in SCN1.';

@@ -461,11 +461,11 @@ function findPart(played) {
 }
 
 function runMic(args, record) {
-  let mic = analyseAudio({ ...args, thresholds: micThresholds() });
+  let mic = analyseAudio({ ...args, beatsPerBar: piece.beatsPerBar, thresholds: micThresholds() });
   part = args.free ? findPart(mic.played) : null;
   if (part) {
     args = { ...args, expected: timeline(part.piece) };
-    mic = analyseAudio({ ...args, thresholds: micThresholds() });
+    mic = analyseAudio({ ...args, beatsPerBar: piece.beatsPerBar, thresholds: micThresholds() });
   }
   // A re-score of the same take keeps its list of corrections already made.
   const reported = lastMic?.args === args ? lastMic.reported : new Set();
@@ -498,6 +498,12 @@ function finish({ played, source, msPerBeat, unclear = [], spread = [], pedalEve
   }
   result.part = part ? { from: part.from, to: part.to, offset: part.offset } : null;
   part = null;
+  // Most notes not matching almost always means Stave lost track (the music in Stave
+  // differs from the book, often after a photo scan, or it couldn't hear), not a
+  // terrible performance. Say so honestly; no mark, nothing saved.
+  const total = result.notes?.length ?? 0;
+  const off = result.counts.wrong + result.counts.missed + result.counts.extra;
+  if (!drill && source === 'mic' && total >= 8 && off / total > 0.45) return showLost(off, total);
   lastResult = result;
   if (played.length && record && !drill) {
     history.push({
@@ -545,7 +551,7 @@ function markSheet(m, part = null) {
 function markCriteria(m) {
   return `<div class="mark-sheet">
       <dl class="criteria">${m.criteria.map((c) => `<div><dt>${c.label}${c.max ? ` <span class="muted">${c.mark}/${c.max}</span>` : ''}</dt><dd><span class="crit-band">${meter(c.band)}<span class="band-chip ${c.band ? bandTone(c.band) : ''}">${c.band ? BAND_NAME[c.band] : 'Not heard'}</span></span><span class="crit-text">${c.comment}</span></dd></div>`).join('')}</dl>
-      <p class="fine">An estimate, marked a little strictly so the real exam doesn't surprise you.${m.rough ? ' Loudness and expression are rough with the microphone; a digital piano with a cable hears them exactly.' : ''} An examiner hears more than any app can. <a href="help.html#marking">How Stave marks</a></p>
+      <p class="fine">An estimate, aiming to mark like a real examiner.${m.rough ? ' Loudness and expression are rough with the microphone; a digital piano with a cable hears them exactly.' : ''} An examiner hears more than any app can. <a href="help.html#marking">How Stave marks</a></p>
     </div>`;
 }
 
@@ -993,6 +999,24 @@ function showEmpty(on) {
 const escapeHtml = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 
 /** hidden: allow a built-in (the warm-up scale, or a piece the app itself asks for). */
+function showLost(off, total) {
+  const box = $('#check-result');
+  box.hidden = false;
+  document.body.classList.toggle('perf-result', freeTempo());
+  box.innerHTML = `<div class="lost card">
+      <h3>Stave lost track of this take</h3>
+      <p>About ${Math.round((100 * Math.min(off, total)) / total)}% of the notes didn't match the music in Stave, so this isn't a fair mark and it hasn't been saved.</p>
+      <p class="muted small">Usually the music in Stave doesn't match your book (a photo scan can get notes wrong), or the phone couldn't hear clearly. Check the music against your book, and put the phone near the piano.</p>
+      <div class="result-actions">
+        <button class="btn primary block" type="button" id="lost-check">Check the music against my book</button>
+        <button class="btn block" type="button" id="again">Play again</button>
+      </div>
+    </div>`;
+  box.querySelector('#lost-check').addEventListener('click', () => $('#open-score').click());
+  box.querySelector('#again').addEventListener('click', () => { box.hidden = true; document.body.classList.remove('perf-result'); start(); });
+  setStatus('', '');
+}
+
 // "Well done" is always praise: the best criterion if it earned Merit or better, otherwise the effort.
 const PRAISE = {
   pitch: 'Your notes were secure.', time: 'You kept a steady beat.', tone: 'A good range of loud and soft.',

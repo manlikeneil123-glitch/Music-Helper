@@ -97,6 +97,35 @@ export function parseScn(text) {
   return { title, bars };
 }
 
+/**
+ * Bars whose notes don't fill the time signature: almost always a misread note
+ * length. The first and last bars may be short (a pick-up and its partner), so they
+ * only count when they're too long. Returns [{ bar, hand, have, want }] in crotchets.
+ */
+export function scnBarProblems(text) {
+  const { bars } = parseScn(text);
+  let time = [4, 4];
+  const out = [];
+  bars.forEach((b, i) => {
+    if (b.attrs.time) time = b.attrs.time;
+    const want = (time[0] * 32) / time[1];
+    for (const hand of ['R', 'L']) {
+      const notes = b[hand].filter((t) => !t.mark);
+      if (!notes.length) continue;
+      const have = notes.reduce((a, t) => a + t.dur, 0);
+      const edge = i === 0 || i === bars.length - 1;
+      if (have > want || (have < want && !edge)) out.push({ bar: i + 1, hand: hand === 'R' ? 'right hand' : 'left hand', have: have / DIV, want: want / DIV });
+    }
+  });
+  return out;
+}
+
+/** A follow-up to paste into the same chat, so the AI re-reads the bars that don't add up. */
+export function scnFixMessage(problems) {
+  const list = problems.slice(0, 12).map((p) => `bar ${p.bar} (${p.hand}: ${p.have} crotchet beats, should be ${p.want})`).join('; ');
+  return `Some bars don't add up to the time signature: ${list}. Look at those bars in the photo again, check every note length, dot, rest and tie, and also check the slurs, dynamics and accidentals in those bars. Then send the whole SCN1 again from the first line, with nothing else.`;
+}
+
 // A [mark] becomes a <direction> at the current position, before the next note.
 function markXml(mark, staff) {
   const at = (type) => `<direction placement="${staff === 1 ? 'above' : 'below'}"><direction-type>${type}</direction-type><staff>${staff}</staff></direction>`;

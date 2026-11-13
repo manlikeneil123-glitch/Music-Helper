@@ -1,5 +1,5 @@
 // Photo scanner's short format (SCN1) → MusicXML → the normal importer.
-import { scnToMusicXML, parseScn, scnFromReply } from '../app/js/scnformat.js';
+import { scnToMusicXML, parseScn, scnFromReply, scnBarProblems, scnFixMessage } from '../app/js/scnformat.js';
 import * as appPrompt from '../app/js/scanprompt.js';
 import * as serverPrompt from '../supabase/functions/_shared/scan-prompt.js';
 import { parseMusicXML } from '../app/js/musicxml.js';
@@ -77,6 +77,26 @@ ok(load(scnFromReply(reply)).notes.length === 1, 'chat reply imports');
 ok(scnFromReply('Sorry, I cannot read that.') === '', 'chat reply with no SCN1 = empty');
 ok(scnFromReply('SCN1 NONE') === 'SCN1 NONE', 'not-music answer kept so Stave can say so');
 ok(appPrompt.SCAN_SYSTEM === serverPrompt.SCAN_SYSTEM && appPrompt.SCAN_ASK === serverPrompt.SCAN_ASK, 'app and server scan instructions match');
+
+// Bars that don't add up: the AI misread a note length.
+const bad = `SCN1
+TIME 3/4
+BAR
+R: D5/q
+BAR
+R: G4/q A4/q B4/q
+L: G3/h.
+BAR
+R: C5/q B4/e A4/q
+L: C4/h.
+BAR
+R: G4/h. A4/q
+L: B3/h.
+BAR
+R: G4/h`;
+const probs = scnBarProblems(bad);
+ok(probs.length === 2 && probs[0].bar === 3 && probs[0].hand === 'right hand' && probs[0].have === 2.5 && probs[1].bar === 4 && probs[1].have === 4, 'short and long bars found; pick-up and last bars may be short');
+ok(/bar 3 \(right hand: 2.5 crotchet beats, should be 3\)/.test(scnFixMessage(probs)) && /whole SCN1 again/.test(scnFixMessage(probs)), 'the fix-up message names the bars and asks for the whole reply again');
 
 if (fails) { console.log(`${fails} failed`); process.exit(1); }
 console.log('scan: all passed');

@@ -5,7 +5,7 @@
 // tools/scan-eval.mjs shows it's accurate.
 import { SCAN_ENABLED } from './config.js';
 import { cloudReady, currentUser, scanPages } from './cloud.js';
-import { scnToMusicXML, scnFromReply } from './scnformat.js';
+import { scnToMusicXML, scnFromReply, scnBarProblems, scnFixMessage } from './scnformat.js';
 import { SCAN_SYSTEM, SCAN_ASK } from './scanprompt.js';
 import { bornOnDevice, under13 } from './age.js';
 import { parseMusicXML } from './musicxml.js';
@@ -124,7 +124,9 @@ export function openScan({ onAdd, signIn }) {
       } catch {
         return error(text ? "Part of that reply isn't in the right form. Copy the whole reply again, or ask the app to try again." : "That doesn't look like the reply. Copy the part that starts with SCN1.");
       }
-      check(piece, xml, chat);
+      let problems = [];
+      try { problems = scnBarProblems(text); } catch { /* already read fine above */ }
+      check(piece, xml, chat, problems);
     });
   }
 
@@ -148,8 +150,11 @@ export function openScan({ onAdd, signIn }) {
     check(piece, xml);
   }
 
-  function check(piece, xml, back = pick) {
+  function check(piece, xml, back = pick, problems = []) {
     shell(`
+      ${problems.length ? `<div class="warn-note scan-problems"><p><b>${problems.length === 1 ? 'One bar doesn\'t' : `${problems.length} bars don't`} add up</b>, so the AI misread something: ${problems.slice(0, 8).map((p) => `bar ${p.bar} (${p.hand})`).join(', ')}${problems.length > 8 ? ' and more' : ''}.</p>
+        <p class="small">Copy this message, paste it into the same chat, then paste the new reply here.</p>
+        <button class="btn small-btn" type="button" data-fix>Copy the fix-up message</button></div>` : ''}
       <p class="warn-note">Check every bar against your ${photos.length ? 'photo' : 'printed copy'}. Scans can get notes wrong, and Stave marks your playing against what's here.</p>
       <div class="scan-compare">
         <figure ${photos.length ? '' : 'hidden'}><figcaption>Your photo${photos.length > 1 ? 's' : ''}</figcaption><div class="scan-photos" tabindex="0" role="group" aria-label="Your photos">${photos.map((p, i) => `<img src="${p.url}" alt="Page ${i + 1} as photographed">`).join('')}</div></figure>
@@ -167,7 +172,12 @@ export function openScan({ onAdd, signIn }) {
       const t0 = audio().currentTime + 0.15;
       for (const n of expressivePlan(piece, piece.targetBpm || 80).filter((x) => x.at < 30)) scheduleNote(n.midi, t0 + n.at, n.dur, n.vel);
     });
-    dlg.querySelector('[data-retake]').addEventListener('click', () => { photos = []; back(); });
+    // The chat route keeps the photos, so the fixed reply is checked against them too.
+    dlg.querySelector('[data-retake]').addEventListener('click', () => { if (back === pick) photos = []; back(); });
+    dlg.querySelector('[data-fix]')?.addEventListener('click', async (e) => {
+      const msg = scnFixMessage(problems);
+      try { await navigator.clipboard.writeText(msg); e.target.textContent = 'Copied. Now tap Try again and paste the new reply'; } catch { e.target.insertAdjacentHTML('afterend', `<textarea class="scan-prompt" readonly rows="4">${esc(msg)}</textarea>`); }
+    });
     dlg.querySelector('[data-add]').addEventListener('click', () => {
       const title = dlg.querySelector('#scan-name').value.trim() || 'Scanned piece';
       dlg.close();

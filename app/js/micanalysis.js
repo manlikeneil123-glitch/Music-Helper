@@ -11,7 +11,7 @@
 //      neighbouring semitone is clearly sounding instead.
 // Pure functions on Float32Array samples: runs the same on live mic input,
 // uploaded test recordings, and in Node tests.
-import { robustRegress, guessBeatMs } from './analysis.js';
+import { robustRegress, guessBeatMs, localTempo } from './analysis.js';
 
 // Tuned on synthetic piano audio; to be re-tuned on real recordings.
 // minSustain: sound left 30 ms after an onset, relative to the attack (a knock or a
@@ -270,7 +270,7 @@ function isOvertoneOf(midi, sounding, tuningCents) {
  */
 // free: the player chose when to start and how fast to go (no count-in). Beat 0 is
 // their first real note and the tempo is guessed from their own playing.
-export function analyseAudio({ samples, sampleRate, expected, msPerBeat, beat0Sec, latencyMs = 0, tuningCents = 0, thresholds = THRESHOLDS, free = false }) {
+export function analyseAudio({ samples, sampleRate, expected, msPerBeat, beat0Sec, latencyMs = 0, tuningCents = 0, thresholds = THRESHOLDS, free = false, beatsPerBar = 4 }) {
   const T = thresholds;
   let beat0 = beat0Sec;
   const toMs = (sec) => (sec - beat0) * 1000 - latencyMs;
@@ -324,8 +324,16 @@ export function analyseAudio({ samples, sampleRate, expected, msPerBeat, beat0Se
   // ---- 2. Align onsets to chords. Pass 1 against the target tempo; pass 2 against
   // the player's own fitted tempo with timing weighted more (as for MIDI).
   let pairs = alignOnsets(events, onsets, ev, ev2, toMs, (beat) => beat * msPerBeat, msPerBeat, 0.08, T);
-  const fit = pairs.length >= 3 ? robustRegress(pairs.map((m) => [events[m.k].beat, toMs(onsets[m.j0].time)])) : null;
-  if (fit && fit.b > 0) pairs = alignOnsets(events, onsets, ev, ev2, toMs, (beat) => fit.a + fit.b * beat, fit.b, 0.5, T);
+  const anchors = () => pairs.map((m) => [events[m.k].beat, toMs(onsets[m.j0].time)]);
+  const fit = pairs.length >= 3 ? robustRegress(anchors()) : null;
+  if (fit && fit.b > 0) {
+    // Follow the player's own speed bar by bar, not one straight line: real playing
+    // speeds up, slows down and pauses, and one line drifts off the notes after that.
+    for (let pass = 0; pass < 2; pass++) {
+      const guide = localTempo(anchors(), fit, beatsPerBar);
+      pairs = alignOnsets(events, onsets, ev, ev2, toMs, guide ? guide.at : (beat) => fit.a + fit.b * beat, fit.b, 0.5, T);
+    }
+  }
 
   // Chords not played together: matched as a two-onset group, or followed closely by
   // an onset nothing else claimed (the late notes of the same chord).

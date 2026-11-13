@@ -44,5 +44,18 @@ check('slow but steady: rhythm still right', midiRun(0.7, 2000).r.rhythmAccuracy
   check('mic: speed measured near 75%', Math.abs(r.playedBpm / study.targetBpm - 0.75) < 0.06, `${Math.round(r.playedBpm)} bpm`);
 }
 
+// Real playing isn't steady: the speed drifts ±20% and there's a 1.5 s pause. Right
+// notes must stay right (one straight-line tempo turned 30+ of them wrong).
+{
+  const spb0 = target / 0.85 / 1000;
+  const T = (beat) => { let t = 0; for (let b = 0; b < beat; b += 0.25) t += 0.25 * spb0 * (1 + 0.2 * Math.sin(b / 6)); return t + (beat > 30 ? 1.5 : 0); };
+  const notes = tl.map((n) => ({ midi: n.midi, on: 1.5 + T(n.beat), off: 1.5 + T(n.beat + n.beats * 0.9), vel: 0.6 }));
+  const samples = synth(notes, Math.max(...notes.map((n) => n.off)), { offsetSec: 0, noise: 0.004 });
+  const mic = analyseAudio({ samples, sampleRate: SR, expected: tl, msPerBeat: target, beat0Sec: 0, latencyMs: 0, free: true, beatsPerBar: study.beatsPerBar });
+  const r = analyse({ expected: tl, played: mic.played, unclear: mic.unclear, msPerBeat: mic.msPerBeat, targetMsPerBeat: target, beatsPerBar: study.beatsPerBar, source: 'mic', score: study, dense: true });
+  const bad = r.counts.wrong + r.counts.missed + r.counts.extra;
+  check('mic, rubato ±20% and a pause: right notes stay right', bad <= 6, `${r.counts.wrong} wrong, ${r.counts.missed} missed, ${r.counts.extra} extra of ${tl.length}`);
+}
+
 if (failures) { console.log(`${failures} failed`); process.exit(1); }
 console.log('free tempo: all passed');

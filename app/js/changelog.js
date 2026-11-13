@@ -3,6 +3,16 @@
 // and the service worker, and writes CHANGELOG.md from this list.
 export const CHANGES = [
   {
+    version: '0.26.0', date: '2026-11-13', title: 'Fairer marking',
+    items: [
+      'Big fix: Stave now follows your speed bar by bar. Slowing down, speeding up or pausing used to make it lose its place and count right notes as wrong, sometimes hundreds of them.',
+      'Marks now aim to match a real examiner, not to be stricter. A good, accurate play-through can reach Merit or Distinction.',
+      'If Stave really can\'t follow a take, it says so and doesn\'t give an unfair mark.',
+      'Photo scans: Stave checks every bar the AI wrote. If a bar doesn\'t add up, it tells you which, and gives you a message to send back to the AI so it fixes them. The AI is also asked to check every bar and marking before it replies.',
+      'Recording kit (Perform, Test lab): new takes of your own piece at your own speed, to help tune Stave to real pianos.',
+    ],
+  },
+  {
     version: '0.25.0', date: '2026-11-13', title: 'Try it in a minute, streak freezes and reminders',
     items: [
       'New to Stave? Try a C major scale straight away and get your first mark, before you add any music.',

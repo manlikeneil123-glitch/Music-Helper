@@ -42,7 +42,7 @@ let k = 0;
 const sloppy = examMark(play({ vel: shaped, tweak: (p) => (++k % 9 === 0 ? { ...p, midi: p.midi + 1 } : p) }));
 check('wrong notes pull Pitch and the mark down', sloppy.mark < best.mark && sloppy.criteria[0].band !== 'distinction', sheet(sloppy));
 check('the Pitch comment counts them', /wrong/.test(sloppy.criteria[0].comment), sloppy.criteria[0].comment);
-check('stricter than real: no Distinction with a weak criterion', sloppy.band !== 'distinction');
+check('no Distinction with a heading below Pass', sloppy.band !== 'distinction');
 
 const slow = examMark(play({ vel: shaped, speed: 0.7 }));
 check('well under speed is marked down on Time', slow.criteria.find((c) => c.id === 'time').band !== 'distinction' && slow.mark < best.mark, sheet(slow));
@@ -57,7 +57,7 @@ check('Trinity repertoire-only pieces are out of 25', examMark(play({ vel: shape
 
 const mic = examMark({ ...play({ vel: shaped }), source: 'mic', dense: true });
 check('mic on a dense piece: Tone and Shape not marked, flagged rough', mic.rough && mic.criteria.find((c) => c.id === 'tone').band === null, sheet(mic));
-check('…and what wasn\'t heard can\'t earn Distinction', mic.band !== 'distinction' && mic.mark <= 26, sheet(mic));
+check('…and what wasn\'t heard can\'t earn full marks', mic.mark <= 29, sheet(mic));
 
 check('old runs without a mark get one from their /100 score', runMark({ score: 92 }, { board: 'ABRSM', type: 'practical' }).band === 'merit');
 check('saved marks are used as they are', runMark({ score: 50, mark: 25, of: 30, band: 'merit' }).mark === 25);
